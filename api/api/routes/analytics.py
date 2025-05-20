@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify, g
-from models import db, UserSession, UserActivity, User, Admin
+from models import db, UserSession, UserActivity, User, Admin, WatchHistory, Movie, TVShow
 from api.utils import admin_token_required, token_required
 from datetime import datetime, timedelta
-from sqlalchemy import func, desc, and_
+from sqlalchemy import func, desc, and_, case  # Add case here
+from utils.logger import log_debug, log_info, log_error
 import uuid
 import psutil
 import json
@@ -14,7 +15,6 @@ analytics_bp = Blueprint('analytics_bp', __name__, url_prefix='/api/analytics')
 def create_session():
     """Create a new user session and return session_id"""
     import sys
-    from utils.logger import log_debug, log_info, log_error
     
     log_debug(f"---- Session creation requested ----")
     log_debug(f"Headers: {str(dict(request.headers))}")
@@ -76,8 +76,6 @@ def create_session():
 @analytics_bp.route('/heartbeat', methods=['POST'])
 def heartbeat():
     """Update last_active_at for a session and update user_id if needed"""
-    from utils.logger import log_debug, log_info
-    
     data = request.json
     session_id = data.get('session_id')
     
@@ -173,15 +171,54 @@ def get_dashboard_data(current_admin):
         User.created_at >= start_time
     ).count()
     
-    # Calculate average session duration for completed sessions
-    avg_duration = db.session.query(
+    # Replace the average duration calculation with this more robust version
+    # that includes both completed and active sessions
+
+    # For completed sessions
+    completed_sessions_avg = db.session.query(
         func.avg(
-            func.extract('epoch', UserSession.ended_at - UserSession.started_at)
+            # Using SQLite-friendly datetime calculations
+            func.strftime('%s', UserSession.ended_at) - func.strftime('%s', UserSession.started_at)
         )
     ).filter(
         UserSession.started_at >= start_time,
         UserSession.ended_at != None
     ).scalar() or 0
+
+    # For active sessions - use last_active_at instead of ended_at
+    active_sessions_avg = db.session.query(
+        func.avg(
+            # Using SQLite-friendly datetime calculations
+            func.strftime('%s', func.coalesce(UserSession.last_active_at, datetime.utcnow())) - 
+            func.strftime('%s', UserSession.started_at)
+        )
+    ).filter(
+        UserSession.started_at >= start_time,
+        UserSession.ended_at == None
+    ).scalar() or 0
+
+    # Count of each type of session
+    completed_count = UserSession.query.filter(
+        UserSession.started_at >= start_time,
+        UserSession.ended_at != None
+    ).count()
+
+    active_count = UserSession.query.filter(
+        UserSession.started_at >= start_time,
+        UserSession.ended_at == None
+    ).count()
+
+    # Weighted average of session durations
+    total_count = completed_count + active_count
+    if total_count > 0:
+        avg_duration = ((completed_sessions_avg * completed_count) + 
+                       (active_sessions_avg * active_count)) / total_count
+    else:
+        avg_duration = 0
+
+    log_debug(f"Session duration - Completed: {completed_sessions_avg}s ({completed_count} sessions), " +
+             f"Active: {active_sessions_avg}s ({active_count} sessions), " +
+             f"Combined: {avg_duration}s")
     
     # 2. Request Throughput
     requests_per_minute = (
@@ -305,3 +342,203 @@ def get_active_sessions(current_admin):
     ).all()
     
     return jsonify([s.serialize() for s in sessions]), 200
+
+@analytics_bp.route('/content-metrics', methods=['GET'])
+@admin_token_required('moderator')
+def get_content_metrics(current_admin):
+    """Get content performance metrics from watch history data"""
+    from utils.logger import log_debug, log_info, log_error
+    
+    # Get time range from query params (default: 7 days)
+    days = request.args.get('days', 7, type=int)
+    now = datetime.utcnow()
+    start_time = now - timedelta(days=days)
+    
+    try:
+        # 1. Most watched content (count watch history entries per content)
+        most_watched_movies = (
+            db.session.query(
+                WatchHistory.content_id,
+                Movie.title,
+                func.count(WatchHistory.id).label('view_count')
+            )
+            .filter(
+                WatchHistory.content_type == 'movie',
+                WatchHistory.last_watched >= start_time
+            )
+            .outerjoin(Movie, Movie.movie_id == WatchHistory.content_id)
+            .group_by(WatchHistory.content_id, Movie.title)
+            .order_by(db.desc('view_count'))
+            .limit(10)
+            .all()
+        )
+        
+        most_watched_shows = (
+            db.session.query(
+                WatchHistory.content_id,
+                TVShow.title,
+                func.count(WatchHistory.id).label('view_count')
+            )
+            .filter(
+                WatchHistory.content_type == 'tv',
+                WatchHistory.last_watched >= start_time
+            )
+            .outerjoin(TVShow, TVShow.show_id == WatchHistory.content_id)
+            .group_by(WatchHistory.content_id, TVShow.title)
+            .order_by(db.desc('view_count'))
+            .limit(10)
+            .all()
+        )
+        
+        # 2. Completion rates for content
+        completion_stats = (
+            db.session.query(
+                func.sum(case((WatchHistory.is_completed == True, 1), else_=0)).label('completed'),
+                func.sum(case((WatchHistory.is_completed == False, 1), else_=0)).label('not_completed')
+            )
+            .filter(WatchHistory.last_watched >= start_time)
+            .first()
+        )
+        
+        completed_count = completion_stats.completed or 0
+        not_completed_count = completion_stats.not_completed or 0
+        total_count = completed_count + not_completed_count
+        completion_rate = round((completed_count / total_count) * 100) if total_count > 0 else 0
+        
+        # 3. Most popular genres (extract from movies and shows)
+        movie_genres = {}
+        show_genres = {}
+        
+        # Get movies with watch history entries
+        movie_watches = (
+            db.session.query(
+                Movie.genres,
+                func.count(WatchHistory.id).label('view_count')
+            )
+            .join(WatchHistory, (WatchHistory.content_id == Movie.movie_id) & 
+                              (WatchHistory.content_type == 'movie'))
+            .filter(WatchHistory.last_watched >= start_time)
+            .group_by(Movie.genres)
+            .all()
+        )
+        
+        # Get TV shows with watch history entries
+        show_watches = (
+            db.session.query(
+                TVShow.genres,
+                func.count(WatchHistory.id).label('view_count')
+            )
+            .join(WatchHistory, (WatchHistory.content_id == TVShow.show_id) & 
+                              (WatchHistory.content_type == 'tv'))
+            .filter(WatchHistory.last_watched >= start_time)
+            .group_by(TVShow.genres)
+            .all()
+        )
+        
+        # Process movie genres
+        for item in movie_watches:
+            if item.genres:
+                for genre in item.genres.split(', '):
+                    if genre in movie_genres:
+                        movie_genres[genre] += item.view_count
+                    else:
+                        movie_genres[genre] = item.view_count
+        
+        # Process TV show genres
+        for item in show_watches:
+            if item.genres:
+                for genre in item.genres.split(', '):
+                    if genre in show_genres:
+                        show_genres[genre] += item.view_count
+                    else:
+                        show_genres[genre] = item.view_count
+        
+        # Combine and sort genres
+        all_genres = {}
+        for genre, count in movie_genres.items():
+            all_genres[genre] = all_genres.get(genre, 0) + count
+            
+        for genre, count in show_genres.items():
+            all_genres[genre] = all_genres.get(genre, 0) + count
+        
+        # Sort and get top genres
+        top_genres = [{"genre": k, "count": v} for k, v in 
+                     sorted(all_genres.items(), key=lambda item: item[1], reverse=True)[:8]]
+        
+        # 4. Content type distribution (movies vs. tv)
+        movie_views = (
+            db.session.query(func.count(WatchHistory.id))
+            .filter(
+                WatchHistory.content_type == 'movie',
+                WatchHistory.last_watched >= start_time
+            )
+            .scalar() or 0
+        )
+        
+        tv_views = (
+            db.session.query(func.count(WatchHistory.id))
+            .filter(
+                WatchHistory.content_type == 'tv',
+                WatchHistory.last_watched >= start_time
+            )
+            .scalar() or 0
+        )
+        
+        # 5. Daily viewing trends
+        daily_views = (
+            db.session.query(
+                func.date(WatchHistory.last_watched).label('date'),
+                func.count(WatchHistory.id).label('count')
+            )
+            .filter(WatchHistory.last_watched >= start_time)
+            .group_by('date')
+            .order_by('date')
+            .all()
+        )
+        
+        log_debug(f"Most watched shows: {[{'id': s.content_id, 'title': s.title, 'views': s.view_count} for s in most_watched_shows]}")
+        log_debug(f"Top genres: {top_genres}")
+        
+        return jsonify({
+            'most_watched': {
+                'movies': [
+                    {
+                        'id': item.content_id,
+                        'title': item.title or f"Unknown Movie {item.content_id}",
+                        'views': item.view_count,
+                        'type': 'movie'
+                    } for item in most_watched_movies
+                ],
+                'shows': [
+                    {
+                        'id': item.content_id,
+                        'title': item.title or f"Unknown Show {item.content_id}",
+                        'views': item.view_count,
+                        'type': 'tv'
+                    } for item in most_watched_shows
+                ]
+            },
+            'completion_metrics': {
+                'completed_count': completed_count,
+                'not_completed_count': not_completed_count,
+                'completion_rate': completion_rate,
+                'completion_data': [
+                    {'name': 'Completed', 'value': completed_count},
+                    {'name': 'Not Completed', 'value': not_completed_count}
+                ]
+            },
+            'genre_popularity': top_genres,
+            'content_type_distribution': [
+                {'name': 'Movies', 'value': movie_views},
+                {'name': 'TV Shows', 'value': tv_views}
+            ],
+            'daily_viewing_trends': [
+                {
+                    'date': item.date if isinstance(item.date, str) else item.date.strftime('%Y-%m-%d'),
+                    'views': item.count
+                } for item in daily_views
+            ]
+        })
+    except Exception as e:
+        log_error(f"Error retrieving content metrics: {str(e)}")
+        return jsonify({'error': 'Failed to retrieve content metrics'}), 500

@@ -14,3 +14,7 @@ api/uploads/
 api/uploads/*
 api/migrations/
 api/migrations/*
+.DS_Store
+__pycache__/
+*.py[cod]
+*$py.class
