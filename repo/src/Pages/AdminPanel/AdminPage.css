@@ -1,0 +1,14 @@
+.AdminPage {
+    height: 100vh;
+    width: 100%;
+    background-color: #141b2d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: aliceblue;
+    overflow-y: hidden;
+}
+
+.ant-table-thead {
+    background-color: green !important;
+}

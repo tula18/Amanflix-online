@@ -1,0 +1,333 @@
+.ProfilePage {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 70px;
+    height: 100vh;
+}
+
+.profile__form__wrapper {
+    margin: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    width: 50%;
+    height: 100%;
+    /* background-color: rgba(0, 0, 0, 0.7); */
+}
+
+.profile__form__wrapper h2 {
+    font-size: 44px;
+    font-weight: 400;
+    width: 100%;
+    text-align: left;
+}
+
+.profile__form {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.divider {
+    height: 1px !important;
+    width: 100% !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    margin: 20px 0 !important;
+}
+
+.first-sec {
+    display: flex;
+    width: 100%;
+    height: 175px;
+    /* background-color: aqua; */
+    vertical-align: middle;
+    justify-content: space-between;
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.form-group input {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    width: 97%;
+    height: 45px;
+    padding-left: 16px;
+    font-size: 1rem;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    outline: none;
+    border: none;
+    transition: all 0.2s;
+}
+
+.error-message {
+    background: #333;
+    color: #fff;
+    font-size: 0.8rem;
+    display: none;
+    position: absolute;
+    bottom: 10px;
+    margin: 0 10px;
+    padding: 0 5px;
+    border-radius: 10px;
+    left: 0;
+    z-index: 1000;
+    text-align: center;
+}
+
+.show-error {
+    display: block;
+}
+
+.show_image {
+    background-color: #333 !important;
+    color: #fff;
+    font-size: 0.8rem;
+    display: block;
+    position: absolute;
+    bottom: 25px;
+    margin: 0 10px;
+    padding: 0 5px;
+    border-radius: 10px;
+    right: 0;
+    z-index: 1000;
+    text-align: center;
+}
+
+.is-invalid {
+    border: 2px solid #ff4d4d !important;
+}
+
+.is-valid {
+    border: 2px solid #28a745 !important;
+}
+
+
+.form-group textarea {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    resize: vertical;
+    width: 97%;
+    max-width: 97%;
+    min-height: 90px;
+    height: 35px;
+    padding-left: 16px;
+    font-size: 1rem;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    /* background-color: rgb(232, 240, 254); */
+    outline: none;
+    border: none;
+    padding-top: 10px;
+    /* transition: all 0.1s; */
+}
+
+
+.form-group select {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    width: 100%;
+    height: 45px;
+    /* padding: 0 16px; */
+    padding-left: 16px;
+    font-size: 1rem;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    /* background-color: rgb(232, 240, 254); */
+    outline: none;
+    border: none;
+}
+
+.form-group input:disabled {
+    opacity: 0.8;
+    color: #7e7b7b;
+}
+
+.form-group textarea:disabled {
+    opacity: 0.8;
+    color: #7e7b7b;
+}
+
+.form-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.form-group label {
+    text-align: left;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.first-sec__inputs {
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; */
+    /* background-color: bisque; */
+    width: 75%;
+    height: 100%;
+}
+
+.password-sec {
+    display: flex;
+    flex-direction: row-reverse;
+    width: 100%;
+}
+.password-sec_inputs {
+    width: 75%;
+}
+
+.password-sec_inputs h2 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.profile_save_btn {
+    /* display: flex; */
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background-color: #ffffff;
+    padding: 5px 25px;
+    border: 3px solid #ffffff;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 400;
+    font-size: 32px;
+    transition: all 0.2s ease-in-out;
+}
+
+.profile_save_btn:hover {
+    background-color: #ddd;
+    color: #333;
+}
+
+.profile_save_btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.profile_delete_btn {
+    background-color: transparent;
+    color: #3c4041;
+    border: 3px solid #3c4041;
+    border-radius: 2px;
+    padding: 5px 25px;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 32px;
+    transition: all 0.3s;
+}
+
+.profile_delete_btn:hover {
+    background-color: #e50914;
+    border-color: #e50914;
+    color: #fff;
+}
+
+.profile-form_buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 40px;
+}
+
+
+.profile-message {
+    text-align: center;
+    margin-top: 20px;
+    color: #dc3545;
+}
+
+.profile_eye-icon-wrapper {
+    position: absolute;
+    display: flex;
+    right: 12px;
+    /* top: 25%; */
+    align-items: center;
+    height: 45px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.profile_modal-content {
+    display: flex;
+    padding: 20px;
+    position: fixed;
+    background-color: #171717;
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    align-items: center;
+    z-index: 1001 !important;
+    border-radius: 4px;
+    overflow-Y: auto;
+    overflow-x: hidden;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.profile_modal-content p {
+    font-size: 16px;
+    color: #666;
+    margin: 0 0 15px 0;
+}
+
+@media screen and (max-width:1350px) {
+    .profile__form__wrapper {
+        width: 70%;
+    }
+}
+
+@media screen and (max-width:1000px) {
+    .profile__form__wrapper {
+        width: 100%;
+    }
+
+    .form-group { 
+        align-items: end;
+        justify-content: right;
+    }
+  }
+
+@media screen and (max-width: 735px) {
+    .profile-image-big {
+        display: none;
+    }
+
+    .form-group {
+        width: 100%;
+        align-items: start;
+
+    }
+
+    .first-sec__inputs {
+        width: 100%;
+    }
+
+    .password-sec_inputs {
+        width: 100%;
+    }
+}

@@ -1,0 +1,162 @@
+.continue-watching-container {
+    margin: 0rem 0;
+    padding: 0 4%;
+}
+
+.section-title {
+    font-size: 1.4vw;
+    color: #e5e5e5;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+}
+
+.continue-watching-slider {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    scrollbar-width: none; /* Firefox */
+}
+
+.continue-watching-slider::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+/* .continue-watching-item {
+    position: relative;
+    min-width: 200px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+} */
+
+/* .continue-watching-item:hover {
+    transform: scale(1.05);
+} */
+
+/* .progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #e50914;
+    transition: width 0.3s ease;
+} */
+
+/* .continue-watching-slider-wrapper {
+    margin: 2rem 0;
+    padding: 0 4%;
+} */
+
+.continue-watching-error {
+    color: #e50914;
+    font-size: 16px;
+    padding: 1rem 0;
+}
+
+.continue-watching-empty {
+    color: #8c8c8c;
+    padding: 2rem 0;
+    text-align: center;
+}
+
+.continue-watching-empty p {
+    margin: 0.5rem 0;
+}
+
+.continue-watching-empty .empty-suggestion {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+/* .continue-item-wrapper {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+} */
+
+/* .continue-item-wrapper:hover {
+    transform: scale(1.05);
+    z-index: 10;
+    transition: transform 0.3s ease;
+    z-index: 2;
+} */
+
+.button3 {
+    position: relative;
+    background: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    outline: none;
+    width: 100%;
+    cursor: pointer;
+    text-align: left;
+}
+
+/* Netflix-style progress bar */
+/* .netflix-progress-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: 5;
+}
+
+.netflix-progress-bar {
+    height: 100%;
+    background-color: #e50914;
+    transition: width 0.3s ease;
+} */
+
+/* Episode badge styling */
+.netflix-episode-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 5;
+}
+
+/* Loading state */
+.continue-watching-loading {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+/* Animation for the loading state */
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.6; }
+}
+
+.loading-slider-title {
+    height: 28px;
+    width: 200px;
+    background-color: #3a3a3a;
+    margin-bottom: 1rem;
+    animation: pulse 1.5s infinite;
+    border-radius: 4px;
+}
+
+/* Carousel styling */
+.continue-watching-carousel .rec-carousel {
+    position: relative;
+}

@@ -1,0 +1,8 @@
+.MyListPage {
+    margin-top: 70px;
+    min-height: 100vh;
+}
+
+.MyListPage h1, h2 {
+    color: #fff;
+}

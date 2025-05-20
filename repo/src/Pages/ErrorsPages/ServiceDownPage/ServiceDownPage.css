@@ -1,0 +1,37 @@
+.error-page {
+    display: flex;
+    /* width: 100vh; */
+    height: 100vh;
+    /* background-color: aliceblue; */
+    /* background-color: rgba(0, 0, 0, 0.5); */
+    justify-content: center;
+    align-items: center;
+    /* z-index: 1001 !important; */
+  }
+
+.error_modal-content {
+    display: flex;
+    padding: 20px;
+    min-width: 40%;
+    /* position: fixed; */
+    /* background-color: #171717; */
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    align-items: center;
+    z-index: 1001 !important;
+    border-radius: 4px;
+    overflow-Y: auto;
+    overflow-x: hidden;
+}
+.error_modal-content p {
+    font-size: 22px;
+    color: #666;
+    margin: 0 0 15px 0;
+}
+
+.error_modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+    color: #fff;
+}

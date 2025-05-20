@@ -1,0 +1,16 @@
+/api/cdn/files/*
+/api/cdn/posters_combined/*
+/api/cdn/files/
+/api/cdn/posters_combined/
+api/instance/amanflix_db.db
+api/logs/
+api/logs/*
+api/instance/amanflix_db.db
+api/logs/amanflix.log
+api/logs/api_requests.log
+repo/node_modules/
+repo/node_modules/*
+api/uploads/
+api/uploads/*
+api/migrations/
+api/migrations/*

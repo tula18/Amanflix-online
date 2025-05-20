@@ -1,0 +1,95 @@
+.App {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  background-color: #141414;
+  overflow: auto;
+}
+
+body {
+  background-color: #141414;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #171717;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(229, 9, 20, 1.0);
+  border-radius: 5px;
+  transition: all 0.5s ease-in-out;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(229, 9, 20, 1.0);
+}
+
+body.no-scroll {
+  overflow: hidden;
+}
+
+body.hide-scroll::-webkit-scrollbar-thumb {
+  /* background: #171717; */
+  transition: all 0.5s ease-in-out;
+  background: rgba(229, 9, 20, 0);
+}
+
+body.hide-scroll::-webkit-scrollbar-thumb:hover {
+  background: #e50914;
+}
+
+body.hide-scroll {
+  transition: all 0.5s ease-in-out;
+}
+
+footer {
+  height: 50px;
+  width: 100%;
+  display: flex;
+}
+
+footer p {
+  /* align-self: center; */
+  color: #fff;
+  left: 0;
+  margin-left: 50px;
+}
+
+.footer_hide {
+  display: none;
+}
+
+/* Define the spinner styles */
+.spinner-border {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  vertical-align: text-bottom;
+  border: 0.25em solid rgba(255, 0, 0, 0.7);
+  border-right-color: transparent;
+  border-radius: 50%;
+  -webkit-animation: spin 0.75s linear infinite;
+  animation: spin 0.75s linear infinite;
+}
+
+@-webkit-keyframes spin {
+  to { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner-container {
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  display: none; /* Initially hidden */
+}

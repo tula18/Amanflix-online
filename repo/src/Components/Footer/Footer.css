@@ -1,0 +1,11 @@
+.footer_hide {
+    display: none;
+}
+
+footer {
+    width: 100%;
+    background-color: #f9f9f9;
+    padding: 20px 0;
+    text-align: center;
+    font-size: 14px;
+}

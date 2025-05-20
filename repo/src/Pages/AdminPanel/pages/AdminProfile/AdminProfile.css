@@ -1,0 +1,44 @@
+.sidebar_profile__form__wrapper {
+    width: 70% !important;
+    height: 110% !important;
+    transform: scale(0.90);
+}
+
+@media screen and (max-width: 1500px) {
+    .sidebar_profile__form__wrapper {
+        width: 80% !important;
+        height: 95% !important;
+        transform: scale(0.95);
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .sidebar_profile__form__wrapper {
+        width: 100% !important;
+    }
+
+    .first-sec {
+        flex-direction: column !important;
+        height: auto !important;
+        align-items: center !important;
+    }
+    /* .profile-image-big {
+        display: none !important;
+    } */
+
+    .sidebar_form-group {
+        /* align-items: end; */
+        /* justify-content: right; */
+        width: 100% !important;
+        align-items: start !important;
+
+    }
+
+    .sidebar_first-sec__inputs {
+        width: 100% !important;
+    }
+
+    .sidebar_password-sec_inputs {
+        width: 100% !important;
+    }
+}

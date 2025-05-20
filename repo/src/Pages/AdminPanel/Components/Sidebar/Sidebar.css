@@ -1,0 +1,132 @@
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 250px;
+    /* margin-top: 70px; */
+    background-color: #1f2a40;
+    color: #ecf0f1;
+    padding: 15px;
+    height: calc(100vh);
+    overflow-y: auto;
+    justify-content: space-between;
+}
+
+.sidebar_profile {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    padding: 15px 0;
+}
+
+.profile_highlighted {
+    background-color: rgba(109, 109, 110, 0.3);
+    border-radius: 15px;
+    color: #f9fffe;
+    cursor: pointer;
+}
+
+.sidebar_profile:hover {
+    background-color: rgba(109, 109, 110, 0.3);
+    border-radius: 15px;
+    color: #f9fffe;
+    cursor: pointer;
+}
+
+.sidebar_top {
+    margin-top: 10px;
+
+}
+
+.sidebar_top h2 {
+    text-align: left;
+}
+
+.admin_username {
+    color: #e0e0e0;
+    font-size: 32px;
+    font-weight: 500;
+}
+
+.admin_role {
+    font-size: 16px;
+    font-weight: 400;
+    color: #4cceac;
+    /* margin-bottom: 30px; */
+}
+
+.sidebar_links {
+    display: flex;
+    flex-direction: column;
+}
+
+.category-header {
+    padding: 5px 0;
+    color: #a3a3a3;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;    
+}
+
+.category-header:hover {
+    text-decoration: underline;
+}
+
+.collapsed-icon {
+    font-size: 1.5rem;
+}
+
+.sidebar-link {
+    color: #e0e0e0;
+    text-decoration: none;
+    padding: 4px 0;
+    height: 100%;
+    display: flex;
+    padding-left: 20px;
+    align-items: center;
+}
+
+.alone {
+    padding-left: 0;
+    padding: 8px 0;
+}
+
+.active-link {
+    color: #e50914;
+}
+
+.sidebar_link_icon {
+    padding-right:15px;
+}
+
+.sidebar-link:hover {
+    text-decoration: underline;
+}
+
+.sidebar_bottom {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.collapsed {
+    transform: rotate(180deg);
+}
+
+.coll_icon {
+    transition: all 0.2s;
+}
+
+.sidebar__logo {
+    cursor: pointer;
+    font-size: 25px;
+    color: #fff;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+.sidebar__logo:hover {
+    color: #e50914;
+}

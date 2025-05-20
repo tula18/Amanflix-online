@@ -1,0 +1,23 @@
+.homePageContainer {
+    background-color: #141414;
+    z-index: 1;
+}
+
+.MovieItem {
+    flex-shrink: 0;
+}
+
+.ItemTitle {
+    text-align: left;
+    color: #C4C4C4;
+    user-select: none;
+    padding: 10px;
+    padding-top: 15px;
+    padding-bottom: 0px;
+}
+
+.Title {
+    color: #C4C4C4;
+    user-select: none;
+}
+

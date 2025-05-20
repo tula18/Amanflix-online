@@ -1,0 +1,45 @@
+.soonPage__head {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 28px;
+    color: #fff;
+}
+.soonPage__content {
+    width: 314px;
+    height: 404px;
+    text-align: center;
+}
+
+.countdown {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+  }
+  
+  .countdown-item {
+    margin: 0 15px;
+    text-align: center;
+  }
+  
+  .countdown-number {
+    font-size: 2em;
+    font-weight: bold;
+  }
+  
+  .countdown-label {
+    font-size: 1.2em;
+    display: block;
+  }
+  
+  .footer {
+    margin-top: 20px;
+    font-size: 1em;
+  }
+
+  .comingPage__footer {
+    height: 216px;
+    width: 314px;
+    text-align: center;
+    color: #b3b3b3;
+}
