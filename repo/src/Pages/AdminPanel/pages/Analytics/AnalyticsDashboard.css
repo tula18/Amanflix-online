@@ -1,20 +1,20 @@
 .analytics-dashboard {
-  padding: 24px;
-  min-height: 100%;
+  /* padding: 24px; */
+  /* min-height: 100%; */
   border-radius: 8px;
   color: #e0e0e0;
 }
 
 .analytics-dashboard h1 {
   color: #ffffff;
-  margin-bottom: 24px;
+  /* margin-bottom: 24px; */
   font-weight: 700;
   font-size: 28px;
   position: relative;
   padding-bottom: 8px;
 }
 
-.analytics-dashboard h1:after {
+/* .analytics-dashboard h1:after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -22,7 +22,7 @@
   height: 3px;
   width: 60px;
   background: #e50914;
-}
+} */
 
 .analytics-dashboard h2 {
   color: #ffffff;
@@ -105,6 +105,7 @@
   padding: 16px;
   border-radius: 8px;
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.3s ease-in-out;
 }
 
 .chart-container h3 {
@@ -186,13 +187,18 @@
 .custom-tooltip p {
   margin: 0;
   padding: 4px 0;
-  color: white;
+  color: white !important;
   font-size: 13px;
 }
 
 .custom-tooltip-label {
   color: #bfbfbf;
   margin-right: 8px;
+}
+
+.refreshing-overlay {
+  opacity: 0.7;
+  transition: opacity 0.3s ease-in-out;
 }
 
 @media (max-width: 768px) {
@@ -203,4 +209,52 @@
   .analytics-card .ant-statistic-content {
     font-size: 20px;
   }
+}
+
+.analytics-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+
+.export-button:hover, .export-button:focus {
+  background-color: #b30710;
+  border-color: #b30710;
+}
+
+.analytics-export-modal .export-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analytics-export-modal .export-section-select {
+  margin-top: 8px;
+}
+
+.analytics-export-modal .section-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analytics-export-modal h3 {
+  margin-bottom: 12px;
+  color: #e0e0e0;
+}
+
+.analytics-export-modal .ant-modal-content {
+  background-color: #1f2a40;
+  color: #e0e0e0;
+}
+
+.analytics-export-modal .ant-modal-title {
+  background-color: #1f2a40;
+  color: #ffffff;
+}
+
+.analytics-export-modal .ant-modal-close {
+  color: #ffffff;
 }

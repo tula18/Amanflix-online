@@ -518,7 +518,7 @@ const ManageNotifications = () => {
 
   return (
     <Flex vertical>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+      <Flex justify="space-between" align="center" style={{marginTop: "20px", marginBottom: "20px"}}>
         <h1>Manage Notifications</h1>
         <Flex gap="small">
           <Button

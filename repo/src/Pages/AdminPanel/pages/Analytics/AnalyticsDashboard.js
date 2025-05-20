@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Spin, Table, Tabs, notification, Typography, Tag } from 'antd';
+import { Row, Col, Card, Statistic, Spin, Table, Tabs, notification, Typography, Tag, Button, Dropdown, Space, Modal, Flex } from 'antd';
 import { 
   UserOutlined, ClockCircleOutlined, ApiOutlined, 
   LineChartOutlined, WarningOutlined, DashboardOutlined,
   PlaySquareOutlined, FireOutlined, VideoCameraOutlined,
-  CheckCircleOutlined, DesktopOutlined, PieChartOutlined
+  CheckCircleOutlined, DesktopOutlined, PieChartOutlined,
+  DownloadOutlined, FileExcelOutlined, FilePdfOutlined,
+  FileTextOutlined, FileJpgOutlined
 } from '@ant-design/icons';
 import { API_URL } from '../../../../config';
 import {
@@ -38,6 +40,7 @@ const AnalyticsDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [contentMetrics, setContentMetrics] = useState(null);
   const [timeRange, setTimeRange] = useState(1); // days
+  const [refreshing, setRefreshing] = useState(false);
   const token = localStorage.getItem('admin_token');
   
   // Add fetch function for content metrics
@@ -65,9 +68,17 @@ const AnalyticsDashboard = () => {
   // Update useEffect to fetch both datasets
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      // Only show full loading on initial load
+      if (!dashboardData || !contentMetrics) {
+        setLoading(true);
+      } else {
+        setRefreshing(true); // Use a lighter refresh indicator for tab changes
+      }
+      
       await Promise.all([fetchDashboardData(), fetchContentMetrics()]);
+      
       setLoading(false);
+      setRefreshing(false);
     };
     
     fetchData();
@@ -107,7 +118,244 @@ const AnalyticsDashboard = () => {
   const handleTimeRangeChange = (key) => {
     setTimeRange(parseInt(key));
   };
-  
+
+  // Add this function to your component
+  const prefetchNextTimeRange = (nextRange) => {
+    if (nextRange === timeRange) return;
+    
+    // Silent prefetch without showing loading states
+    fetch(`${API_URL}/api/analytics/dashboard?days=${nextRange}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    fetch(`${API_URL}/api/analytics/content-metrics?days=${nextRange}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  };
+
+  // Add these after other state declarations
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [exportSection, setExportSection] = useState('all');
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // Add these functions before the return statement
+  const prepareDataForExport = (section) => {
+    switch(section) {
+      case 'user':
+        return {
+          metrics: [
+            { key: 'Active Users', value: dashboardData.user_metrics.daily_active_users.reduce((sum, day) => sum + day.count, 0) },
+            { key: 'Total Sessions', value: dashboardData.user_metrics.total_sessions },
+            { key: 'New Users', value: dashboardData.user_metrics.new_users },
+            { key: 'Avg. Session Duration', value: dashboardData.user_metrics.avg_session_duration_seconds }
+          ],
+          dailyUsers: dashboardData.user_metrics.daily_active_users
+        };
+      case 'content':
+        return {
+          metrics: [
+            { key: 'Total Views', value: (contentMetrics.content_type_distribution[0].value || 0) + (contentMetrics.content_type_distribution[1].value || 0) },
+            { key: 'Movie Views', value: contentMetrics.content_type_distribution[0].value || 0 },
+            { key: 'TV Show Views', value: contentMetrics.content_type_distribution[1].value || 0 },
+            { key: 'Completion Rate', value: contentMetrics.completion_metrics.completion_rate + '%' }
+          ],
+          mostWatchedMovies: contentMetrics.most_watched.movies,
+          mostWatchedShows: contentMetrics.most_watched.shows,
+          genres: formatGenreData(),
+          dailyViewing: contentMetrics.daily_viewing_trends
+        };
+      case 'performance':
+        return {
+          metrics: [
+            { key: 'P50 Latency', value: dashboardData.performance.p50_latency_ms + 'ms' },
+            { key: 'P90 Latency', value: dashboardData.performance.p90_latency_ms + 'ms' },
+            { key: 'P99 Latency', value: dashboardData.performance.p99_latency_ms + 'ms' }
+          ],
+          systemHealth: [
+            { key: 'CPU Usage', value: dashboardData.system_health.cpu_percent + '%' },
+            { key: 'Memory Usage', value: dashboardData.system_health.memory_percent + '%' },
+            { key: 'Disk Usage', value: dashboardData.system_health.disk_usage_percent + '%' }
+          ]
+        };
+      case 'all':
+      default:
+        return {
+          date: new Date().toISOString().split('T')[0],
+          timeRange: `${timeRange} day${timeRange > 1 ? 's' : ''}`,
+          userMetrics: prepareDataForExport('user'),
+          contentMetrics: prepareDataForExport('content'),
+          performanceMetrics: prepareDataForExport('performance')
+        };
+    }
+  };
+
+  const exportToCSV = (section) => {
+    setExportLoading(true);
+    try {
+      const data = prepareDataForExport(section);
+      let csvContent = 'data:text/csv;charset=utf-8,';
+      
+      // Add headers
+      csvContent += `Amanflix Analytics Report - ${data.date} (${data.timeRange})\r\n\r\n`;
+      
+      // Add User Metrics
+      csvContent += 'USER METRICS\r\n';
+      csvContent += 'Metric,Value\r\n';
+      data.userMetrics.metrics.forEach(item => {
+        csvContent += `${item.key},${item.value}\r\n`;
+      });
+      
+      // Add daily user data
+      csvContent += '\r\nDAILY ACTIVE USERS\r\n';
+      csvContent += 'Date,Users\r\n';
+      data.userMetrics.dailyUsers.forEach(day => {
+        csvContent += `${day.date},${day.count}\r\n`;
+      });
+      
+      // Add Content Metrics
+      csvContent += '\r\nCONTENT METRICS\r\n';
+      csvContent += 'Metric,Value\r\n';
+      data.contentMetrics.metrics.forEach(item => {
+        csvContent += `${item.key},${item.value}\r\n`;
+      });
+      
+      // Add performance metrics
+      csvContent += '\r\nPERFORMANCE METRICS\r\n';
+      csvContent += 'Metric,Value\r\n';
+      data.performanceMetrics.metrics.forEach(item => {
+        csvContent += `${item.key},${item.value}\r\n`;
+      });
+      
+      // Add system health
+      csvContent += '\r\nSYSTEM HEALTH\r\n';
+      csvContent += 'Metric,Value\r\n';
+      data.performanceMetrics.systemHealth.forEach(item => {
+        csvContent += `${item.key},${item.value}\r\n`;
+      });
+      
+      // Create download link
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `amanflix_analytics_${data.date}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      notification.success({
+        message: 'Export Successful',
+        description: 'Analytics data has been exported to CSV successfully.',
+      });
+    } catch (error) {
+      notification.error({
+        message: 'Export Failed',
+        description: `Failed to export data: ${error.message}`,
+      });
+    } finally {
+      setExportLoading(false);
+      setExportModalVisible(false);
+    }
+  };
+
+  const exportToJSON = (section) => {
+    setExportLoading(true);
+    try {
+      const data = prepareDataForExport(section);
+      const jsonData = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `amanflix_analytics_${data.date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      notification.success({
+        message: 'Export Successful',
+        description: 'Analytics data has been exported to JSON successfully.',
+      });
+    } catch (error) {
+      notification.error({
+        message: 'Export Failed',
+        description: `Failed to export data: ${error.message}`,
+      });
+    } finally {
+      setExportLoading(false);
+      setExportModalVisible(false);
+    }
+  };
+
+  const renderExportModal = () => {
+    return (
+      <Modal
+        title="Export Analytics Data"
+        open={exportModalVisible}
+        onCancel={() => setExportModalVisible(false)}
+        footer={null}
+        className="analytics-export-modal"
+      >
+        <div className="export-options">
+          <h3>Choose Export Format</h3>
+          <div className="export-buttons">
+            <Button 
+              type="primary" 
+              icon={<FileTextOutlined />} 
+              onClick={() => exportToCSV('all')}
+              loading={exportLoading}
+              className="export-button"
+            >
+              Export as CSV
+            </Button>
+            <Button 
+              type="primary" 
+              icon={<DownloadOutlined />} 
+              onClick={() => exportToJSON('all')}
+              loading={exportLoading}
+              className="export-button"
+            >
+              Export as JSON
+            </Button>
+          </div>
+          
+          <div className="export-section-select">
+            <h3>Choose Section to Export</h3>
+            <div className="section-buttons">
+              <Button 
+                type={exportSection === 'all' ? 'primary' : 'default'} 
+                onClick={() => setExportSection('all')}
+                className="section-button"
+              >
+                All Data
+              </Button>
+              <Button 
+                type={exportSection === 'user' ? 'primary' : 'default'} 
+                onClick={() => setExportSection('user')}
+                className="section-button"
+              >
+                User Metrics Only
+              </Button>
+              <Button 
+                type={exportSection === 'content' ? 'primary' : 'default'} 
+                onClick={() => setExportSection('content')}
+                className="section-button"
+              >
+                Content Metrics Only
+              </Button>
+              <Button 
+                type={exportSection === 'performance' ? 'primary' : 'default'} 
+                onClick={() => setExportSection('performance')}
+                className="section-button"
+              >
+                Performance Metrics Only
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   if (loading || !dashboardData || !contentMetrics) {
     return (
       <div style={{ textAlign: 'center', padding: '100px', borderRadius: '8px', height: '100%' }}>
@@ -182,11 +430,30 @@ const AnalyticsDashboard = () => {
 
   return (
     <div className="analytics-dashboard">
-      <Title level={2}>Analytics Dashboard</Title>
+      <Flex justify={"space-between"} align="center" style={{marginTop: "20px", marginBottom: "20px"}}>
+          <h1>Admin Dashboard</h1>
+          <Flex gap={"5px"}>
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={() => setExportModalVisible(true)}
+                className="export-button"
+              >
+                  Export Data
+              </Button>
+          </Flex>
+      </Flex>
+      {/* <Title level={2}>Analytics Dashboard</Title> */}
       
       <Tabs 
         defaultActiveKey="1" 
-        onChange={handleTimeRangeChange} 
+        onChange={handleTimeRangeChange}
+        onTabClick={(key) => {
+          // Prefetch data for the next tab
+          if (key !== timeRange.toString()) {
+            prefetchNextTimeRange(parseInt(key));
+          }
+        }}
         className="analytics-tabs"
         tabBarStyle={{ marginBottom: 24 }}
       >
@@ -194,6 +461,18 @@ const AnalyticsDashboard = () => {
         <TabPane tab="Last 7 Days" key="7"></TabPane>
         <TabPane tab="Last 30 Days" key="30"></TabPane>
       </Tabs>
+      
+      {refreshing && (
+        <div style={{
+          padding: '8px 0',
+          textAlign: 'center',
+          marginBottom: '16px',
+          background: 'rgba(0, 0, 0, 0.25)',
+          borderRadius: '4px'
+        }}>
+          <Spin size="small" /> <span style={{ marginLeft: '8px', color: '#a3a3a3' }}>Refreshing data...</span>
+        </div>
+      )}
       
       {/* User Metrics Section */}
       <div className="section-header">
@@ -556,6 +835,8 @@ const AnalyticsDashboard = () => {
           </div>
         </Col>
       </Row>
+
+      {renderExportModal()}
     </div>
   );
 };
