@@ -1,7 +1,7 @@
 // SeasonEpisodeEditor.js
 import React, { useState, useEffect } from 'react';
 import { Collapse, Button, Table, Form, Input, InputNumber, DatePicker, Space, Tabs, Select, Tag, Tooltip, Popconfirm, Empty } from 'antd';
-import { DeleteOutlined, PlusOutlined, CaretRightOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined, CaretRightOutlined, ArrowUpOutlined, ArrowDownOutlined, CopyOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import TextArea from "antd/es/input/TextArea";
 import './SeasonEpisodeEditor.css'; // We'll create this CSS file next
@@ -251,6 +251,30 @@ const SeasonEpisodeEditor = ({ value, onChange }) => {
               disabled={index === seasons[seasonIndex].episodes.length - 1}
             />
           </Tooltip>
+          <Tooltip title="Duplicate Episode">
+            <Button
+              size="small"
+              type="text"
+              icon={<CopyOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                const newSeasons = [...seasons];
+                const episodeToDuplicate = {...newSeasons[seasonIndex].episodes[index]};
+                
+                // Create new episode with unique ID and incremented number
+                const newEpisode = {
+                  ...episodeToDuplicate,
+                  id: Date.now(),
+                  name: `${episodeToDuplicate.name} (Copy)`,
+                  title: `${episodeToDuplicate.title} (Copy)`
+                };
+                
+                // Add to end of episodes array
+                newSeasons[seasonIndex].episodes.push(newEpisode);
+                updateParent(newSeasons);
+              }}
+            />
+          </Tooltip>
           <Popconfirm
             title="Delete this episode?"
             description={`This will remove Episode ${record.episode_number} - ${record.name || 'Unnamed'}`}
@@ -451,16 +475,25 @@ const SeasonEpisodeEditor = ({ value, onChange }) => {
         {seasons.map((season, index) => (
           <Panel
             header={
-              <Space>
-                <span>Season {season.season_number}</span>
-                <span style={{ color: '#888' }}>{season.name}</span>
-                <span style={{ color: '#888' }}>({(season.episodes && season.episodes.length) || 0} episodes)</span>
-                {season.air_date && (
-                  <span style={{ color: '#888' }}>
-                    ({dayjs(season.air_date).format('YYYY')})
-                  </span>
-                )}
-              </Space>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                <Space>
+                  <span>Season {season.season_number}</span>
+                  <span style={{ color: '#888' }}>{season.name}</span>
+                  <span style={{ color: '#888' }}>({(season.episodes && season.episodes.length) || 0} episodes)</span>
+                  {season.air_date && (
+                    <span style={{ color: '#888' }}>
+                      ({dayjs(season.air_date).format('YYYY')})
+                    </span>
+                  )}
+                </Space>
+                <Space>
+                  {season.episodes?.length > 0 && (
+                    <Tag color="#8c8c8c">
+                      {season.episodes.reduce((sum, ep) => sum + (Number(ep.runtime) || 0), 0)} min
+                    </Tag>
+                  )}
+                </Space>
+              </div>
             }
             key={season.id || index}
             extra={
