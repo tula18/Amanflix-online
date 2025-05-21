@@ -1710,6 +1710,19 @@ const convertItemToFormValues = (item) => {
           </div>
         )}
       </Modal>
+
+      {/* Add this image preview component */}
+      <Image
+        style={{ display: 'none' }}
+        preview={{
+          visible: previewVisible,
+          src: previewImage,
+          title: previewTitle,
+          onVisibleChange: (visible) => {
+            setPreviewVisible(visible);
+          },
+        }}
+      />
     </Flex>
   );
 };
