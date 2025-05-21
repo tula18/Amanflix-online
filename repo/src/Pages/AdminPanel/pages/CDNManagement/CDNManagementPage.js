@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Flex, 
   Tooltip, 
@@ -12,9 +12,19 @@ import {
   Progress, 
   Divider, 
   Table, 
-  Space
+  Space,
+  Input,
+  Tag,
+  Image
 } from "antd";
-import { InboxOutlined, ReloadOutlined } from '@ant-design/icons';
+import { 
+  InboxOutlined, 
+  ReloadOutlined, 
+  SearchOutlined, 
+  EyeOutlined, 
+  EditOutlined,
+  StarFilled
+} from '@ant-design/icons';
 import { API_URL } from "../../../../config";
 
 const { Dragger } = Upload;
@@ -30,7 +40,22 @@ const CdnManagementPage = () => {
   const [jsonFileList, setJsonFileList] = useState([]);
   const [imagesFileList, setImagesFileList] = useState([]);
   const [contentItems, setContentItems] = useState([]);
-  
+  const [searchText, setSearchText] = useState('');
+  const [searchedColumn, setSearchedColumn] = useState('');
+  const searchInput = useRef(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 15,
+    total: 0,
+    showSizeChanger: true,
+    pageSizeOptions: ['15', '30', '50', '100']
+  });
+  const [filters, setFilters] = useState({
+    contentType: null,
+    searchText: '',
+    searchColumn: ''
+  });
+
   const showImportModal = () => {
     setImportModalVisible(true);
     form.resetFields();
@@ -54,21 +79,61 @@ const CdnManagementPage = () => {
   const fetchCdnContent = async () => {
     setLoading(true);
     try {
-      // This would fetch the current content from both movies and TV shows CDN
-      const moviesResponse = await fetch(`${API_URL}/cdn/movies?page=1&per_page=100`);
-      const showsResponse = await fetch(`${API_URL}/cdn/tv?page=1&per_page=100`);
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem('admin_token')}`
+      };
+
+      // Fetch movies and TV shows with all items (no pagination parameters)
+      const moviesResponse = await fetch(`${API_URL}/cdn/movies?with_images=true&per_page=1000000`, {
+        headers: headers
+      });
+      
+      const showsResponse = await fetch(`${API_URL}/cdn/tv?with_images=true&per_page=1000000`, {
+        headers: headers
+      });
       
       if (moviesResponse.ok && showsResponse.ok) {
         const movies = await moviesResponse.json();
         const shows = await showsResponse.json();
         
-        // Combine and format the data for display
+        // Combine and format the data for display with enhanced fields
         const combinedContent = [
-          ...movies.map(movie => ({ ...movie, content_type: 'movie' })),
-          ...shows.map(show => ({ ...show, content_type: 'tv' }))
+          ...movies.map(movie => ({ 
+            ...movie, 
+            content_type: 'movie',
+            genres: formatGenres(movie.genres),
+            rating: movie.vote_average ? (parseFloat(movie.vote_average) / 2).toFixed(1) : 'N/A',
+            has_image: Boolean(movie.poster_path || movie.backdrop_path),
+            year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A'
+          })),
+          ...shows.map(show => ({ 
+            ...show, 
+            content_type: 'tv',
+            genres: formatGenres(show.genres),
+            rating: show.vote_average ? (parseFloat(show.vote_average) / 2).toFixed(1) : 'N/A',
+            has_image: Boolean(show.poster_path || show.backdrop_path),
+            year: show.first_air_date ? show.first_air_date.substring(0, 4) : 'N/A'
+          }))
         ];
         
         setContentItems(combinedContent);
+        
+        // Update pagination to show total count
+        setPagination(prev => ({
+          ...prev,
+          total: combinedContent.length
+        }));
+        
+        message.success(`Loaded ${movies.length} movies and ${shows.length} TV shows`);
+      } else {
+        // Handle error responses
+        if (!moviesResponse.ok) {
+          console.error("Movies fetch error:", await moviesResponse.text());
+        }
+        if (!showsResponse.ok) {
+          console.error("TV Shows fetch error:", await showsResponse.text());
+        }
+        message.error('Failed to load some content');
       }
     } catch (error) {
       console.error("Error fetching CDN content:", error);
@@ -78,9 +143,98 @@ const CdnManagementPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCdnContent();
-  }, []);
+  // Format genres from different possible formats to an array
+  const formatGenres = (genres) => {
+    if (!genres) return [];
+    if (typeof genres === 'string') {
+      return genres.split(',').map(g => g.trim());
+    }
+    if (Array.isArray(genres)) {
+      return genres.map(g => typeof g === 'object' ? g.name : g);
+    }
+    return [];
+  };
+
+  // Add search functionality
+  const getColumnSearchProps = dataIndex => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+      <div style={{ padding: 8 }}>
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
+          style={{ marginBottom: 8, display: 'block' }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearch(selectedKeys, confirm, dataIndex)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => handleReset(clearFilters, confirm)}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Reset
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+    onFilter: (value, record) => {
+      const text = dataIndex === 'title' ? (record.title || record.name || '') : record[dataIndex];
+      return text ? text.toString().toLowerCase().includes(value.toLowerCase()) : false;
+    },
+    onFilterDropdownVisibleChange: visible => {
+      if (visible) {
+        setTimeout(() => searchInput.current?.select(), 100);
+      }
+    },
+    render: (text, record) => {
+      if (searchedColumn === dataIndex) {
+        const searchTerm = searchText.toLowerCase();
+        const content = dataIndex === 'title' ? (record.title || record.name || '') : text;
+        
+        if (content && typeof content === 'string' && content.toLowerCase().includes(searchTerm)) {
+          const index = content.toLowerCase().indexOf(searchTerm);
+          const beforeStr = content.substring(0, index);
+          const matchStr = content.substring(index, index + searchTerm.length);
+          const afterStr = content.substring(index + searchTerm.length);
+          
+          return (
+            <span>
+              {beforeStr}
+              <span style={{ color: '#f50', fontWeight: 'bold' }}>{matchStr}</span>
+              {afterStr}
+            </span>
+          );
+        }
+        
+        return dataIndex === 'title' ? (record.title || record.name || text) : text;
+      }
+      
+      return dataIndex === 'title' ? (record.title || record.name || text) : text;
+    }
+  });
+
+  const handleSearch = (selectedKeys, confirm, dataIndex) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+
+  const handleReset = (clearFilters, confirm) => {
+    clearFilters();
+    setSearchText('');
+    confirm();
+  };
 
   const jsonUploadProps = {
     name: 'file',
@@ -212,8 +366,30 @@ const CdnManagementPage = () => {
     }
   };
 
-  // Table columns configuration
+  // Enhanced columns configuration
   const columns = [
+    {
+      title: 'Poster',
+      dataIndex: 'poster_path',
+      key: 'poster',
+      width: 70,
+      render: (posterPath, record) => (
+        posterPath ? (
+          <Image 
+            src={`${API_URL}/cdn/images${posterPath}`}
+            alt={record.title || record.name}
+            width={50}
+            height={75}
+            style={{ objectFit: 'cover', borderRadius: '4px' }}
+            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAA3CAMAAAB4odg1AAAATlBMVEUAAADr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+v////8/Pzv7+/t7e339/f19fXx8fHz8/Pq6urp6en7+/ukIGb9AAAAEnRSTlMA9eDIl0UdCO/QvpmARjoS6KVym9GAAAAC10lEQVRIx6WW25arIAyGBQQBT3jWfv9n3ZC4dqZKW+diJtP8/QghgZA/fyy9V1r7/peWXuvcGhPsRpbb9XYMxrTrXNIvWRvT9UVZXCqDKYuirHvTrRn6lmmqaOJSETSlKWmRwVRxCN4XKUgeu3DTJGWdl+tXT+iLTC7rPEndaHQOXSlBv9FfiNoSk/KCMmi4zgfcI4z3RUUCwpEz5t5b0CrCZJWPMFN4FIgHLcjLVCWiggJ8bkkgGX24LqolozBoYSxRRCXRxypJNMnFRR9lplrCAFJHhJkUEBsBKxFFJBuAmIjQEpBSIeXmDjISUVpAvMJ8T0lA2olgCLC0qeZDQKqVIMwm3Qgbi3BQdRsHmW/JQQnC2pYE6JG/7CbAAdZnyXCEPIF4gqSfONgwH9NL7bGPCSe1C1aH3H2WgvHPPk9heDzOC+E1JU1Pw/gz4UuE70LQVSRr5s8VrE8jrHWxthu+TkFoOZyHCOudKr9MwHoGsdoL+JqCBLdRxU8JTCtyJcrfEa77DiQwzupvBIRz7/yI67xLwHVeAiSYHmGQYPqJ4XvCDxIQUwLiVsIPEhAXezz34o+EeQJisocgmLYiDRJQQ1uRAQmtGiA4g1wg+qsCCND4RQISde8XCYg3hCAoToFwCgRB7BItCj4QvCAFcYlbJCR/QBRwi/wZQfBRRtgj4SMllF5GOJ8uECO8vgJU81XDGuET4fUVSOKrRkqAr5rhCKR81W5HQPGqiXAElK/ablIe0b5qB09A+6rpfZaWPyQfSLvvxji78wPeBe33cB1JZ5zoE/q2QweU7F0i4u4LdIKx91YR8tYi24jCoXWE6K0VpJl6o4OXcOglIXpYLuE+LJfYRoXxsR85jAqLHjPiOSNkGTU+50xTnltGXeoCB+knAcljnMgkQ1nidCopS/og1Wbnk6BZ9mdZ6dzTRJ47TejcM1Su7Kty+Y3Ktbcp1+1dylUb+/8/VsCtX5HMj+MAAAAASUVORK5CYII="
+          />
+        ) : (
+          <div style={{ width: 50, height: 75, background: '#555', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            No Image
+          </div>
+        )
+      ),
+    },
     {
       title: 'ID',
       dataIndex: 'id',
@@ -224,14 +400,28 @@ const CdnManagementPage = () => {
       title: 'Title',
       dataIndex: 'title',
       key: 'title',
-      render: (text, record) => record.title || record.name,
+      ...getColumnSearchProps('title'),
+      render: (text, record) => (
+        <span>
+          {record.title || record.name}
+          {record.has_image && (
+            <Tag color="green" style={{ marginLeft: 8 }}>
+              Has Images
+            </Tag>
+          )}
+        </span>
+      ),
       sorter: (a, b) => (a.title || a.name).localeCompare(b.title || b.name),
     },
     {
       title: 'Type',
       dataIndex: 'content_type',
       key: 'content_type',
-      render: (text) => text === 'movie' ? 'Movie' : 'TV Show',
+      render: (text) => (
+        <Tag color={text === 'movie' ? 'blue' : 'purple'}>
+          {text === 'movie' ? 'Movie' : 'TV Show'}
+        </Tag>
+      ),
       filters: [
         { text: 'Movies', value: 'movie' },
         { text: 'TV Shows', value: 'tv' },
@@ -240,28 +430,105 @@ const CdnManagementPage = () => {
     },
     {
       title: 'Year',
+      dataIndex: 'year',
       key: 'year',
-      render: (_, record) => {
-        const date = record.release_date || record.first_air_date;
-        return date ? date.substring(0, 4) : 'N/A';
+      sorter: (a, b) => a.year.localeCompare(b.year),
+      width: 80,
+    },
+    {
+      title: 'Genres',
+      dataIndex: 'genres',
+      key: 'genres',
+      render: (genres) => (
+        <>
+          {genres.slice(0, 2).map((genre, index) => (
+            <Tag key={index} style={{ marginBottom: 3 }}>
+              {genre}
+            </Tag>
+          ))}
+          {genres.length > 2 && <Tag>+{genres.length - 2}</Tag>}
+        </>
+      ),
+      filters: [
+        { text: 'Action', value: 'action' },
+        { text: 'Drama', value: 'drama' },
+        { text: 'Comedy', value: 'comedy' },
+        { text: 'Horror', value: 'horror' },
+        { text: 'Thriller', value: 'thriller' },
+        { text: 'Science Fiction', value: 'science fiction' },
+      ],
+      onFilter: (value, record) => {
+        const genres = record.genres || [];
+        return genres.some(genre => 
+          typeof genre === 'string' && genre.toLowerCase().includes(value.toLowerCase())
+        );
       },
+    },
+    {
+      title: 'Rating',
+      dataIndex: 'rating',
+      key: 'rating',
+      render: (rating) => (
+        <span>
+          {rating !== 'N/A' ? (
+            <>
+              {rating} <StarFilled style={{ color: '#fadb14' }} />
+            </>
+          ) : (
+            'N/A'
+          )}
+        </span>
+      ),
       sorter: (a, b) => {
-        const dateA = a.release_date || a.first_air_date || '';
-        const dateB = b.release_date || b.first_air_date || '';
-        return dateA.localeCompare(dateB);
+        const ratingA = a.rating === 'N/A' ? 0 : parseFloat(a.rating);
+        const ratingB = b.rating === 'N/A' ? 0 : parseFloat(b.rating);
+        return ratingA - ratingB;
       },
+      width: 100,
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
-          <Button size="small" type="text">View</Button>
-          <Button size="small" type="primary">Edit</Button>
+          <Tooltip title="View details">
+            <Button size="small" type="text" icon={<EyeOutlined />} />
+          </Tooltip>
+          <Tooltip title="Edit content">
+            <Button size="small" type="text" icon={<EditOutlined />} />
+          </Tooltip>
         </Space>
       ),
+      width: 100,
     },
   ];
+
+  const handleTableChange = (pagination, filters, sorter) => {
+    // Extract content type filter
+    const contentTypeFilter = filters.content_type ? filters.content_type[0] : null;
+    
+    // Update filters state
+    setFilters({
+      contentType: contentTypeFilter,
+      searchText,
+      searchColumn: searchedColumn
+    });
+    
+    // Fetch data with new pagination and filters
+    fetchCdnContent(
+      pagination.current, 
+      pagination.pageSize, 
+      {
+        contentType: contentTypeFilter,
+        searchText,
+        searchColumn: searchedColumn
+      }
+    );
+  };
+
+  useEffect(() => {
+    fetchCdnContent();
+  }, []);
 
   return (
     <Flex vertical>
@@ -295,13 +562,23 @@ const CdnManagementPage = () => {
         </Flex>
       </Flex>
 
-      {/* Table of existing content */}
+      {/* Enhanced Table of existing content */}
       <Table 
         columns={columns}
         dataSource={contentItems}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 20 }}
+        pagination={pagination}
+        onChange={(pagination, filters, sorter) => {
+          setPagination(prev => ({
+            ...prev,
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+          }));
+        }}
+        size="middle"
+        scroll={{ x: 1100 }}
+        bordered
       />
 
       {/* Import Modal Form */}

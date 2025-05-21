@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, send_from_directory, request
 import os
 from utils.logger import log_error
+from api.utils import admin_token_required
 
 cdn_bp = Blueprint('cdn_bp', __name__, url_prefix='/cdn')
 
@@ -45,3 +46,46 @@ def get_genres():
             elif isinstance(item['genres'], list):
                 genres.update([g['name'].lower() for g in item['genres'] if isinstance(g, dict) and 'name' in g])
     return jsonify(sorted(genres))
+
+@cdn_bp.route('/combined', methods=['GET'])
+@admin_token_required('moderator')
+def get_combined_content(current_admin):
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 15, type=int), 100)  # Limit max items per page
+    content_type = request.args.get('content_type', '')
+    search_query = request.args.get('q', '')
+    
+    from app import movies, tv_series
+    
+    # Apply content type filter
+    if content_type == 'movie':
+        items = movies
+    elif content_type == 'tv':
+        items = tv_series
+    else:
+        # Combine both, sorted by ID
+        items = sorted(movies + tv_series, key=lambda x: x.get('id', 0))
+    
+    # Apply search filter if provided
+    if search_query:
+        filtered_items = []
+        for item in items:
+            title = item.get('title') or item.get('name') or ''
+            if search_query.lower() in title.lower():
+                filtered_items.append(item)
+        items = filtered_items
+    
+    # Calculate total for pagination
+    total = len(items)
+    
+    # Apply pagination
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_items = items[start:end]
+    
+    return jsonify({
+        'items': paginated_items,
+        'total': total,
+        'page': page,
+        'per_page': per_page
+    })
