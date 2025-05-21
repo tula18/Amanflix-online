@@ -1,0 +1,752 @@
+/* Netflix-inspired dark theme for CDN Management table */
+
+/* Table container */
+.cdn-table-container {
+  padding: 20px;
+  background-color: #141b2d;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.3);
+  margin-bottom: 20px;
+}
+
+/* Table styles */
+.cdn-table .ant-table {
+  background-color: transparent;
+  color: #e0e0e0;
+}
+
+.cdn-table .ant-table-thead > tr > th {
+  background-color: #1f2a40 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-bottom: 1px solid #283555;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.cdn-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(40, 53, 85, 0.5);
+  padding: 16px;
+  color: #e0e0e0;
+  transition: background-color 0.2s;
+}
+
+.cdn-table .ant-table-tbody > tr:hover > td {
+  background-color: #283555 !important;
+}
+
+.cdn-table .ant-table-tbody > tr.ant-table-row:nth-child(odd) {
+  background-color: #141b2d;
+}
+
+.cdn-table .ant-table-tbody > tr.ant-table-row:nth-child(even) {
+  background-color: #1a2035;
+}
+
+/* Pagination */
+.cdn-table .ant-pagination {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.cdn-table .ant-pagination-item {
+  background-color: #1f2a40;
+  border-color: #283555;
+}
+
+.cdn-table .ant-pagination-item a {
+  color: #e0e0e0;
+}
+
+.cdn-table .ant-pagination-item-active {
+  background-color: #e50914;
+  border-color: #e50914;
+}
+
+.cdn-table .ant-pagination-item-active a, .ant-pagination-total-text, .ant-pagination-item-link, .ant-pagination-item-ellipsis {
+  color: white !important;
+}
+
+.cdn-table .ant-pagination-item:hover {
+  border-color: #e50914;
+}
+
+.cdn-table .ant-pagination-item:hover a {
+  color: #e50914;
+}
+
+.cdn-table .ant-pagination-options .ant-select-selector {
+  background-color: #1f2a40 !important;
+  color: #e0e0e0 !important;
+  border-color: #283555 !important;
+}
+
+.cdn-table .ant-pagination-options .ant-select-arrow {
+  color: #e0e0e0;
+}
+
+/* Tags */
+.cdn-table .ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border: none;
+  margin-bottom: 4px;
+}
+
+/* Rating star */
+.cdn-table .anticon-star {
+  margin-left: 4px;
+  font-size: 14px;
+}
+
+/* Action buttons */
+.cdn-table .ant-btn-text {
+  color: #e0e0e0;
+}
+
+.cdn-table .ant-btn-text:hover {
+  color: #e50914;
+  background: rgba(229, 9, 20, 0.1);
+}
+
+/* Sort icons */
+.cdn-table .ant-table-column-sorter-up.active, 
+.cdn-table .ant-table-column-sorter-down.active {
+  color: #e50914;
+}
+
+/* Table headers with sort */
+.cdn-table .ant-table-column-has-sorters:hover {
+  background-color: #283555 !important;
+}
+
+.cdn-table .ant-table-column-sorter:hover {
+    background-color: #e50914 !important;
+}
+
+.cdn-table .ant-table-column-sort {
+  background-color: #1a2035 !important;
+}
+
+/* Search filter dropdown */
+.cdn-table-filter-dropdown .ant-btn-primary {
+  background-color: #e50914;
+  border-color: #e50914;
+}
+
+.cdn-table-filter-dropdown .ant-btn-primary:hover {
+  background-color: #f5222d;
+  border-color: #f5222d;
+}
+
+/* Loading state */
+.cdn-table .ant-spin-dot-item {
+  background-color: #e50914;
+}
+
+/* Table empty state */
+.cdn-table .ant-empty-description {
+  color: #a3a3a3;
+}
+
+/* Table scrollbar */
+.cdn-table .ant-table-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.cdn-table .ant-table-body::-webkit-scrollbar-track {
+  background: #141b2d;
+}
+
+.cdn-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: #283555;
+  border-radius: 4px;
+}
+
+.cdn-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #e50914;
+}
+
+/* Page size selector */
+.cdn-table .ant-select-selector {
+  background-color: #1f2a40 !important;
+  border-color: #283555 !important;
+  color: #e0e0e0 !important;
+}
+
+.cdn-table .ant-select-selection-item {
+  color: #e0e0e0;
+}
+
+/* Dropdown menus */
+/* .ant-dropdown-menu {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555;
+} */
+
+.ant-dropdown-menu-item {
+  color: #e0e0e0 !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: #283555 !important;
+}
+
+/* Poster image enhancement */
+.cdn-table-poster {
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.cdn-table-poster:hover {
+  transform: scale(1.8);
+  z-index: 10;
+}
+
+/* Table header */
+.cdn-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.cdn-management-header h1 {
+  color: #e0e0e0;
+  font-size: 28px;
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cdn-table-container {
+    padding: 10px;
+  }
+  
+  .cdn-table .ant-table-thead > tr > th,
+  .cdn-table .ant-table-tbody > tr > td {
+    padding: 10px;
+    font-size: 12px;
+  }
+}
+
+/* Better visibility for filter and sort icons */
+
+/* Filter icons */
+.cdn-table .ant-table-filter-trigger {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.cdn-table .ant-table-filter-trigger:hover {
+  color: #e50914 !important;
+  background: rgba(229, 9, 20, 0.15) !important;
+}
+
+.cdn-table .ant-table-filter-trigger.active {
+  color: #e50914 !important;
+}
+
+/* Sort icons (both up and down arrows) */
+.cdn-table .ant-table-column-sorter {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.cdn-table .ant-table-column-sorter-up, 
+.cdn-table .ant-table-column-sorter-down {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Filter dropdown panel */
+/* .ant-table-filter-dropdown {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+  box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05) !important;
+} */
+
+.ant-table-filter-dropdown .ant-dropdown-menu {
+  /* background-color: #1f2a40 !important; */
+}
+
+.ant-table-filter-dropdown .ant-checkbox-wrapper {
+  color: #e0e0e0 !important;
+}
+
+.ant-table-filter-dropdown .ant-btn {
+  color: #e0e0e0 !important;
+  border-color: #3a4966 !important;
+}
+
+.ant-table-filter-dropdown .ant-btn:hover {
+  color: #e50914 !important;
+  border-color: #e50914 !important;
+}
+
+.ant-table-filter-dropdown .ant-btn-primary {
+  color: #fff !important;
+  background-color: #e50914 !important;
+  border-color: #e50914 !important;
+}
+
+.ant-table-filter-dropdown .ant-empty-description {
+  color: #a0a0a0 !important;
+}
+
+/* Search input in filter dropdown */
+.ant-table-filter-dropdown input {
+  background-color: #1a2035 !important;
+  border-color: #3a4966 !important;
+  color: #e0e0e0 !important;
+}
+
+.ant-table-filter-dropdown input:focus {
+  border-color: #e50914 !important;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+}
+
+/* Filter popup arrow */
+.ant-table-filter-dropdown-btns {
+  border-top-color: #3a4966 !important;
+}
+
+/* Filter tree selectors */
+.ant-select-tree {
+  background-color: #1f2a40 !important;
+  color: #e0e0e0 !important;
+}
+
+.ant-select-tree-node-content-wrapper:hover {
+  background-color: rgba(229, 9, 20, 0.15) !important;
+}
+
+/* Dropdown Styling Enhancements */
+
+/* Table dropdown menus - universal styling */
+.ant-dropdown {
+  background: #1f2a40 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid #283555 !important;
+  padding: 0 !important;
+}
+
+/* Dropdown menu items */
+.ant-dropdown-menu {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 4px !important;
+}
+
+.ant-dropdown-menu-item {
+  color: #e0e0e0 !important;
+  border-radius: 3px !important;
+  padding: 8px 12px !important;
+  margin: 2px 0 !important;
+  transition: all 0.2s !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: #e50914 !important;
+  color: #ffffff !important;
+}
+
+.ant-dropdown-menu-item-selected {
+  background-color: #e50914 !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+/* Checkboxes in dropdowns */
+.ant-dropdown .ant-checkbox-wrapper:hover .ant-checkbox-inner {
+  border-color: #e50914 !important;
+}
+
+.ant-dropdown .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #e50914 !important;
+  border-color: #e50914 !important;
+}
+
+.ant-dropdown .ant-checkbox-inner {
+  background-color: #141b2d !important;
+  border-color: #3a4966 !important;
+}
+
+/* Filter dropdown specifically */
+.ant-table-filter-dropdown {
+  min-width: 160px !important;
+  padding: 12px !important;
+}
+
+.ant-table-filter-dropdown-btns {
+  border-top: 1px solid #2a304d !important;
+  padding-top: 10px !important;
+  margin-top: 10px !important;
+}
+
+.ant-table-filter-dropdown-search {
+  padding: 8px 0 !important;
+}
+
+/* Dropdown panel arrow */
+.ant-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 20px;
+  width: 12px;
+  height: 12px;
+  background: #1f2a40;
+  transform: rotate(45deg);
+  border-top: 1px solid #283555;
+  border-left: 1px solid #283555;
+  z-index: -1;
+}
+
+/* Select dropdown (pagination & filters) */
+.ant-select-dropdown {
+  background-color: #1f2a40 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid #283555 !important;
+  border-radius: 4px !important;
+}
+
+.ant-select-item {
+  color: #e0e0e0 !important;
+  padding: 8px 12px !important;
+  transition: background 0.2s !important;
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: rgba(229, 9, 20, 0.15) !important;
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: rgba(229, 9, 20, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+.ant-select-item:hover {
+  background-color: rgba(229, 9, 20, 0.2) !important;
+}
+
+/* Dropdown divider */
+.ant-dropdown-menu-item-divider {
+  background-color: #2a304d !important;
+  margin: 6px 0 !important;
+}
+
+/* When column is sorted - highlight the header */
+.ant-table-column-sort {
+  background-color: #1a2035 !important;
+}
+
+/* Dropdown search input */
+.ant-table-filter-dropdown .ant-input {
+  background-color: #141b2d !important;
+  border-color: #283555 !important;
+  color: #e0e0e0 !important;
+  padding: 8px 12px !important;
+  height: 36px !important;
+  border-radius: 4px !important;
+}
+
+.ant-table-filter-dropdown .ant-input:focus,
+.ant-table-filter-dropdown .ant-input:hover {
+  border-color: #e50914 !important;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+}
+
+/* Complete Dropdown Styling Overhaul */
+
+/* Fix the incomplete rule */
+.cdn-table .ant-table-column-sort {
+  background-color: #1a2035 !important;
+}
+
+/* Popover and Dropdown Base Styles */
+.ant-dropdown,
+.ant-popover-inner,
+.ant-select-dropdown,
+.ant-table-filter-dropdown {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 4px !important;
+  color: #e0e0e0 !important;
+}
+
+/* Table Filter Dropdown */
+.ant-table-filter-dropdown {
+  padding: 16px !important;
+  background-color: #1a2035 !important;
+}
+
+/* Filter buttons container */
+.ant-table-filter-dropdown-btns {
+  border-top: 1px solid #283555 !important;
+  padding-top: 12px !important;
+  margin-top: 12px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+}
+
+/* Filter dropdown search input */
+.ant-table-filter-dropdown input,
+.ant-dropdown input {
+  background-color: #141b2d !important;
+  border: 1px solid #283555 !important;
+  color: #e0e0e0 !important;
+  padding: 8px 12px !important;
+  height: 36px !important;
+  border-radius: 4px !important;
+  margin-bottom: 12px !important;
+}
+
+.ant-table-filter-dropdown input:focus,
+.ant-dropdown input:focus {
+  border-color: #e50914 !important;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+}
+
+/* Filter dropdown buttons */
+.ant-table-filter-dropdown .ant-btn,
+.ant-dropdown .ant-btn {
+  border-radius: 4px !important;
+  height: 32px !important;
+  padding: 0 16px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Regular button in filter dropdown */
+.ant-table-filter-dropdown .ant-btn,
+.ant-dropdown .ant-btn {
+  background: transparent !important;
+  color: #e0e0e0 !important;
+  border-color: #3a4966 !important;
+}
+
+.ant-table-filter-dropdown .ant-btn:hover,
+.ant-dropdown .ant-btn:hover {
+  color: #e50914 !important;
+  border-color: #e50914 !important;
+  background: rgba(229, 9, 20, 0.1) !important;
+}
+
+/* Primary button in filter dropdown */
+.ant-table-filter-dropdown .ant-btn-primary,
+.ant-dropdown .ant-btn-primary {
+  background-color: #e50914 !important;
+  border-color: #e50914 !important;
+  color: white !important;
+}
+
+.ant-table-filter-dropdown .ant-btn-primary:hover,
+.ant-dropdown .ant-btn-primary:hover {
+  background-color: #f5222d !important;
+  border-color: #f5222d !important;
+}
+
+/* Link button in filter dropdown */
+.ant-table-filter-dropdown .ant-btn-link,
+.ant-dropdown .ant-btn-link {
+  color: #e0e0e0 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 8px !important;
+  height: 24px !important;
+}
+
+.ant-table-filter-dropdown .ant-btn-link:hover,
+.ant-dropdown .ant-btn-link:hover {
+  color: #e50914 !important;
+  text-decoration: underline !important;
+}
+
+/* Menu items in all dropdowns */
+.ant-dropdown-menu,
+.ant-table-filter-dropdown-submenu .ant-dropdown-menu {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.ant-dropdown-menu-item,
+.ant-dropdown-menu-submenu-title,
+.ant-select-item {
+  color: #e0e0e0 !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  margin: 4px 0 !important;
+  transition: all 0.2s !important;
+}
+
+.ant-dropdown-menu-item:hover,
+.ant-dropdown-menu-submenu-title:hover,
+.ant-select-item:hover {
+  background-color: rgba(229, 9, 20, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.ant-dropdown-menu-item-selected,
+.ant-select-item-option-selected {
+  background-color: rgba(229, 9, 20, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+/* Checkboxes in dropdowns */
+.ant-dropdown .ant-checkbox-wrapper,
+.ant-table-filter-dropdown .ant-checkbox-wrapper {
+  color: #e0e0e0 !important;
+}
+
+.ant-dropdown .ant-checkbox-inner,
+.ant-table-filter-dropdown .ant-checkbox-inner {
+  background-color: #141b2d !important;
+  border-color: #3a4966 !important;
+}
+
+.ant-dropdown .ant-checkbox-checked .ant-checkbox-inner,
+.ant-table-filter-dropdown .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #e50914 !important;
+  border-color: #e50914 !important;
+}
+
+.ant-dropdown .ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.ant-table-filter-dropdown .ant-checkbox-wrapper:hover .ant-checkbox-inner {
+  border-color: #e50914 !important;
+}
+
+/* Arrow in dropdown */
+.ant-dropdown::before,
+.ant-select-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 16px;
+  width: 10px;
+  height: 10px;
+  background-color: #1f2a40 !important;
+  transform: rotate(45deg);
+  z-index: 1;
+  border-top: 1px solid #283555;
+  border-left: 1px solid #283555;
+}
+
+/* Empty state in filter dropdown */
+.ant-empty-normal {
+  color: #a0a0a0 !important;
+  margin: 16px 0 !important;
+}
+
+.ant-empty-description {
+  color: #a0a0a0 !important;
+}
+
+/* Dropdown column sorters and filters */
+.cdn-table th.ant-table-column-has-sorters:hover {
+  background-color: #283555 !important;
+}
+
+.cdn-table .ant-table-column-sorter:hover {
+  background-color: transparent !important; 
+}
+
+.cdn-table .ant-table-column-sorter-up.active, 
+.cdn-table .ant-table-column-sorter-down.active {
+  color: #e50914 !important;
+}
+
+/* Fix for the dropdown overlay */
+.ant-table-filter-dropdown,
+.ant-dropdown,
+.ant-select-dropdown {
+  z-index: 1050 !important; /* Ensure dropdowns are above other elements */
+}
+
+/* Input text colors */
+.ant-input,
+.ant-select-selection-item, 
+.ant-input-number-input {
+  color: #ffffff !important;
+}
+
+/* Input placeholder color */
+.ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Checkbox text color */
+.ant-checkbox-wrapper,
+.ant-checkbox + span,
+.ant-radio-wrapper,
+.ant-table-filter-dropdown .ant-checkbox-wrapper {
+  color: #ffffff !important;
+}
+
+/* Dropdown input text */
+.ant-select-selection-item,
+.ant-select-item-option-content {
+  color: #ffffff !important;
+}
+
+/* Filter dropdown text inputs */
+.ant-table-filter-dropdown input,
+.ant-dropdown input,
+.cdn-table-filter-dropdown input {
+  color: #ffffff !important;
+}
+
+/* Text within filter menus */
+.ant-table-filter-dropdown-search-input,
+.ant-select-dropdown-search-input {
+  color: #ffffff !important;
+}
+
+/* Text in selected items */
+.ant-select-selection-item {
+  color: #ffffff !important;
+}
+
+/* Fix for disabled inputs */
+.ant-input[disabled],
+.ant-checkbox-wrapper.ant-checkbox-wrapper-disabled span {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* More specific checkbox text color fixes */
+
+/* All dropdown checkbox text */
+.ant-dropdown .ant-checkbox-wrapper,
+.ant-dropdown .ant-checkbox-wrapper span,
+.ant-table-filter-dropdown .ant-checkbox-wrapper,
+.ant-table-filter-dropdown .ant-checkbox-wrapper span,
+.ant-select-dropdown .ant-checkbox-wrapper,
+.ant-select-dropdown .ant-checkbox-wrapper span {
+  color: #ffffff !important;
+}
+
+/* Checkbox group items in filter dropdowns */
+.ant-dropdown .ant-checkbox-group-item,
+.ant-table-filter-dropdown .ant-checkbox-group-item,
+.ant-table-filter-dropdown .ant-dropdown-menu-item,
+.ant-dropdown-menu-item .ant-checkbox + span {
+  color: #ffffff !important;
+}
+
+/* Filter items with checkboxes */
+.ant-table-filter-dropdown ul li.ant-dropdown-menu-item,
+.ant-table-filter-dropdown ul li.ant-dropdown-menu-item span,
+.ant-table-filter-dropdown ul li.ant-dropdown-menu-item .ant-checkbox + span {
+  color: #ffffff !important;
+}
+
+/* Any remaining checkbox text */
+*[class*="ant-"] .ant-checkbox + span {
+  color: #ffffff !important;
+}

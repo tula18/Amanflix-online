@@ -26,6 +26,7 @@ import {
   StarFilled
 } from '@ant-design/icons';
 import { API_URL } from "../../../../config";
+import './CDNManagementPage.css';
 
 const { Dragger } = Upload;
 
@@ -158,14 +159,14 @@ const CdnManagementPage = () => {
   // Add search functionality
   const getColumnSearchProps = dataIndex => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-      <div style={{ padding: 8 }}>
+      <div style={{ padding: 8 }} className="cdn-table-filter-dropdown">
         <Input
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
           onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
           onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
-          style={{ marginBottom: 8, display: 'block' }}
+          style={{ marginBottom: 8, display: 'block', backgroundColor: '#1a2035', color: '#e0e0e0', borderColor: '#283555' }}
         />
         <Space>
           <Button
@@ -180,7 +181,7 @@ const CdnManagementPage = () => {
           <Button
             onClick={() => handleReset(clearFilters, confirm)}
             size="small"
-            style={{ width: 90 }}
+            style={{ width: 90, color: '#e0e0e0', borderColor: '#283555' }}
           >
             Reset
           </Button>
@@ -375,16 +376,19 @@ const CdnManagementPage = () => {
       width: 70,
       render: (posterPath, record) => (
         posterPath ? (
-          <Image 
-            src={`${API_URL}/cdn/images${posterPath}`}
-            alt={record.title || record.name}
-            width={50}
-            height={75}
-            style={{ objectFit: 'cover', borderRadius: '4px' }}
-            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAA3CAMAAAB4odg1AAAATlBMVEUAAADr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+v////8/Pzv7+/t7e339/f19fXx8fHz8/Pq6urp6en7+/ukIGb9AAAAEnRSTlMA9eDIl0UdCO/QvpmARjoS6KVym9GAAAAC10lEQVRIx6WW25arIAyGBQQBT3jWfv9n3ZC4dqZKW+diJtP8/QghgZA/fyy9V1r7/peWXuvcGhPsRpbb9XYMxrTrXNIvWRvT9UVZXCqDKYuirHvTrRn6lmmqaOJSETSlKWmRwVRxCN4XKUgeu3DTJGWdl+tXT+iLTC7rPEndaHQOXSlBv9FfiNoSk/KCMmi4zgfcI4z3RUUCwpEz5t5b0CrCZJWPMFN4FIgHLcjLVCWiggJ8bkkgGX24LqolozBoYSxRRCXRxypJNMnFRR9lplrCAFJHhJkUEBsBKxFFJBuAmIjQEpBSIeXmDjISUVpAvMJ8T0lA2olgCLC0qeZDQKqVIMwm3Qgbi3BQdRsHmW/JQQnC2pYE6JG/7CbAAdZnyXCEPIF4gqSfONgwH9NL7bGPCSe1C1aH3H2WgvHPPk9heDzOC+E1JU1Pw/gz4UuE70LQVSRr5s8VrE8jrHWxthu+TkFoOZyHCOudKr9MwHoGsdoL+JqCBLdRxU8JTCtyJcrfEa77DiQwzupvBIRz7/yI67xLwHVeAiSYHmGQYPqJ4XvCDxIQUwLiVsIPEhAXezz34o+EeQJisocgmLYiDRJQQ1uRAQmtGiA4g1wg+qsCCND4RQISde8XCYg3hCAoToFwCgRB7BItCj4QvCAFcYlbJCR/QBRwi/wZQfBRRtgj4SMllF5GOJ8uECO8vgJU81XDGuET4fUVSOKrRkqAr5rhCKR81W5HQPGqiXAElK/ablIe0b5qB09A+6rpfZaWPyQfSLvvxji78wPeBe33cB1JZ5zoE/q2QweU7F0i4u4LdIKx91YR8tYi24jCoXWE6K0VpJl6o4OXcOglIXpYLuE+LJfYRoXxsR85jAqLHjPiOSNkGTU+50xTnltGXeoCB+knAcljnMgkQ1nidCopS/og1Wbnk6BZ9mdZ6dzTRJ47TejcM1Su7Kty+Y3Ktbcp1+1dylUb+/8/VsCtX5HMj+MAAAAASUVORK5CYII="
-          />
+          <div style={{ position: 'relative' }}>
+            <Image 
+              className="cdn-table-poster"
+              src={`${API_URL}/cdn/images${posterPath}`}
+              alt={record.title || record.name}
+              width={50}
+              height={75}
+              style={{ objectFit: 'cover', borderRadius: '4px' }}
+              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAA3CAMAAAB4odg1AAAATlBMVEUAAADr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+vr6+v////8/Pzv7+/t7e339/f19fXx8fHz8/Pq6urp6en7+/ukIGb9AAAAEnRSTlMA9eDIl0UdCO/QvpmARjoS6KVym9GAAAAC10lEQVRIx6WW25arIAyGBQQBT3jWfv9n3ZC4dqZKW+diJtP8/QghgZA/fyy9V1r7/peWXuvcGhPsRpbb9XYMxrTrXNIvWRvT9UVZXCqDKYuirHvTrRn6lmmqaOJSETSlKWmRwVRxCN4XKUgeu3DTJGWdl+tXT+iLTC7rPEndaHQOXSlBv9FfiNoSk/KCMmi4zgfcI4z3RUUCwpEz5t5b0CrCZJWPMFN4FIgHLcjLVCWiggJ8bkkgGX24LqolozBoYSxRRCXRxypJNMnFRR9lplrCAFJHhJkUEBsBKxFFJBuAmIjQEpBSIeXmDjISUVpAvMJ8T0lA2olgCLC0qeZDQKqVIMwm3Qgbi3BQdRsHmW/JQQnC2pYE6JG/7CbAAdZnyXCEPIF4gqSfONgwH9NL7bGPCSe1C1aH3H2WgvHPPk9heDzOC+E1JU1Pw/gz4UuE70LQVSRr5s8VrE8jrHWxthu+TkFoOZyHCOudKr9MwHoGsdoL+JqCBLdRxU8JTCtyJcrfEa77DiQwzupvBIRz7/yI67xLwHVeAiSYHmGQYPqJ4XvCDxIQUwLiVsIPEhAXezz34o+EeQJisocgmLYiDRJQQ1uRAQmtGiA4g1wg+qsCCND4RQISde8XCYg3hCAoToFwCgRB7BItCj4QvCAFcYlbJCR/QBRwi/wZQfBRRtgj4SMllF5GOJ8uECO8vgJU81XDGuET4fUVSOKrRkqAr5rhCKR81W5HQPGqiXAElK/ablIe0b5qB09A+6rpfZaWPyQfSLvvxji78wPeBe33cB1JZ5zoE/q2QweU7F0i4u4LdIKx91YR8tYi24jCoXWE6K0VpJl6o4OXcOglIXpYLuE+LJfYRoXxsR85jAqLHjPiOSNkGTU+50xTnltGXeoCB+knAcljnMgkQ1nidCopS/og1Wbnk6BZ9mdZ6dzTRJ47TejcM1Su7Kty+Y3Ktbcp1+1dylUb+/8/VsCtX5HMj+MAAAAASUVORK5CYII="
+            />
+          </div>
         ) : (
-          <div style={{ width: 50, height: 75, background: '#555', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 50, height: 75, background: '#1a2035', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
             No Image
           </div>
         )
@@ -532,7 +536,7 @@ const CdnManagementPage = () => {
 
   return (
     <Flex vertical>
-      <Flex justify={"space-between"} align="center" style={{marginTop: "20px", marginBottom: "10px"}}>
+      <Flex justify={"space-between"} align="center" style={{marginTop: "20px", marginBottom: "20px"}}>
         <h1>CDN Management</h1>
         <Flex gap={"5px"}>
           <Tooltip title="Import data from amanflix-data-downloader">
@@ -563,23 +567,30 @@ const CdnManagementPage = () => {
       </Flex>
 
       {/* Enhanced Table of existing content */}
-      <Table 
-        columns={columns}
-        dataSource={contentItems}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-        onChange={(pagination, filters, sorter) => {
-          setPagination(prev => ({
-            ...prev,
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-          }));
-        }}
-        size="middle"
-        scroll={{ x: 1100 }}
-        bordered
-      />
+      <div className="cdn-table-container">
+        <Table 
+          className="cdn-table"
+          columns={columns}
+          dataSource={contentItems}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            ...pagination,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+          }}
+          onChange={(pagination, filters, sorter) => {
+            setPagination(prev => ({
+              ...prev,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+            }));
+          }}
+          size="middle"
+          scroll={{ x: 1100 }}
+          bordered={false}
+          rowClassName={(record, index) => index % 2 === 0 ? 'even-row' : 'odd-row'}
+        />
+      </div>
 
       {/* Import Modal Form */}
       <Modal
