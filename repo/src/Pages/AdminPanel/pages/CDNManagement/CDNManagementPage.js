@@ -501,11 +501,11 @@ const imagesUploadProps = {
     const reader = new FileReader();
     reader.onload = () => {
       file.thumbUrl = reader.result;
-      setImagesFileList(prev => [...prev]);
+      setImagesFileList(prev => [...prev]); // Just refresh the UI with the new thumbnail
     };
     reader.readAsDataURL(file);
     
-    setImagesFileList(prev => [...prev, file]);
+    // Add the file to the list only once
     setImagesFileList(prev => [...prev, file]);
     return false; // Prevent automatic upload
   },
@@ -1306,20 +1306,106 @@ const convertItemToFormValues = (item) => {
           {(importType === 'images' || importType === 'both') && (
             <>
               <Form.Item 
-                label="Upload Image Files (JPG)" 
+                label={<span style={{ fontSize: '16px', fontWeight: 500 }}>Upload Image Files (JPG)</span>}
                 name="imageFiles"
                 rules={[{ required: importType !== 'json', message: 'Please upload image files' }]}
               >
-                <Dragger {...imagesUploadProps}>
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">Click or drag JPG files to this area to upload</p>
-                  <p className="ant-upload-hint">
-                    Bulk select JPG images for movie/TV show posters and backdrops
-                  </p>
-                </Dragger>
+                <div className="custom-upload-container">
+                  <Dragger 
+                    {...imagesUploadProps}
+                    className="netflix-styled-uploader image-uploader"
+                    accept=".jpg,.jpeg"
+                    multiple={true}
+                  >
+                    <div className="upload-content">
+                      <div className="upload-icon-container">
+                        {imagesFileList.length > 0 ? (
+                          <div className="image-count-badge">
+                            <span>{imagesFileList.length}</span>
+                          </div>
+                        ) : (
+                          <div className="upload-icon">
+                            <InboxOutlined style={{ fontSize: 48, color: '#e50914' }} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {imagesFileList.length > 0 ? (
+                        <div className="selected-file-info">
+                          <p className="file-name">{imagesFileList.length} images selected</p>
+                          <p className="file-size">
+                            {(imagesFileList.reduce((size, file) => size + file.size, 0) / 1024).toFixed(1)} KB total
+                          </p>
+                          <p className="upload-action">Click to add more or drop new files</p>
+                        </div>
+                      ) : (
+                        <div className="upload-instructions">
+                          <p className="ant-upload-text">
+                            Drop your JPG images here
+                          </p>
+                          <p className="upload-divider">OR</p>
+                          <Button 
+                            type="primary" 
+                            style={{ 
+                              backgroundColor: '#e50914', 
+                              borderColor: '#e50914',
+                              fontWeight: 500,
+                              height: '38px'
+                            }}
+                          >
+                            Browse Images
+                          </Button>
+                          <p className="ant-upload-hint">
+                            Select multiple poster and backdrop images
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </Dragger>
+                </div>
               </Form.Item>
+              
+              {imagesFileList.length > 0 && (
+                <div className="file-verification-message">
+                  <Alert
+                    message={`${imagesFileList.length} images ready for import`}
+                    description="The selected images will be uploaded when you click 'Start Import'."
+                    type="success"
+                    showIcon
+                  />
+                </div>
+              )}
+              
+              {/* Image thumbnails preview */}
+              {imagesFileList.length > 0 && (
+                <div className="image-preview-container">
+                  <h4 style={{ margin: '16px 0 12px 0', color: '#e0e0e0' }}>Image Previews</h4>
+                  <div className="image-thumbnails">
+                    {imagesFileList.slice(0, 8).map((file, index) => (
+                      <div key={file.uid} className="image-thumbnail">
+                        <img src={file.thumbUrl} alt={`Preview ${index + 1}`} />
+                        <div className="thumbnail-overlay">
+                          <Button 
+                            type="text" 
+                            icon={<EyeOutlined />} 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewImage(file.thumbUrl);
+                              setPreviewTitle(file.name);
+                              setPreviewVisible(true);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {imagesFileList.length > 8 && (
+                      <div className="image-thumbnail more-images">
+                        <div className="more-count">+{imagesFileList.length - 8}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
 

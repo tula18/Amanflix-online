@@ -1104,3 +1104,171 @@
 .file-verification-message .ant-alert-description {
   color: #c3e6c3;
 }
+
+/* Image uploader enhanced styling */
+.image-uploader.ant-upload.ant-upload-drag {
+  background-color: #141b2d;
+  border: 2px dashed #283555;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.image-uploader.ant-upload.ant-upload-drag:hover,
+.image-uploader.ant-upload.ant-upload-drag-hover {
+  border-color: #e50914;
+  background-color: rgba(229, 9, 20, 0.05);
+}
+
+/* Image count badge */
+.image-count-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background-color: #1f2a40;
+  border-radius: 50%;
+  font-size: 28px;
+  font-weight: bold;
+  color: #e0e0e0;
+  margin-bottom: 16px;
+  border: 2px solid #e50914;
+}
+
+/* Image thumbnails grid */
+.image-preview-container {
+  margin-top: 16px;
+  background-color: #1f2a40;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #283555;
+}
+
+.image-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.image-thumbnail {
+  position: relative;
+  height: 120px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #141b2d;
+  border: 1px solid #283555;
+}
+
+.image-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.image-thumbnail:hover img {
+  transform: scale(1.05);
+}
+
+.thumbnail-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.image-thumbnail:hover .thumbnail-overlay {
+  opacity: 1;
+}
+
+.more-images {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a2035;
+}
+
+.more-count {
+  font-size: 24px;
+  font-weight: bold;
+  color: #e0e0e0;
+}
+
+/* Enhanced modal styling */
+.ant-modal-header {
+  background-color: #1f2a40;
+  border-bottom: 1px solid #283555;
+  padding: 16px 24px;
+}
+
+.ant-modal-title {
+  color: #e0e0e0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.ant-modal-close {
+  color: #e0e0e0;
+}
+
+.ant-modal-close:hover {
+  color: #e50914;
+}
+
+/* Import type selector styling */
+.ant-radio-button-wrapper {
+  background-color: #1a2035;
+  border-color: #283555;
+  color: #e0e0e0;
+}
+
+.ant-radio-button-wrapper:hover {
+  color: #e50914;
+}
+
+.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  background-color: #e50914;
+  border-color: #e50914;
+  color: #ffffff;
+}
+
+.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
+  background-color: #e50914;
+}
+
+/* Import options divider */
+.ant-divider {
+  border-color: #283555;
+}
+
+.ant-divider-inner-text {
+  color: #a0a0a0;
+}
+
+/* Import button styling */
+.import-button {
+  height: 40px;
+  font-size: 16px;
+  font-weight: 500;
+  background-color: #e50914;
+  border-color: #e50914;
+}
+
+.import-button:hover, 
+.import-button:focus {
+  background-color: #f40612;
+  border-color: #f40612;
+}
+
+.import-button:active {
+  background-color: #c30710;
+  border-color: #c30710;
+}
