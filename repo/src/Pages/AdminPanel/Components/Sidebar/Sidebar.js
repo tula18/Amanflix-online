@@ -6,7 +6,14 @@ import { API_URL } from '../../../../config';
 import { GoHome } from 'react-icons/go'
 import { TbMovie, TbUserShield } from 'react-icons/tb'
 import { LuUser } from 'react-icons/lu'
-import { BugOutlined, UploadOutlined, BellOutlined, LineChartOutlined, UserSwitchOutlined } from '@ant-design/icons';
+import { 
+    BugOutlined, 
+    UploadOutlined, 
+    BellOutlined, 
+    LineChartOutlined, 
+    UserSwitchOutlined,
+    CloudServerOutlined // Add this import for the CDN icon
+} from '@ant-design/icons';
 import { Tooltip, notification } from 'antd';
 
 const Sidebar = ({user}) => {
@@ -74,8 +81,10 @@ const Sidebar = ({user}) => {
         {
             name: "Manage Media",
             links: [
-                {name: 'Movie', path: '/admin/upload/movie', requiredRoleLevel: 1, icon: TbMovie, description: "Manage the Movies"},
-                {name: 'Tv Show', path: '/admin/upload/show', requiredRoleLevel: 1, icon: TbMovie, description: "Manage the Tv Shows"},
+                {name: 'Upload Movie', path: '/admin/upload/movie', requiredRoleLevel: 1, icon: TbMovie, description: "Upload a new Movie to the streaming service"},
+                {name: 'Upload TV Show', path: '/admin/upload/show', requiredRoleLevel: 1, icon: TbMovie, description: "Upload a new TV Show to the streaming service"},
+                // Add the CDN Management link here
+                {name: 'CDN Management', path: '/admin/cdn', requiredRoleLevel: 1, icon: CloudServerOutlined, description: "Manage content delivery network and import data"},
             ]
         },
         {

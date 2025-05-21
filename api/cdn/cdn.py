@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, send_from_directory, request
 import os
+from utils.logger import log_error
 
 cdn_bp = Blueprint('cdn_bp', __name__, url_prefix='/cdn')
 
@@ -9,8 +10,10 @@ def get_image(filename):
     try:
         return send_from_directory('cdn/posters_combined', filename)
     except FileNotFoundError:
+        log_error("File not found")
         return jsonify({"message":"File not found.", "error_reason": "image_not_found"}), 404
     except Exception as e:
+        log_error(f"An error occurred. Error: {str(e)}")
         return jsonify({"message":f"An error occurred. Error: {str(e)}", "error_reason": "image_error"}), 500
 
 @cdn_bp.route('/images/<path:filename>/check', methods=['GET'])

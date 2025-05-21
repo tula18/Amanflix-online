@@ -1,9 +1,14 @@
 import datetime
-from flask import Blueprint, request, jsonify, abort
+from flask import Blueprint, request, jsonify, abort, current_app
 from cdn.utils import paginate
 from api.utils import generate_admin_token, role_hierarchy, admin_token_required
 from models import Admin, db, User, BlacklistToken, BugReport, UploadRequest
 from utils.logger import log_info, log_success, log_warning, log_error
+import os
+import json
+import csv
+from io import StringIO
+from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
 
@@ -555,3 +560,419 @@ def delete_upload_request(current_admin, request_id):
     db.session.commit()
 
     return jsonify({'message': 'Upload request deleted successfully'}), 200
+
+@admin_bp.route('/import/cdn_data', methods=['POST'])
+@admin_token_required('admin')
+def import_cdn_data(current_admin):
+    try:
+        log_info(f"CDN import started by admin: {current_admin.username} ({current_admin.id})")
+        
+        # Check if the request contains file(s)
+        log_info(f"Request files: {list(request.files.keys())}")
+        log_info(f"Form data: {request.form}")
+        
+        if 'data_file' not in request.files and not any(key.startswith('image_') for key in request.files):
+            log_warning("No files provided in the request")
+            return jsonify({'success': False, 'message': 'No files provided'}), 400
+
+        # Get merge option
+        merge_content = request.form.get('merge', 'true').lower() == 'true'
+        log_info(f"Merge content option: {merge_content}")
+        
+        # First collect all data but wait to process it
+        content_data = None
+        movies_data = []
+        tv_data = []
+        image_files = []
+        
+        # 1. FIRST PROCESS IMAGES - so they're available when checking existence
+        for key in request.files:
+            if key.startswith('image_'):
+                image_files.append(request.files[key])
+        
+        log_info(f"Image files to process: {len(image_files)}")
+        saved_filenames = []
+        
+        if image_files:
+            # Get the path to the posters_combined directory
+            posters_dir = os.path.join('cdn', 'posters_combined')
+            log_info(f"Posters directory: {posters_dir}")
+            
+            if not os.path.exists(posters_dir):
+                log_info(f"Creating posters directory: {posters_dir}")
+                os.makedirs(posters_dir)
+            
+            # Process and save each image
+            saved_images = 0
+            for image_file in image_files:
+                if image_file.filename == '':
+                    log_warning("Empty filename in image file, skipping")
+                    continue
+                
+                # Save the image file
+                filename = secure_filename(image_file.filename)
+                file_path = os.path.join(posters_dir, filename)
+                log_info(f"Saving image: {filename} to {file_path}")
+                try:
+                    image_file.save(file_path)
+                    saved_images += 1
+                    saved_filenames.append(filename)
+                except Exception as e:
+                    log_error(f"Error saving image {filename}: {str(e)}")
+            
+            log_info(f"Saved {saved_images} images")
+        
+        # 2. THEN PROCESS JSON/CSV DATA (after images are already saved)
+        if 'data_file' in request.files:
+            data_file = request.files['data_file']
+            log_info(f"Processing data file: {data_file.filename}, mimetype: {data_file.mimetype}")
+            
+            if data_file.filename == '':
+                log_warning("Empty filename provided for data file")
+                return jsonify({'success': False, 'message': 'No data file selected'}), 400
+            
+            # Process the data file
+            if data_file.filename.endswith('.json'):
+                log_info("Processing as JSON file")
+                file_content = data_file.read()
+                log_info(f"File content size: {len(file_content)} bytes")
+                try:
+                    content_data = json.loads(file_content.decode('utf-8'))
+                    log_info(f"JSON parsed successfully. Items: {len(content_data)}")
+                except Exception as e:
+                    log_error(f"JSON parsing error: {str(e)}")
+                    return jsonify({'success': False, 'message': f'Error parsing JSON: {str(e)}'}), 400
+            elif data_file.filename.endswith('.csv'):
+                log_info("Processing as CSV file")
+                csv_data = data_file.read().decode('utf-8')
+                log_info(f"CSV content size: {len(csv_data)} bytes")
+                try:
+                    content_data = convert_csv_to_json(csv_data)
+                    log_info(f"CSV converted to JSON. Items: {len(content_data)}")
+                except Exception as e:
+                    log_error(f"CSV conversion error: {str(e)}")
+                    return jsonify({'success': False, 'message': f'Error converting CSV: {str(e)}'}), 400
+            else:
+                log_warning(f"Unsupported file format: {data_file.filename}")
+                return jsonify({'success': False, 'message': 'Unsupported file format'}), 400
+            
+            # Sort content into movies and TV shows
+            log_info("Sorting content by media type")
+            
+            for i, item in enumerate(content_data):
+                media_type = item.get('media_type')
+                if media_type == 'movie':
+                    movies_data.append(item)
+                elif media_type == 'tv':
+                    tv_data.append(item)
+                else:
+                    log_warning(f"Unknown media_type in item {i}: {media_type}")
+            
+            log_info(f"Sorted content - Movies: {len(movies_data)}, TV Shows: {len(tv_data)}")
+            
+            # Update the CDN files
+            from app import movies, tv_series, movies_with_images, tv_series_with_images
+            log_info(f"Current content - Movies: {len(movies)}, TV Shows: {len(tv_series)}")
+            
+            # Update the normal content files
+            if merge_content:
+                log_info("Merging with existing content")
+                # Merge with existing content
+                update_cdn_content('movies', movies_data, movies, merge=True)
+                update_cdn_content('tv', tv_data, tv_series, merge=True)
+            else:
+                log_info("Replacing existing content")
+                # Replace existing content
+                update_cdn_content('movies', movies_data, movies, merge=False)
+                update_cdn_content('tv', tv_data, tv_series, merge=False)
+                
+            # Update the with_images files for the imported items only
+            log_info("Updating with_images files for imported content")
+            update_with_images_content('movies', movies_data, movies_with_images)
+            update_with_images_content('tv', tv_data, tv_series_with_images)
+        
+        # For items that may have been associated with newly uploaded images
+        # but weren't in the JSON file - look for them separately
+        if saved_filenames:
+            log_info("Updating with_images data for newly saved images")
+            update_with_images_for_new_files(saved_filenames)
+        
+        log_success(f"CDN import completed successfully by {current_admin.username}")
+        return jsonify({'success': True, 'message': 'Content imported successfully'}), 200
+    
+    except Exception as e:
+        error_message = f"Error importing CDN data: {str(e)}"
+        log_error(error_message)
+        import traceback
+        log_error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': error_message}), 500
+
+
+# Helper function to update CDN content
+def update_cdn_content(content_type, new_data, existing_data, merge=True):
+    """Update the CDN content files for movies or TV series."""
+    try:
+        # Get the path to the CDN file
+        cdn_file_path = os.path.join(current_app.root_path, f'cdn/files/{content_type}_little_clean.json')
+        log_info(f"Updating {content_type} CDN file: {cdn_file_path}")
+        log_info(f"New data items: {len(new_data)}, Existing data items: {len(existing_data)}")
+        
+        if merge:
+            log_info(f"Merging {len(new_data)} items into existing {content_type} data")
+            # Create a dictionary of existing items by ID for quick lookup
+            existing_dict = {item['id']: item for item in existing_data}
+            
+            # Update existing items or add new ones
+            updated_count = 0
+            added_count = 0
+            for item in new_data:
+                if item['id'] in existing_dict:
+                    # Update existing item
+                    existing_dict[item['id']].update(item)
+                    updated_count += 1
+                else:
+                    # Add new item
+                    existing_data.append(item)
+                    added_count += 1
+            
+            log_info(f"{content_type.capitalize()}: Updated {updated_count} existing items, added {added_count} new items")
+            
+            # Write the updated data back to the file
+            with open(cdn_file_path, 'w') as f:
+                json.dump(existing_data, f, indent=2)
+                log_success(f"Successfully wrote merged {content_type} data to {cdn_file_path}")
+        else:
+            log_info(f"Replacing existing {content_type} data with {len(new_data)} items")
+            # Replace the entire content
+            with open(cdn_file_path, 'w') as f:
+                json.dump(new_data, f, indent=2)
+                log_success(f"Successfully wrote replaced {content_type} data to {cdn_file_path}")
+        
+        # Update the in-memory data
+        if content_type == 'movies':
+            from app import movies
+            # Direct reference to avoid shadowing the parameter
+            import app
+            app.movies = new_data if not merge else existing_data
+            log_info(f"Updated in-memory movies data, new count: {len(app.movies)}")
+        elif content_type == 'tv':
+            from app import tv_series
+            # Direct reference to avoid shadowing the parameter
+            import app
+            app.tv_series = new_data if not merge else existing_data
+            log_info(f"Updated in-memory tv_series data, new count: {len(app.tv_series)}")
+    
+    except Exception as e:
+        log_error(f"Error in update_cdn_content for {content_type}: {str(e)}")
+        import traceback
+        log_error(f"Traceback: {traceback.format_exc()}")
+        raise
+
+
+# New helper function to update the with_images content
+def update_with_images_content(content_type, new_data, existing_with_images):
+    """Update the with_images files for movies or TV shows."""
+    try:
+        # Path to the with_images file
+        with_images_file_path = os.path.join(current_app.root_path, f'cdn/files/{content_type}_with_images.json')
+        log_info(f"Updating {content_type}_with_images file: {with_images_file_path}")
+        
+        # Clean up existing_with_images to remove malformed entries
+        valid_entries = []
+        for item in existing_with_images:
+            # Only keep items with at least an id field
+            if 'id' in item and isinstance(item['id'], int):
+                valid_entries.append(item)
+            else:
+                log_warning(f"Removing invalid entry from {content_type}_with_images: {item}")
+        
+        existing_with_images = valid_entries
+        log_info(f"After cleanup: {len(existing_with_images)} valid entries in {content_type}_with_images")
+        
+        # Create a dictionary of existing items by ID for quick lookup
+        existing_dict = {item['id']: item for item in existing_with_images if 'id' in item}
+        
+        # Import from cdn.utils to check image existence
+        from cdn.utils import check_images_existence
+        
+        # Only process the new items that were imported
+        updated_count = 0
+        added_count = 0
+        skipped_count = 0
+        
+        for item in new_data:
+            if 'id' not in item:
+                log_warning(f"Skipping item without ID: {item}")
+                skipped_count += 1
+                continue
+                
+            try:
+                has_images = check_images_existence(item)
+                log_info(f"Item {item.get('id')} ({item.get('title', item.get('name', 'Unknown'))}) has_images: {has_images}")
+                
+                if has_images:
+                    if item['id'] in existing_dict:
+                        # Update existing item
+                        existing_dict[item['id']].update(item)
+                        updated_count += 1
+                        log_info(f"Updated item in {content_type}_with_images: {item['id']}")
+                    else:
+                        # Add new item
+                        existing_with_images.append(item)
+                        added_count += 1
+                        log_info(f"Added new item to {content_type}_with_images: {item['id']}")
+                else:
+                    log_info(f"Skipping item without images: {item['id']}")
+                    skipped_count += 1
+            except Exception as e:
+                log_error(f"Error processing item {item.get('id')}: {str(e)}")
+                skipped_count += 1
+        
+        log_info(f"{content_type.capitalize()}_with_images: Updated {updated_count} items, added {added_count} items, skipped {skipped_count} items")
+        
+        # Write the updated data back to the file
+        with open(with_images_file_path, 'w') as f:
+            json.dump(existing_with_images, f, indent=2)
+            log_success(f"Successfully wrote updated {content_type}_with_images data")
+        
+        # Update the in-memory data
+        if content_type == 'movies':
+            # Direct reference to avoid variable shadowing
+            import app
+            app.movies_with_images = existing_with_images
+            log_info(f"Updated in-memory movies_with_images, new count: {len(app.movies_with_images)}")
+        elif content_type == 'tv':
+            # Direct reference to avoid variable shadowing
+            import app
+            app.tv_series_with_images = existing_with_images
+            log_info(f"Updated in-memory tv_series_with_images, new count: {len(app.tv_series_with_images)}")
+    
+    except Exception as e:
+        log_error(f"Error in update_with_images_content for {content_type}: {str(e)}")
+        import traceback
+        log_error(f"Traceback: {traceback.format_exc()}")
+        raise
+
+
+# Function to update with_images data for newly uploaded image files
+def update_with_images_for_new_files(filenames):
+    """Update with_images data for items with newly uploaded image files."""
+    try:
+        from app import movies, tv_series, movies_with_images, tv_series_with_images
+        import app
+        
+        # Extract IDs from filenames (assumes format like poster_123.jpg or backdrop_123.jpg)
+        updated_items = set()
+        
+        for filename in filenames:
+            # Try to extract potential content IDs from the filename
+            parts = filename.split('_')
+            if len(parts) >= 2:
+                try:
+                    # Assuming ID is the part before the extension and after the first underscore
+                    potential_id = int(parts[-1].split('.')[0])
+                    updated_items.add(potential_id)
+                except ValueError:
+                    pass
+        
+        if not updated_items:
+            log_info("No content IDs could be extracted from uploaded image filenames")
+            return
+            
+        log_info(f"Checking {len(updated_items)} potential content IDs for image updates")
+        
+        # Check movies
+        movies_updated = 0
+        for item_id in updated_items:
+            movie = next((m for m in movies if m['id'] == item_id), None)
+            if movie:
+                from cdn.utils import check_images_existence
+                if check_images_existence(movie):
+                    # Add to or update in movies_with_images
+                    existing_index = next((i for i, m in enumerate(movies_with_images) if m['id'] == item_id), None)
+                    if existing_index is not None:
+                        movies_with_images[existing_index] = movie
+                    else:
+                        movies_with_images.append(movie)
+                    movies_updated += 1
+        
+        # Check TV shows
+        tv_updated = 0
+        for item_id in updated_items:
+            show = next((s for s in tv_series if s['id'] == item_id), None)
+            if show:
+                from cdn.utils import check_images_existence
+                if check_images_existence(show):
+                    # Add to or update in tv_series_with_images
+                    existing_index = next((i for i, s in enumerate(tv_series_with_images) if s['id'] == item_id), None)
+                    if existing_index is not None:
+                        tv_series_with_images[existing_index] = show
+                    else:
+                        tv_series_with_images.append(show)
+                    tv_updated += 1
+        
+        log_info(f"Updated with_images data: {movies_updated} movies, {tv_updated} TV shows")
+        
+        # Save the updated with_images files
+        movies_file_path = os.path.join(current_app.root_path, 'cdn/files/movies_with_images.json')
+        tv_file_path = os.path.join(current_app.root_path, 'cdn/files/tv_with_images.json')
+        
+        with open(movies_file_path, 'w') as f:
+            json.dump(movies_with_images, f, indent=2)
+            
+        with open(tv_file_path, 'w') as f:
+            json.dump(tv_series_with_images, f, indent=2)
+            
+        # Update in-memory data
+        app.movies_with_images = movies_with_images
+        app.tv_series_with_images = tv_series_with_images
+        
+        log_success(f"Successfully updated with_images files for newly uploaded images")
+        
+    except Exception as e:
+        log_error(f"Error updating with_images data for new files: {str(e)}")
+        import traceback
+        log_error(f"Traceback: {traceback.format_exc()}")
+        raise
+
+
+# Helper function to convert CSV to JSON
+def convert_csv_to_json(csv_data):
+    """Convert CSV data to JSON format."""
+    reader = csv.DictReader(StringIO(csv_data))
+    result = []
+    for row in reader:
+        # Process the row data (convert string values to appropriate types)
+        processed_row = {}
+        for key, value in row.items():
+            # Try to convert string values to appropriate types
+            processed_row[key] = try_convert_value(value)
+        result.append(processed_row)
+    return result
+
+def try_convert_value(value):
+    """Try to convert string value to appropriate type."""
+    if not value or not isinstance(value, str):
+        return value
+    
+    # Try to convert to int
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    
+    # Try to convert to float
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    
+    # If it's a JSON-like string (list or dict), try to parse it
+    if (value.startswith('[') and value.endswith(']')) or (value.startswith('{') and value.endswith('}')):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            pass
+    
+    # Return original string if no conversion applies
+    return value

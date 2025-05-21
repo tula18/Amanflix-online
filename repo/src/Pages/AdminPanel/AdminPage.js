@@ -19,6 +19,7 @@ import ManageUploadRequests from "./pages/UploadRequests/UploadRequests";
 import ManageNotifications from "./pages/Notifications/ManageNotificationsPage";
 import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import ActiveSessions from './pages/Analytics/ActiveSessions';
+import CdnManagementPage from './pages/CDNManagement/CDNManagementPage'; // Add this import
 
 const AdminPage = () => {
     const token = localStorage.getItem('admin_token');
@@ -77,31 +78,30 @@ const AdminPage = () => {
 
     return (
         <div className="AdminPage">
-            {/* <Router> */}
-                <div style={{display: 'flex', width: '100%'}}>
-                    {/* <Sidebar user={user}/> */}
-                    {showSidebar() && <Sidebar user={user}/>}
-                    <div style={{flex:1, padding: contentPadding, overflowY: "auto", height: "100vh"}}>
-                        <Routes>
-                            <Route path="/" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><AdminHomePage/></AdminPrivateRoute>}/>
-                            <Route path="/login" element={<AdminLogin/>}/>
-                            <Route path="/profile" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><AdminProfile/></AdminPrivateRoute>}/>
-                            <Route path="/upload/movie" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageMovies/></AdminPrivateRoute>}/>
-                            <Route path="/upload/show" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageShows/></AdminPrivateRoute>}/>
-                            <Route path="/users" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageUsers/></AdminPrivateRoute>}/>
-                            <Route path="/users/:user_id" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><UserProfile/></AdminPrivateRoute>}/>
-                            <Route path="/admins" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageAdmins/></AdminPrivateRoute>}/>
-                            <Route path="/admins/:admin_id" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageAdminProfile/></AdminPrivateRoute>}/>
-                            <Route path="/bugs" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><UnresolvedBugs/></AdminPrivateRoute>}/>
-                            <Route path="/uploadRequests" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageUploadRequests/></AdminPrivateRoute>}/>
-                            <Route path="/notifications" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageNotifications/></AdminPrivateRoute>}/>
-                            <Route path="/analytics" element={<AnalyticsDashboard />} />
-                            <Route path="/analytics/sessions" element={<ActiveSessions />} />
-                            <Route path="*" element={<NotFoundPage/>}/>
-                        </Routes>
-                    </div>
+            <div style={{display: 'flex', width: '100%'}}>
+                {showSidebar() && <Sidebar user={user}/>}
+                <div style={{flex:1, padding: contentPadding, overflowY: "auto", height: "100vh"}}>
+                    <Routes>
+                        <Route path="/" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><AdminHomePage/></AdminPrivateRoute>}/>
+                        <Route path="/login" element={<AdminLogin/>}/>
+                        <Route path="/profile" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><AdminProfile/></AdminPrivateRoute>}/>
+                        <Route path="/upload/movie" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageMovies/></AdminPrivateRoute>}/>
+                        <Route path="/upload/show" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageShows/></AdminPrivateRoute>}/>
+                        <Route path="/users" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageUsers/></AdminPrivateRoute>}/>
+                        <Route path="/users/:user_id" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><UserProfile/></AdminPrivateRoute>}/>
+                        <Route path="/admins" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageAdmins/></AdminPrivateRoute>}/>
+                        <Route path="/admins/:admin_id" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageAdminProfile/></AdminPrivateRoute>}/>
+                        <Route path="/bugs" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><UnresolvedBugs/></AdminPrivateRoute>}/>
+                        <Route path="/uploadRequests" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageUploadRequests/></AdminPrivateRoute>}/>
+                        <Route path="/notifications" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageNotifications/></AdminPrivateRoute>}/>
+                        <Route path="/analytics" element={<AnalyticsDashboard />} />
+                        <Route path="/analytics/sessions" element={<ActiveSessions />} />
+                        {/* Add the new CDN Management route */}
+                        <Route path="/cdn" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><CdnManagementPage/></AdminPrivateRoute>}/>
+                        <Route path="*" element={<NotFoundPage/>}/>
+                    </Routes>
                 </div>
-            {/* </Router> */}
+            </div>
         </div>
     )
 }
