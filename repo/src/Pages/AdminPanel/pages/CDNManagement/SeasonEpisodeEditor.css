@@ -214,3 +214,212 @@
     margin-bottom: 12px;
   }
 }
+
+/* Popconfirm styling for dark theme */
+.seasons-episodes-editor .ant-popover .ant-popover-inner {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Popconfirm title and content text */
+.seasons-episodes-editor .ant-popover-title,
+.seasons-episodes-editor .ant-popover-inner-content,
+.seasons-episodes-editor .ant-popover-message-title {
+  color: #e0e0e0 !important;
+}
+
+.seasons-episodes-editor .ant-popover-title {
+  border-bottom-color: #283555 !important;
+}
+
+/* Popconfirm buttons */
+.seasons-episodes-editor .ant-popover .ant-btn {
+  border-color: #3a4966 !important;
+  color: #e0e0e0 !important;
+}
+
+.seasons-episodes-editor .ant-popover .ant-btn-default {
+  background-color: transparent !important;
+}
+
+.seasons-episodes-editor .ant-popover .ant-btn-default:hover {
+  border-color: #e0e0e0 !important;
+}
+
+/* Cancel and delete buttons */
+.seasons-episodes-editor .ant-popover .ant-btn-primary {
+  background-color: #e50914 !important;
+  border-color: #e50914 !important;
+  color: #ffffff !important;
+}
+
+.seasons-episodes-editor .ant-popover .ant-btn-primary:hover {
+  background-color: #c30710 !important;
+  border-color: #c30710 !important;
+}
+
+/* Arrow styling */
+.seasons-episodes-editor .ant-popover-arrow::before {
+  background-color: #1f2a40 !important;
+  border-color: #283555 !important;
+}
+
+/* Popconfirm icon */
+.seasons-episodes-editor .ant-popover-message .anticon {
+  color: #e50914 !important;
+}
+
+/* Add these rules after your existing Popconfirm styling */
+
+/* Fix black text in select dropdowns */
+.seasons-episodes-editor .ant-select-dropdown {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+}
+
+.seasons-episodes-editor .ant-select-item {
+  color: #e0e0e0 !important;
+}
+
+.seasons-episodes-editor .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: rgba(229, 9, 20, 0.1) !important;
+}
+
+.seasons-episodes-editor .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: rgba(229, 9, 20, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* Fix input placeholder color */
+.seasons-episodes-editor .ant-input::placeholder,
+.seasons-episodes-editor .ant-input-number-input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Fix DatePicker panel text */
+.seasons-episodes-editor .ant-picker-dropdown .ant-picker-panel-container {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+}
+
+.seasons-episodes-editor .ant-picker-dropdown .ant-picker-content th,
+.seasons-episodes-editor .ant-picker-dropdown .ant-picker-content td {
+  color: #e0e0e0 !important;
+}
+
+.seasons-episodes-editor .ant-picker-dropdown .ant-picker-header {
+  color: #e0e0e0 !important;
+  border-bottom-color: #283555 !important;
+}
+
+.seasons-episodes-editor .ant-picker-dropdown .ant-picker-header button {
+  color: #e0e0e0 !important;
+}
+
+/* Fix number input arrows */
+.seasons-episodes-editor .ant-input-number-handler-wrap {
+  background-color: #1f2a40 !important;
+  border-color: #283555 !important;
+}
+
+.seasons-episodes-editor .ant-input-number-handler span {
+  color: #e0e0e0 !important;
+}
+
+/* Fix select dropdown arrow */
+.seasons-episodes-editor .ant-select-arrow {
+  color: #e0e0e0 !important;
+}
+
+/* Fix modal text colors */
+.ant-modal-content {
+  background-color: #1f2a40 !important;
+}
+
+.ant-modal-header {
+  background-color: #1f2a40 !important;
+  border-bottom-color: #283555 !important;
+}
+
+.ant-modal-title,
+.ant-modal-content .ant-modal-body,
+.ant-modal-content .ant-modal-footer {
+  color: #e0e0e0 !important;
+}
+
+/* Global popconfirm styling to catch all instances */
+.ant-popover {
+  background-color: #1f2a40 !important;
+}
+
+.ant-popover .ant-popover-inner {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
+}
+
+.ant-popover .ant-popover-title,
+.ant-popover .ant-popover-inner-content,
+.ant-popover .ant-popover-message-title {
+  color: #e0e0e0 !important;
+}
+
+.ant-popover .ant-popover-title {
+  border-bottom-color: #283555 !important;
+}
+
+.ant-popover .ant-btn {
+  border-color: #3a4966 !important;
+  color: #e0e0e0 !important;
+}
+
+.ant-popover .ant-btn-default {
+  background-color: transparent !important;
+}
+
+.ant-popover .ant-btn-primary {
+  background-color: #e50914 !important;
+  border-color: #e50914 !important;
+  color: #ffffff !important;
+}
+
+.ant-popover .ant-popover-arrow::before {
+  background-color: #1f2a40 !important;
+  border-color: #283555 !important;
+}
+
+.ant-popover .ant-popover-message .anticon {
+  color: #e50914 !important;
+}
+
+/* Custom dark popconfirm styling */
+.custom-dark-popconfirm .ant-popover-inner {
+  background-color: #1f2a40 !important;
+  border: 1px solid #283555 !important;
+}
+
+.custom-dark-popconfirm .ant-popover-inner-content,
+.custom-dark-popconfirm .ant-popover-message-title {
+  color: #e0e0e0 !important;
+}
+
+.custom-dark-popconfirm .ant-btn-primary {
+  background-color: #e50914 !important;
+}
+
+/* Fix Popconfirm description and title text color */
+.ant-popover .ant-popconfirm-title,
+.ant-popover .ant-popconfirm-description,
+.custom-dark-popconfirm .ant-popconfirm-title,
+.custom-dark-popconfirm .ant-popconfirm-description {
+  color: #e0e0e0 !important;
+}
+
+/* Also add these for more specific targeting */
+.ant-popover-content .ant-popconfirm-title,
+.ant-popover-content .ant-popconfirm-description {
+  color: #e0e0e0 !important;
+}

@@ -1,6 +1,6 @@
 // SeasonEpisodeEditor.js
 import React, { useState, useEffect } from 'react';
-import { Collapse, Button, Table, Form, Input, InputNumber, DatePicker, Space, Tabs, Select, Tag, Tooltip } from 'antd';
+import { Collapse, Button, Table, Form, Input, InputNumber, DatePicker, Space, Tabs, Select, Tag, Tooltip, Popconfirm, Empty } from 'antd';
 import { DeleteOutlined, PlusOutlined, CaretRightOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import TextArea from "antd/es/input/TextArea";
@@ -251,15 +251,27 @@ const SeasonEpisodeEditor = ({ value, onChange }) => {
               disabled={index === seasons[seasonIndex].episodes.length - 1}
             />
           </Tooltip>
-          <Tooltip title="Delete Episode">
-            <Button
-              size="small"
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => removeEpisode(seasonIndex, index)}
-            />
-          </Tooltip>
+          <Popconfirm
+            title="Delete this episode?"
+            description={`This will remove Episode ${record.episode_number} - ${record.name || 'Unnamed'}`}
+            onConfirm={() => removeEpisode(seasonIndex, index)}
+            okText="Delete"
+            cancelText="Cancel"
+            okButtonProps={{ danger: true }}
+            overlayClassName="custom-dark-popconfirm" // Add this line
+          >
+            <Tooltip title="Delete Episode">
+              <Button
+                size="small"
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row expansion when clicking delete
+                }}
+              />
+            </Tooltip>
+          </Popconfirm>
         </Space>
       )
     },
@@ -452,15 +464,26 @@ const SeasonEpisodeEditor = ({ value, onChange }) => {
             }
             key={season.id || index}
             extra={
-              <Button
-                danger
-                type="text"
-                icon={<DeleteOutlined />}
-                onClick={(e) => {
+              <Popconfirm
+                title="Delete this season?"
+                description={`This will remove Season ${season.season_number} and all its episodes.`}
+                onConfirm={(e) => {
                   e.stopPropagation();
                   handleRemoveSeason(index);
                 }}
-              />
+                okText="Delete"
+                cancelText="Cancel"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  danger
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              </Popconfirm>
             }
           >
             <Tabs 
@@ -617,6 +640,26 @@ const SeasonEpisodeEditor = ({ value, onChange }) => {
                           )}
                         />
                       </Tooltip>
+                    )
+                  }}
+                  locale={{
+                    emptyText: (
+                      <Empty 
+                        image={Empty.PRESENTED_IMAGE_SIMPLE} 
+                        description={
+                          <span>
+                            No episodes in this season yet
+                            <br />
+                            <Button 
+                              type="link" 
+                              onClick={() => addEpisode(index)}
+                              style={{ padding: 0, height: 'auto', marginTop: 8 }}
+                            >
+                              Add your first episode
+                            </Button>
+                          </span>
+                        }
+                      />
                     )
                   }}
                 />
