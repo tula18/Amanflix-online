@@ -36,6 +36,8 @@ import './CDNManagementPage.css';
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from 'dayjs';
+// Import the SeasonEpisodeEditor component
+import SeasonEpisodeEditor from './SeasonEpisodeEditor';
 
 const { Dragger } = Upload;
 
@@ -93,6 +95,34 @@ const DynamicValueInput = ({ type, value, onChange }) => {
       const dateValue = value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : null;
       return <DatePicker style={{ width: '100%' }} value={dateValue} onChange={onChange} />;
       
+    case 'json':
+      // Stringify the value for display and editing
+      const jsonValue = typeof value === 'object' ? 
+        JSON.stringify(value, null, 2) : 
+        (value || '{}');
+      
+      return (
+        <TextArea
+          value={jsonValue}
+          onChange={(e) => {
+            try {
+              // Try to parse the JSON when it changes
+              const parsed = JSON.parse(e.target.value);
+              onChange(parsed);
+            } catch (error) {
+              // If it's not valid JSON yet, just store as string
+              onChange(e.target.value);
+            }
+          }}
+          placeholder="Enter JSON object"
+          autoSize={{ minRows: 4, maxRows: 20 }}
+          style={{ fontFamily: 'monospace' }}
+        />
+      );
+
+    case 'seasons':
+      return <SeasonEpisodeEditor value={value} onChange={onChange} />;
+      
     case 'string':
     default:
       const strValue = value !== null && value !== undefined ? String(value) : '';
@@ -124,7 +154,7 @@ const DynamicFormItem = ({ name, fieldKey, form, ...rest }) => {
         return (
           <Form.Item
             name={[name, 'value']}
-            rules={[{ required: true, message: 'Value is required' }]}
+            // rules={[{ required: true, message: 'Value is required' }]}
             noStyle
           >
             <DynamicValueInput type={type} />
@@ -516,6 +546,7 @@ const CdnManagementPage = () => {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
+      ...getColumnSearchProps('id'),
       sorter: (a, b) => a.id - b.id,
     },
     {
@@ -766,15 +797,15 @@ const handleViewItem = (record) => {
     setEditFormLoading(true);
     
     try {
-      const formData = new FormData();
-      formData.append('password', password);
-      
-      // Determine API endpoint based on content type
-      const endpoint = selectedItem.content_type === 'movie' 
+      // First delete from API database (keep this for backward compatibility)
+      const dbEndpoint = selectedItem.content_type === 'movie' 
         ? `${API_URL}/api/upload/movie/delete/${selectedItem.id}`
         : `${API_URL}/api/upload/show/delete/${selectedItem.id}`;
         
-      const response = await fetch(endpoint, {
+      const formData = new FormData();
+      formData.append('password', password);
+        
+      const dbResponse = await fetch(dbEndpoint, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -782,18 +813,28 @@ const handleViewItem = (record) => {
         body: formData
       });
       
-      const data = await response.json();
+      // Now delete from CDN JSON files
+      const cdnEndpoint = `${API_URL}/api/cdn/admin/content/${selectedItem.content_type}/${selectedItem.id}`;
       
-      if (response.ok) {
-        message.success(data.message || 'Content deleted successfully');
+      const cdnResponse = await fetch(cdnEndpoint, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        }
+      });
+      
+      const cdnData = await cdnResponse.json();
+      
+      if (cdnResponse.ok) {
+        message.success(cdnData.message || 'Content deleted successfully from CDN');
         handleDeleteModalClose();
         fetchCdnContent(); // Refresh the list
       } else {
-        message.error(data.message || 'Failed to delete content');
+        message.error(cdnData.message || 'Failed to delete content from CDN');
       }
     } catch (error) {
-      console.error('Error deleting content:', error);
-      message.error('An error occurred while deleting the content');
+      console.error('Error deleting content from CDN:', error);
+      message.error('An error occurred while deleting the content from CDN');
     } finally {
       setEditFormLoading(false);
     }
@@ -811,7 +852,7 @@ const convertItemToFormValues = (item) => {
   
   for (const [key, value] of Object.entries(item)) {
     // Skip the core fields we handled separately
-    if (['id', 'title', 'name', 'content_type'].includes(key)) {
+    if (['id', 'title', 'name', 'content_type', 'last_episode_to_air', 'has_image', 'media_type', 'next_episode_to_air', 'dir_type', 'adult'].includes(key)) {
       continue;
     }
     
@@ -819,31 +860,60 @@ const convertItemToFormValues = (item) => {
     let type = 'string';
     let formattedValue = value;
     
-    // More aggressive type detection
-    if (value === true || value === false || value === 'true' || value === 'false') {
+    // Check for seasons data specifically (must come before other checks)
+    if (key === 'seasons') {
+      // Handle case where seasons is stored as string "[object Object], [object Object]..."
+      if (typeof value === 'string' && value.includes('[object Object]')) {
+        try {
+          // Try to fetch the actual seasons data from API
+          console.log("Detected seasons as string, will try to use proper seasons data");
+          type = 'seasons';
+          
+          // This is a placeholder - in the next step we'll ensure seasons data is loaded properly
+          formattedValue = []; // Will be populated with proper data
+        } catch (error) {
+          console.error("Error parsing seasons data:", error);
+          type = 'string';
+          formattedValue = value;
+        }
+      }
+      // Handle case where seasons is already a proper array
+      else if (Array.isArray(value) && value.length > 0 && 
+          (value[0].season_number !== undefined || value[0].episodes !== undefined)) {
+        type = 'seasons';
+        formattedValue = value;
+      }
+    }
+    // More aggressive type detection for other types
+    else if (value === true || value === false || value === 'true' || value === 'false') {
       type = 'boolean';
       formattedValue = value === true || value === 'true';
     } else if (typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value)) && 
               !isNaN(parseFloat(value)) && value.toString().indexOf('.') !== -1)) {
       type = 'number';
       formattedValue = typeof value === 'number' ? value : parseFloat(value);
-    } else if (Array.isArray(value) || 
-              (typeof value === 'string' && value.startsWith('[') && value.endsWith(']'))) {
-      type = 'array';
-      formattedValue = Array.isArray(value) ? value : 
-                      (typeof value === 'string' ? value.replace(/^\[|\]$/g, '').split(',').map(i => i.trim()) : []);
+    } else if (Array.isArray(value)) {
+      type = 'string';
+      formattedValue = value.join(', '); 
+    } else if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+      type = 'string';
+      formattedValue = value.replace(/^\[|\]$/g, '');
     } else if (value instanceof Date || 
               (typeof value === 'string' && !isNaN(Date.parse(value)) && 
                (value.includes('-') || value.includes('/')))) {
       type = 'date';
       formattedValue = value ? dayjs(value) : null;
     }
+    else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      type = 'json';
+      formattedValue = value;
+    }
     
-    // Special case for genres which should be an array
-    if (key === 'genres' && !Array.isArray(formattedValue)) {
-      type = 'array';
-      formattedValue = typeof formattedValue === 'string' ? 
-        formattedValue.split(',').map(g => g.trim()) : [formattedValue].filter(Boolean);
+    // Special case for known array fields - convert to comma-separated strings
+    const arrayFields = ['genres', 'production_companies', 'production_countries', 'spoken_languages', 'keywords'];
+    if (arrayFields.includes(key) && Array.isArray(formattedValue) && type !== 'seasons') {
+      type = 'string';
+      formattedValue = formattedValue.join(', ');
     }
     
     // Add to properties array with properly formatted value and detected type
@@ -881,40 +951,22 @@ const convertItemToFormValues = (item) => {
         if (prop.type === 'date' && dayjs.isDayjs(value)) {
           value = value.format('YYYY-MM-DD');
         } else if (prop.type === 'boolean') {
-          // Handle both boolean and string representations of boolean
           value = value === true || value === 'true';
         } else if (prop.type === 'number' && typeof value !== 'number') {
-          // Convert string to number if needed
           value = Number(value);
         } else if (prop.type === 'array') {
-          // Convert to array if needed
           if (typeof value === 'string') {
-            value = value.split(',').map(item => item.trim());
+            apiData[prop.key] = value;
           } else if (!Array.isArray(value)) {
-            value = value ? [value] : [];
+            apiData[prop.key] = value ? String(value) : '';
           }
-          
-          // We want to preserve duplicates in the UI but not in the saved data
-          // Apply this only if you want to keep duplicates in the saved data:
-          // apiData[prop.key] = value;
-          
-          // If you want to deduplicate when saving:
-          // While preserving order of first occurrence of each item
-          const seen = new Set();
-          apiData[prop.key] = value.filter(item => {
-            if (seen.has(item)) return false;
-            seen.add(item);
-            return true;
-          });
+        } else {
+          apiData[prop.key] = value;
         }
-        
-        apiData[prop.key] = value;
       });
       
-      // API call
-      const endpoint = selectedItem.content_type === 'movie' 
-        ? `${API_URL}/api/upload/movie/${selectedItem.id}`
-        : `${API_URL}/api/upload/show/${selectedItem.id}`;
+      // Use the new CDN API endpoint
+      const endpoint = `${API_URL}/api/cdn/admin/content/${selectedItem.content_type}/${selectedItem.id}`;
       
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -928,15 +980,15 @@ const convertItemToFormValues = (item) => {
       const data = await response.json();
       
       if (response.ok) {
-        message.success(data.message || 'Content updated successfully');
+        message.success(data.message || 'Content updated successfully in CDN');
         handleViewModalClose();
         fetchCdnContent(); // Refresh the list
       } else {
-        message.error(data.message || 'Failed to update content');
+        message.error(data.message || 'Failed to update content in CDN');
       }
     } catch (error) {
-      console.error('Error updating content:', error);
-      message.error('An error occurred while updating the content');
+      console.error('Error updating content in CDN:', error);
+      message.error('An error occurred while updating the content in CDN');
     } finally {
       setEditFormLoading(false);
     }
@@ -1232,8 +1284,9 @@ const convertItemToFormValues = (item) => {
                             <Select.Option value="string">String</Select.Option>
                             <Select.Option value="number">Number</Select.Option>
                             <Select.Option value="boolean">Boolean</Select.Option>
-                            <Select.Option value="array">Array</Select.Option>
                             <Select.Option value="date">Date</Select.Option>
+                            <Select.Option value="json">JSON Object</Select.Option>
+                            <Select.Option value="seasons">Seasons & Episodes</Select.Option>
                           </Select>
                         </Form.Item>
                         

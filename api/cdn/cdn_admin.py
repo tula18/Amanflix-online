@@ -1,0 +1,182 @@
+from flask import Blueprint, jsonify, request, current_app
+from api.utils import admin_token_required
+import json
+import os
+import traceback
+
+cdn_admin_bp = Blueprint('cdn_admin_bp', __name__, url_prefix='/api/cdn/admin')
+
+@cdn_admin_bp.route('/content/<string:content_type>/<int:content_id>', methods=['PUT'])
+@admin_token_required('moderator')
+def update_cdn_content(current_admin, content_type, content_id):
+    """Update a content item directly in the CDN JSON file"""
+    try:
+        # Get the request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided"}), 400
+
+        # Validate content_type
+        if content_type not in ['movie', 'tv']:
+            return jsonify({"message": f"Invalid content type: {content_type}. Must be 'movie' or 'tv'"}), 400
+            
+        # Get the correct file path based on content type
+        cdn_file_path = os.path.join(
+            current_app.root_path, 
+            f'cdn/files/{"movies" if content_type == "movie" else "tv"}_little_clean.json'
+        )
+        
+        # Read the existing content
+        items = []
+        with open(cdn_file_path, 'r') as f:
+            items = json.load(f)
+        
+        # Find and update the item
+        item_found = False
+        for i, item in enumerate(items):
+            if item.get('id') == content_id:
+                # Preserve the id field
+                data['id'] = content_id
+                items[i] = data
+                item_found = True
+                break
+        
+        if not item_found:
+            return jsonify({"message": f"Content with ID {content_id} not found in CDN data"}), 404
+        
+        # Write back to the file
+        with open(cdn_file_path, 'w') as f:
+            json.dump(items, f, indent=2)
+        
+        # Update the in-memory data
+        import app
+        if content_type == 'movie':
+            app.movies = items
+        else:
+            app.tv_series = items
+            
+        # Also update the "with_images" version if needed
+        try:
+            from cdn.utils import check_images_existence
+            if check_images_existence(data):
+                with_images_file_path = os.path.join(
+                    current_app.root_path, 
+                    f'cdn/files/{"movies" if content_type == "movie" else "tv"}_with_images.json'
+                )
+                
+                # Read with_images content
+                with_images_items = []
+                with open(with_images_file_path, 'r') as f:
+                    with_images_items = json.load(f)
+                
+                # Update or add to with_images
+                with_images_found = False
+                for i, item in enumerate(with_images_items):
+                    if item.get('id') == content_id:
+                        with_images_items[i] = data
+                        with_images_found = True
+                        break
+                
+                if not with_images_found:
+                    with_images_items.append(data)
+                    
+                # Write back to the with_images file
+                with open(with_images_file_path, 'w') as f:
+                    json.dump(with_images_items, f, indent=2)
+                    
+                # Update in-memory with_images data
+                if content_type == 'movie':
+                    app.movies_with_images = with_images_items
+                else:
+                    app.tv_series_with_images = with_images_items
+        except Exception as e:
+            # Log but continue - this is not critical
+            print(f"Warning: Error updating with_images data: {str(e)}")
+        
+        return jsonify({
+            "message": f"{content_type.capitalize()} with ID {content_id} updated successfully in CDN",
+            "updated": True
+        }), 200
+    
+    except Exception as e:
+        error_msg = f"Error updating CDN content: {str(e)}"
+        print(error_msg)
+        print(traceback.format_exc())
+        return jsonify({"message": error_msg, "error": str(e)}), 500
+
+@cdn_admin_bp.route('/content/<string:content_type>/<int:content_id>', methods=['DELETE'])
+@admin_token_required('moderator')
+def delete_cdn_content(current_admin, content_type, content_id):
+    """Delete a content item directly from the CDN JSON file"""
+    try:
+        # Validate content_type
+        if content_type not in ['movie', 'tv']:
+            return jsonify({"message": f"Invalid content type: {content_type}. Must be 'movie' or 'tv'"}), 400
+            
+        # Get the correct file path based on content type
+        cdn_file_path = os.path.join(
+            current_app.root_path, 
+            f'cdn/files/{"movies" if content_type == "movie" else "tv"}_little_clean.json'
+        )
+        
+        # Read the existing content
+        items = []
+        with open(cdn_file_path, 'r') as f:
+            items = json.load(f)
+        
+        # Find and remove the item
+        original_count = len(items)
+        items = [item for item in items if item.get('id') != content_id]
+        
+        if len(items) == original_count:
+            return jsonify({"message": f"Content with ID {content_id} not found in CDN data"}), 404
+        
+        # Write back to the file
+        with open(cdn_file_path, 'w') as f:
+            json.dump(items, f, indent=2)
+        
+        # Update the in-memory data
+        import app
+        if content_type == 'movie':
+            app.movies = items
+        else:
+            app.tv_series = items
+            
+        # Also update the "with_images" version
+        try:
+            with_images_file_path = os.path.join(
+                current_app.root_path, 
+                f'cdn/files/{"movies" if content_type == "movie" else "tv"}_with_images.json'
+            )
+            
+            # Read with_images content
+            with_images_items = []
+            with open(with_images_file_path, 'r') as f:
+                with_images_items = json.load(f)
+            
+            # Remove from with_images if present
+            with_images_items = [item for item in with_images_items if item.get('id') != content_id]
+                
+            # Write back to the with_images file
+            with open(with_images_file_path, 'w') as f:
+                json.dump(with_images_items, f, indent=2)
+                
+            # Update in-memory with_images data
+            if content_type == 'movie':
+                app.movies_with_images = with_images_items
+            else:
+                app.tv_series_with_images = with_images_items
+        except Exception as e:
+            # Log but continue - this is not critical
+            print(f"Warning: Error updating with_images data: {str(e)}")
+        
+        return jsonify({
+            "message": f"{content_type.capitalize()} with ID {content_id} deleted successfully from CDN",
+            "deleted": True
+        }), 200
+    
+    except Exception as e:
+        error_msg = f"Error deleting CDN content: {str(e)}"
+        print(error_msg)
+        print(traceback.format_exc())
+        return jsonify({"message": error_msg, "error": str(e)}), 500

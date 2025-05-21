@@ -21,6 +21,7 @@ from cdn.movies_cdn import movie_cdn_bp
 from cdn.tv_cdn import tv_cdn_bp
 from cdn.search_cdn import search_cdn_bp
 from cdn.cdn import cdn_bp
+from cdn.cdn_admin import cdn_admin_bp
 
 # API ENDPOINTS
 from api.routes.upload import upload_bp
@@ -73,7 +74,7 @@ log_section("INITIALIZING SERVICES")
 # Check FFMPEG availability with enhanced visual indicators
 ffmpeg_status = check_ffmpeg_available()
 box_width = 52
-if ffmpeg_status:
+if (ffmpeg_status):
     print(f"\n{Colors.GREEN}┌{'─' * box_width}┐")
     print(f"│ ✓ FFMPEG DETECTED AND AVAILABLE{' ' * (box_width - 32)}│")
     print(f"│ {Colors.WHITE}All streaming features will be fully functional{Colors.GREEN}{' ' * (box_width - 48)}│")
@@ -110,6 +111,7 @@ app.register_blueprint(movie_cdn_bp)
 app.register_blueprint(tv_cdn_bp)
 app.register_blueprint(search_cdn_bp)
 app.register_blueprint(cdn_bp)
+app.register_blueprint(cdn_admin_bp)
 
 log_substep("API endpoints: auth, uploads, streams, etc.")
 # API ENDPOINTS register
