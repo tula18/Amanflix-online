@@ -17,7 +17,8 @@ import {
   Tag,
   Image,
   Select,
-  DatePicker
+  DatePicker,
+  InputNumber
 } from "antd";
 import { 
   InboxOutlined, 
@@ -37,6 +38,102 @@ import TextArea from "antd/es/input/TextArea";
 import dayjs from 'dayjs';
 
 const { Dragger } = Upload;
+
+// Update the DynamicValueInput component to properly handle onChange events
+const DynamicValueInput = ({ type, value, onChange }) => {
+  console.log(`Rendering input with type: ${type}, value:`, value);
+  
+  // Move this declaration to the top level - outside the switch statement
+  const selectRef = useRef(null);
+  
+  switch (type) {
+    case 'number':
+      const numValue = typeof value === 'number' ? value : 
+                      (value !== undefined && value !== null && !isNaN(Number(value)) ? 
+                       Number(value) : undefined);
+      return <InputNumber style={{ width: '100%' }} value={numValue} onChange={onChange} />;
+      
+    case 'boolean':
+      const boolValue = value === true || value === 'true';
+      return <Switch 
+        checked={boolValue}
+        checkedChildren="True" 
+        unCheckedChildren="False"
+        onChange={onChange}
+      />;
+      
+    case 'array':
+      // Convert array value to a comma-separated string
+      const stringValue = Array.isArray(value) 
+        ? value.join(', ')
+        : (typeof value === 'string' 
+          ? value 
+          : (value !== null && value !== undefined ? String(value) : ''));
+      
+      return (
+        <Input 
+          value={stringValue}
+          onChange={(e) => {
+            if (onChange) {
+              // Split the input string by commas and trim each value
+              const newArray = e.target.value
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item !== '');
+                
+              // Call the onChange handler with the array
+              onChange(newArray);
+            }
+          }}
+          placeholder="Enter values separated by commas"
+        />
+      );
+      
+    case 'date':
+      const dateValue = value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : null;
+      return <DatePicker style={{ width: '100%' }} value={dateValue} onChange={onChange} />;
+      
+    case 'string':
+    default:
+      const strValue = value !== null && value !== undefined ? String(value) : '';
+      return <Input value={strValue} onChange={onChange} />;
+  }
+};
+
+// Update the DynamicFormItem component to ensure the CSS class is applied
+const DynamicFormItem = ({ name, fieldKey, form, ...rest }) => {
+  return (
+    <Form.Item
+      {...rest}
+      shouldUpdate={(prevValues, currentValues) => {
+        // Re-render when the type of this specific field changes
+        const prevType = prevValues?.properties?.[name]?.type;
+        const currentType = currentValues?.properties?.[name]?.type;
+        return prevType !== currentType;
+      }}
+      className="value-column" // Add this className to the outer Form.Item
+    >
+      {() => {
+        // Get the current type directly from form
+        const type = form.getFieldValue(['properties', name, 'type']) || 'string';
+        const value = form.getFieldValue(['properties', name, 'value']);
+        
+        console.log(`DynamicFormItem ${name} rendering with type: ${type}, value:`, value);
+        
+        // Return the appropriate input wrapped in Form.Item
+        return (
+          <Form.Item
+            name={[name, 'value']}
+            rules={[{ required: true, message: 'Value is required' }]}
+            noStyle
+          >
+            <DynamicValueInput type={type} />
+          </Form.Item>
+        );
+      }}
+    </Form.Item>
+  );
+};
 
 const CdnManagementPage = () => {
   const [loading, setLoading] = useState(false);
@@ -611,11 +708,33 @@ const CdnManagementPage = () => {
 
   // Add these handler functions before the return statement
 
-  // Open view/edit modal
-  const handleViewItem = (record) => {
-    setSelectedItem(record);
+  // Open view/edit modal with better form initialization
+const handleViewItem = (record) => {
+  setSelectedItem(record);
+  
+  // Close and reopen the modal to ensure clean state
+  setViewModalVisible(false);
+  
+  // Get converted form values with proper types
+  const formValues = convertItemToFormValues(record);
+  console.log("Original record:", record);
+  console.log("Converted form values:", formValues);
+  
+  // Reset form and set values before showing modal
+  editForm.resetFields();
+  
+  setTimeout(() => {
+    // Open modal after resetting form
     setViewModalVisible(true);
-  };
+    
+    // Set values after modal is open
+    setTimeout(() => {
+      editForm.setFieldsValue(formValues);
+      // Force a re-render of the component
+      setTableKey(prev => prev + 1);
+    }, 100);
+  }, 100);
+};
 
   // Close view/edit modal
   const handleViewModalClose = () => {
@@ -681,70 +800,67 @@ const CdnManagementPage = () => {
   };
 
   // Function to convert item to form values with dynamic properties
-  const convertItemToFormValues = (item) => {
-    if (!item) return {};
-    
-    // Extract core fields that need special handling
-    const { id, title, name, content_type } = item;
-    
-    // Create properties array from remaining key-value pairs
-    
-    const properties = [];
-    
-    for (const [key, value] of Object.entries(item)) {
-      // Skip the core fields we handled separately
-      if (['id', 'title', 'name', 'content_type'].includes(key)) {
-        continue;
-      }
-      
-      // Determine value type
-      let type = 'string';
-      if (typeof value === 'number') type = 'number';
-      else if (typeof value === 'boolean') type = 'boolean';
-      else if (Array.isArray(value)) type = 'array';
-      else if (value instanceof Date || (typeof value === 'string' && !isNaN(Date.parse(value)) && 
-               (value.includes('-') || value.includes('/')))) type = 'date';
-      
-      properties.push({
-        key,
-        type,
-        value
-      });
+const convertItemToFormValues = (item) => {
+  if (!item) return {};
+  
+  // Extract core fields that need special handling
+  const { id, title, name, content_type } = item;
+  
+  // Create properties array from remaining key-value pairs
+  const properties = [];
+  
+  for (const [key, value] of Object.entries(item)) {
+    // Skip the core fields we handled separately
+    if (['id', 'title', 'name', 'content_type'].includes(key)) {
+      continue;
     }
     
-    return {
-      id,
-      title: title || name,
-      content_type,
-      properties
-    };
-  };
-
-  // Component to render different input types based on the data type
-  const DynamicValueInput = ({ type, value, onChange }) => {
-    switch (type) {
-      case 'number':
-        return <InputNumber style={{ width: '100%' }} />;
-        
-      case 'boolean':
-        return <Switch />;
-        
-      case 'array':
-        return <Select
-          mode="tags"
-          style={{ width: '100%' }}
-          tokenSeparators={[',']}
-          placeholder="Enter values and press enter or comma"
-        />;
-        
-      case 'date':
-        return <DatePicker style={{ width: '100%' }} />;
-        
-      case 'string':
-      default:
-        return <Input />;
+    // Determine value type and format accordingly
+    let type = 'string';
+    let formattedValue = value;
+    
+    // More aggressive type detection
+    if (value === true || value === false || value === 'true' || value === 'false') {
+      type = 'boolean';
+      formattedValue = value === true || value === 'true';
+    } else if (typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value)) && 
+              !isNaN(parseFloat(value)) && value.toString().indexOf('.') !== -1)) {
+      type = 'number';
+      formattedValue = typeof value === 'number' ? value : parseFloat(value);
+    } else if (Array.isArray(value) || 
+              (typeof value === 'string' && value.startsWith('[') && value.endsWith(']'))) {
+      type = 'array';
+      formattedValue = Array.isArray(value) ? value : 
+                      (typeof value === 'string' ? value.replace(/^\[|\]$/g, '').split(',').map(i => i.trim()) : []);
+    } else if (value instanceof Date || 
+              (typeof value === 'string' && !isNaN(Date.parse(value)) && 
+               (value.includes('-') || value.includes('/')))) {
+      type = 'date';
+      formattedValue = value ? dayjs(value) : null;
     }
+    
+    // Special case for genres which should be an array
+    if (key === 'genres' && !Array.isArray(formattedValue)) {
+      type = 'array';
+      formattedValue = typeof formattedValue === 'string' ? 
+        formattedValue.split(',').map(g => g.trim()) : [formattedValue].filter(Boolean);
+    }
+    
+    // Add to properties array with properly formatted value and detected type
+    properties.push({
+      key,
+      type,
+      value: formattedValue
+    });
+  }
+  
+  return {
+    id,
+    title: title || name,
+    content_type,
+    properties
   };
+};
 
   // Handle form submission for editing content
   const handleUpdateContent = async (formValues) => {
@@ -764,10 +880,32 @@ const CdnManagementPage = () => {
         // Handle special data types
         if (prop.type === 'date' && dayjs.isDayjs(value)) {
           value = value.format('YYYY-MM-DD');
-        } else if (prop.type === 'boolean' && typeof value !== 'boolean') {
-          value = value === 'true' || value === true;
+        } else if (prop.type === 'boolean') {
+          // Handle both boolean and string representations of boolean
+          value = value === true || value === 'true';
         } else if (prop.type === 'number' && typeof value !== 'number') {
+          // Convert string to number if needed
           value = Number(value);
+        } else if (prop.type === 'array') {
+          // Convert to array if needed
+          if (typeof value === 'string') {
+            value = value.split(',').map(item => item.trim());
+          } else if (!Array.isArray(value)) {
+            value = value ? [value] : [];
+          }
+          
+          // We want to preserve duplicates in the UI but not in the saved data
+          // Apply this only if you want to keep duplicates in the saved data:
+          // apiData[prop.key] = value;
+          
+          // If you want to deduplicate when saving:
+          // While preserving order of first occurrence of each item
+          const seen = new Set();
+          apiData[prop.key] = value.filter(item => {
+            if (seen.has(item)) return false;
+            seen.add(item);
+            return true;
+          });
         }
         
         apiData[prop.key] = value;
@@ -1012,9 +1150,9 @@ const CdnManagementPage = () => {
         {selectedItem && (
           <Form
             layout="vertical"
-            initialValues={convertItemToFormValues(selectedItem)}
-            onFinish={handleUpdateContent}
             form={editForm}
+            onFinish={handleUpdateContent}
+            preserve={false} // Don't preserve values when form unmounts
           >
             {/* Media preview section */}
             <Flex gap={16} style={{ marginBottom: 24 }}>
@@ -1099,14 +1237,7 @@ const CdnManagementPage = () => {
                           </Select>
                         </Form.Item>
                         
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'value']}
-                          className="value-column"
-                          rules={[{ required: true, message: 'Value is required' }]}
-                        >
-                          <DynamicValueInput type={Form.useWatch([name, 'type'], editForm) || 'string'} />
-                        </Form.Item>
+                        <DynamicFormItem name={name} fieldKey={key} form={editForm} {...restField} />
                         
                         <Form.Item className="action-column">
                           <Button 

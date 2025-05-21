@@ -756,11 +756,14 @@
   margin-bottom: 24px;
   border: 1px solid #283555;
   border-radius: 8px;
-  padding: 12px;
+  padding: 16px;
   background-color: #1a2035;
 }
 
+/* Fixed header layout with flex */
 .key-value-header {
+  display: flex;
+  align-items: center;
   margin-bottom: 12px;
   padding: 8px 0;
   font-weight: 500;
@@ -768,10 +771,15 @@
   border-bottom: 1px solid #283555;
 }
 
+/* Improved key-value column layout */
 .key-value-row {
+  display: flex;
+  flex-wrap: nowrap;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px dashed #283555;
+  align-items: center;
+  width: 100%;
 }
 
 .key-value-row:last-child {
@@ -780,24 +788,45 @@
   border-bottom: none;
 }
 
+/* Fixed width for key column */
 .key-column {
-  width: 25%;
-  padding-right: 8px;
+  width: 170px;
+  min-width: 120px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  margin-right: 0;
 }
 
+/* Fixed width for type column */
 .type-column {
-  width: 15%;
-  padding-right: 8px;
+  width: 110px;
+  min-width: 100px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  margin-right: 0;
 }
 
+/* Make value column expand to fill space */
 .value-column {
-  width: 50%;
-  padding-right: 8px;
+  flex: 1 1 auto;
+  padding-right: 12px;
+  min-width: 100px;
 }
 
-.action-column {
-  width: 10%;
-  text-align: center;
+/* Ensure inputs take full width of their columns */
+.value-column .ant-input,
+.value-column .ant-input-number,
+.value-column .ant-select,
+.value-column .ant-picker,
+.value-column .ant-select-selector {
+  width: 100% !important;
+}
+
+/* Ensure header matches row layout */
+.key-value-header {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 /* Improve dropdown appearance in dark theme */
@@ -810,4 +839,77 @@
 /* Special form styling for dynamically added items */
 .key-value-form-container .ant-form-item {
   margin-bottom: 0 !important;
+}
+
+/* Fix input background colors for better contrast with white text */
+
+/* All inputs in the key-value editor */
+.key-value-form-container .ant-input,
+.key-value-form-container .ant-input-number,
+.key-value-form-container .ant-select-selector,
+.key-value-form-container .ant-picker {
+  background-color: #141b2d !important;
+  border-color: #283555 !important;
+  color: #ffffff !important;
+}
+
+/* Date picker - special handling */
+.key-value-form-container .ant-picker-input > input {
+  color: #ffffff !important;
+}
+
+/* Switch component background */
+.key-value-form-container .ant-switch {
+  background-color: #283555 !important;
+}
+
+.key-value-form-container .ant-switch-checked {
+  background-color: #e50914 !important;
+}
+
+/* Focus states */
+.key-value-form-container .ant-input:focus,
+.key-value-form-container .ant-input-number:focus,
+.key-value-form-container .ant-select-selector:focus {
+  border-color: #e50914 !important;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+}
+
+/* Main modal form inputs */
+.ant-modal .ant-input,
+.ant-modal .ant-input-number,
+.ant-modal .ant-select-selector {
+  background-color: #141b2d !important;
+  border-color: #283555 !important;
+  color: #ffffff !important;
+}
+
+/* Selected values in inputs */
+.ant-modal .ant-input::selection {
+  background-color: rgba(229, 9, 20, 0.4) !important;
+}
+
+/* Fix text color in form inputs - add this to CDNManagementPage.css */
+.ant-modal-content .ant-form-item .ant-input,
+.ant-modal-content .ant-form-item .ant-input-number-input,
+.ant-modal-content .ant-form-item .ant-picker-input > input,
+.ant-modal-content .ant-form-item .ant-select-selection-item,
+.ant-modal-content .ant-form-item .ant-select-selection-search-input {
+  color: #ffffff !important;
+}
+
+
+
+/* Ensure input placeholders are visible */
+.ant-modal-content .ant-input::placeholder,
+.ant-modal-content .ant-input-number-input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+
+
+/* Fix Switch component text */
+.ant-switch-checked .ant-switch-inner-checked,
+.ant-switch:not(.ant-switch-checked) .ant-switch-inner-unchecked {
+  color: #ffffff !important;
 }
