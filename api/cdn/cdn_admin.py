@@ -107,13 +107,9 @@ def update_cdn_content(current_admin, content_type, content_id):
 @cdn_admin_bp.route('/content/<string:content_type>/<int:content_id>', methods=['DELETE'])
 @admin_token_required('moderator')
 def delete_cdn_content(current_admin, content_type, content_id):
-    """Delete a content item directly from the CDN JSON file"""
+    """Delete a content item and its associated images from the CDN"""
     try:
-        # Validate content_type
-        if content_type not in ['movie', 'tv']:
-            return jsonify({"message": f"Invalid content type: {content_type}. Must be 'movie' or 'tv'"}), 400
-            
-        # Get the correct file path based on content type
+        # First get the content item to find associated images
         cdn_file_path = os.path.join(
             current_app.root_path, 
             f'cdn/files/{"movies" if content_type == "movie" else "tv"}_little_clean.json'
@@ -123,8 +119,34 @@ def delete_cdn_content(current_admin, content_type, content_id):
         items = []
         with open(cdn_file_path, 'r') as f:
             items = json.load(f)
+            
+        # Find the item before deletion to get image paths
+        content_item = next((item for item in items if item.get('id') == content_id), None)
         
-        # Find and remove the item
+        if not content_item:
+            return jsonify({"message": f"Content with ID {content_id} not found in CDN data"}), 404
+            
+        # Collect image paths to delete
+        image_paths = []
+        
+        # Add poster and backdrop
+        if content_item.get('poster_path'):
+            image_paths.append(content_item['poster_path'].lstrip('/'))
+        if content_item.get('backdrop_path'):
+            image_paths.append(content_item['backdrop_path'].lstrip('/'))
+            
+        # For TV shows, also collect season posters and episode stills
+        if content_type == 'tv' and 'seasons' in content_item:
+            for season in content_item['seasons']:
+                if season.get('poster_path'):
+                    image_paths.append(season['poster_path'].lstrip('/'))
+                    
+                if 'episodes' in season:
+                    for episode in season['episodes']:
+                        if episode.get('still_path'):
+                            image_paths.append(episode['still_path'].lstrip('/'))
+        
+        # Now delete the content from the JSON file
         original_count = len(items)
         items = [item for item in items if item.get('id') != content_id]
         
@@ -170,9 +192,21 @@ def delete_cdn_content(current_admin, content_type, content_id):
             # Log but continue - this is not critical
             print(f"Warning: Error updating with_images data: {str(e)}")
         
+        # Delete the actual image files
+        images_deleted = 0
+        for path in image_paths:
+            try:
+                file_path = os.path.join(current_app.root_path, 'cdn/posters_combined', path)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    images_deleted += 1
+            except Exception as e:
+                print(f"Warning: Could not delete image file {path}: {str(e)}")
+        
         return jsonify({
             "message": f"{content_type.capitalize()} with ID {content_id} deleted successfully from CDN",
-            "deleted": True
+            "deleted": True,
+            "images_deleted": images_deleted
         }), 200
     
     except Exception as e:

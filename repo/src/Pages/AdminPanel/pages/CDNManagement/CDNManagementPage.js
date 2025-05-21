@@ -18,18 +18,20 @@ import {
   Image,
   Select,
   DatePicker,
-  InputNumber
+  InputNumber,
+  Statistic,
+  Alert
 } from "antd";
 import { 
   InboxOutlined, 
-  ReloadOutlined, 
   SearchOutlined, 
   EyeOutlined, 
   EditOutlined,
   DeleteOutlined,
   StarFilled,
   FilterOutlined,
-  PlusOutlined
+  PlusOutlined,
+  ReloadOutlined  // Add this import
 } from '@ant-design/icons';
 import { API_URL } from "../../../../config";
 import './CDNManagementPage.css';
@@ -203,6 +205,15 @@ const CdnManagementPage = () => {
 
   // Create a form instance for the edit modal
   const [editForm] = Form.useForm();
+
+  // Add these new state variables at the top of your component
+  const [parsedJsonContent, setParsedJsonContent] = useState(null);
+  const [jsonSummary, setJsonSummary] = useState({ movies: 0, shows: 0, total: 0 });
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+  const [previewTitle, setPreviewTitle] = useState('');
+  const [previewPagination, setPreviewPagination] = useState({ current: 1, pageSize: 10 });
+  const [fullImportData, setFullImportData] = useState([]);
 
   const showImportModal = () => {
     setImportModalVisible(true);
@@ -385,49 +396,128 @@ const CdnManagementPage = () => {
     confirm();
   };
 
-  const jsonUploadProps = {
-    name: 'file',
-    multiple: false,
-    fileList: jsonFileList,
-    beforeUpload: (file) => {
-      // Check if file is JSON or CSV
-      const isJSONorCSV = file.type === 'application/json' || file.name.endsWith('.json') || 
-                          file.type === 'text/csv' || file.name.endsWith('.csv');
-      
-      if (!isJSONorCSV) {
-        message.error(`${file.name} is not a JSON or CSV file`);
-        return Upload.LIST_IGNORE;
+  // Enhance the jsonUploadProps to properly parse and preview titles
+const jsonUploadProps = {
+  name: 'file',
+  multiple: false,
+  fileList: jsonFileList,
+  beforeUpload: (file) => {
+    // Check if file is JSON or CSV
+    const isJSONorCSV = file.type === 'application/json' || file.name.endsWith('.json') || 
+                      file.type === 'text/csv' || file.name.endsWith('.csv');
+    
+    if (!isJSONorCSV) {
+      message.error(`${file.name} is not a JSON or CSV file`);
+      return Upload.LIST_IGNORE;
+    }
+    
+    // Read and parse the file to show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        let parsedData;
+        if (file.name.endsWith('.csv')) {
+          // Simple CSV parsing
+          const lines = e.target.result.split('\n');
+          const headers = lines[0].split(',');
+          parsedData = [];
+          
+          for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const values = lines[i].split(',');
+            const item = {};
+            headers.forEach((header, index) => {
+              item[header.trim()] = values[index]?.trim() || '';
+            });
+            parsedData.push(item);
+          }
+        } else {
+          // JSON parsing
+          parsedData = JSON.parse(e.target.result);
+          if (!Array.isArray(parsedData)) {
+            parsedData = [parsedData];
+          }
+        }
+        
+        // Calculate summary statistics
+        const movies = parsedData.filter(item => 
+          item.content_type === 'movie' || 
+          item.media_type === 'movie'
+        ).length;
+        
+        const shows = parsedData.filter(item => 
+          item.content_type === 'tv' || 
+          item.media_type === 'tv'
+        ).length;
+        
+        // Store the entire dataset
+        setFullImportData(parsedData);
+        
+        // Reset pagination to first page
+        setPreviewPagination({ current: 1, pageSize: 10 });
+        
+        // Store summary statistics and initial preview data
+        setJsonSummary({
+          movies,
+          shows,
+          total: parsedData.length
+        });
+        
+        setParsedJsonContent(parsedData);
+      } catch (error) {
+        console.error("Error parsing file:", error);
+        message.error(`Could not parse ${file.name}: ${error.message}`);
       }
-      
-      setJsonFileList([file]);
-      return false; // Prevent automatic upload
-    },
-    onRemove: () => {
-      setJsonFileList([]);
-    },
-  };
+    };
+    reader.readAsText(file);
+    
+    setJsonFileList([file]);
+    return false; // Prevent automatic upload
+  },
+  onRemove: () => {
+    setJsonFileList([]);
+    setParsedJsonContent(null);
+    setJsonSummary({ movies: 0, shows: 0, total: 0 });
+    setFullImportData([]);
+  },
+};
 
-  const imagesUploadProps = {
-    name: 'images',
-    multiple: true,
-    fileList: imagesFileList,
-    beforeUpload: (file) => {
-      // Only accept image files
-      const isJPG = file.type === 'image/jpeg' || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg');
-      
-      if (!isJPG) {
-        message.error(`${file.name} is not a JPG file`);
-        return Upload.LIST_IGNORE;
-      }
-      
-      // Add file to the list
-      setImagesFileList(prev => [...prev, file]);
-      return false; // Prevent automatic upload
-    },
-    onRemove: (file) => {
-      setImagesFileList(prev => prev.filter(item => item.uid !== file.uid));
-    },
-  };
+// Update the imagesUploadProps to generate thumbnails
+const imagesUploadProps = {
+  name: 'images',
+  multiple: true,
+  listType: 'picture-card',
+  fileList: imagesFileList,
+  beforeUpload: (file) => {
+    // Only accept image files
+    const isJPG = file.type === 'image/jpeg' || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg');
+    
+    if (!isJPG) {
+      message.error(`${file.name} is not a JPG file`);
+      return Upload.LIST_IGNORE;
+    }
+    
+    // Add file to the list with preview URL
+    const reader = new FileReader();
+    reader.onload = () => {
+      file.thumbUrl = reader.result;
+      setImagesFileList(prev => [...prev]);
+    };
+    reader.readAsDataURL(file);
+    
+    setImagesFileList(prev => [...prev, file]);
+    setImagesFileList(prev => [...prev, file]);
+    return false; // Prevent automatic upload
+  },
+  onRemove: (file) => {
+    setImagesFileList(prev => prev.filter(item => item.uid !== file.uid));
+  },
+  onPreview: (file) => {
+    setPreviewImage(file.thumbUrl || file.url);
+    setPreviewTitle(file.name);
+    setPreviewVisible(true);
+  }
+};
 
   const handleFormSubmit = async () => {
     try {
@@ -826,7 +916,13 @@ const handleViewItem = (record) => {
       const cdnData = await cdnResponse.json();
       
       if (cdnResponse.ok) {
-        message.success(cdnData.message || 'Content deleted successfully from CDN');
+        const imagesDeleted = cdnData.images_deleted || 0;
+        message.success(
+          <>
+            {cdnData.message} 
+            {imagesDeleted > 0 && <div>{imagesDeleted} associated image files were also removed.</div>}
+          </>
+        );
         handleDeleteModalClose();
         fetchCdnContent(); // Refresh the list
       } else {
@@ -1131,20 +1227,79 @@ const convertItemToFormValues = (item) => {
           {(importType === 'json' || importType === 'both') && (
             <>
               <Form.Item 
-                label="Upload JSON/CSV Data" 
+                label={<span style={{ fontSize: '16px', fontWeight: 500 }}>Upload JSON/CSV Data</span>}
                 name="jsonFile"
                 rules={[{ required: importType !== 'images', message: 'Please upload the data file' }]}
               >
-                <Dragger {...jsonUploadProps}>
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">Click or drag file to this area to upload</p>
-                  <p className="ant-upload-hint">
-                    Support for JSON or CSV file exported from amanflix-data-downloader
-                  </p>
-                </Dragger>
+                <div className="custom-upload-container">
+                  <Dragger 
+                    {...jsonUploadProps}
+                    className="netflix-styled-uploader"
+                    accept=".json,.csv"
+                    maxCount={1}
+                  >
+                    <div className="upload-content">
+                      <div className="upload-icon-container">
+                        {jsonFileList.length > 0 ? (
+                          <div className="file-selected">
+                            <div className="file-icon">
+                              {jsonFileList[0].name.endsWith('.json') ? 
+                                <span className="file-type-badge json">JSON</span> : 
+                                <span className="file-type-badge csv">CSV</span>
+                              }
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="upload-icon">
+                            <InboxOutlined style={{ fontSize: 48, color: '#e50914' }} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {jsonFileList.length > 0 ? (
+                        <div className="selected-file-info">
+                          <p className="file-name">{jsonFileList[0].name}</p>
+                          <p className="file-size">{(jsonFileList[0].size / 1024).toFixed(1)} KB</p>
+                          <p className="upload-action">Click to replace or drop a new file</p>
+                        </div>
+                      ) : (
+                        <div className="upload-instructions">
+                          <p className="ant-upload-text">
+                            Drop your JSON or CSV file here
+                          </p>
+                          <p className="upload-divider">OR</p>
+                          <Button 
+                            type="primary" 
+                            style={{ 
+                              backgroundColor: '#e50914', 
+                              borderColor: '#e50914',
+                              fontWeight: 500,
+                              height: '38px'
+                            }}
+                          >
+                            Browse Files
+                          </Button>
+                          <p className="ant-upload-hint">
+                            Support for <Tag color="#108ee9">JSON</Tag> or <Tag color="#87d068">CSV</Tag> formats
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </Dragger>
+                </div>
               </Form.Item>
+              
+              {/* File type verification message */}
+              {jsonFileList.length > 0 && (
+                <div className="file-verification-message">
+                  <Alert
+                    message="File ready for import"
+                    description={`${jsonFileList[0].name} has been selected and will be processed when you click "Start Import".`}
+                    type="success"
+                    showIcon
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -1177,6 +1332,110 @@ const convertItemToFormValues = (item) => {
               ) : (
                 <p style={{ textAlign: 'center' }}>Processing content...</p>
               )}
+            </div>
+          )}
+
+          {/* Add inside your Import Modal, after the JSON upload area */}
+          {parsedJsonContent && (
+            <div className="json-preview">
+              <Divider>Content Preview</Divider>
+              
+              <Flex gap="middle">
+                <div className="summary-stat">
+                  <Statistic 
+                    title="Total Titles" 
+                    value={jsonSummary.total} 
+                    valueStyle={{ color: '#1890ff' }}
+                  />
+                </div>
+                <div className="summary-stat">
+                  <Statistic 
+                    title="Movies" 
+                    value={jsonSummary.movies} 
+                    valueStyle={{ color: '#52c41a' }}
+                  />
+                </div>
+                <div className="summary-stat">
+                  <Statistic 
+                    title="TV Shows" 
+                    value={jsonSummary.shows} 
+                    valueStyle={{ color: '#722ed1' }}
+                  />
+                </div>
+              </Flex>
+              
+              <h4 style={{ margin: '16px 0', color: '#e0e0e0' }}>Content Preview</h4>
+              <Table 
+                dataSource={fullImportData}
+                size="small"
+                className="preview-table"
+                pagination={{
+                  pageSize: previewPagination.pageSize,
+                  current: previewPagination.current,
+                  total: fullImportData.length,
+                  onChange: (page, pageSize) => {
+                    setPreviewPagination({ current: page, pageSize });
+                  },
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+                }}
+                columns={[
+                  {
+                    title: 'ID',
+                    dataIndex: 'id',
+                    key: 'id',
+                    width: 70
+                  },
+                  {
+                    title: 'Title',
+                    key: 'title',
+                    render: (_, record) => (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {record.poster_path && (
+                          <img 
+                            src={record.poster_path.startsWith('http') 
+                              ? record.poster_path 
+                              : `${API_URL}/cdn/images${record.poster_path}`} 
+                            alt=""
+                            style={{ 
+                              width: '30px', 
+                              height: '45px',
+                              objectFit: 'cover',
+                              borderRadius: '2px'
+                            }}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.style.display = 'none';
+                            }} 
+                          />
+                        )}
+                        <span>{record.title || record.name || 'Untitled'}</span>
+                      </div>
+                    ),
+                    width: 300
+                  },
+                  {
+                    title: 'Type',
+                    key: 'type',
+                    render: (_, record) => (
+                      <Tag color={record.content_type === 'movie' || record.media_type === 'movie' ? 'blue' : 'purple'}>
+                        {record.content_type || record.media_type || 'Unknown'}
+                      </Tag>
+                    ),
+                    width: 100
+                  },
+                  {
+                    title: 'Year',
+                    key: 'year',
+                    render: (_, record) => {
+                      const date = record.release_date || record.first_air_date;
+                      return date ? date.substring(0, 4) : 'N/A';
+                    },
+                    width: 70
+                  }
+                ]}
+              />
             </div>
           )}
 
