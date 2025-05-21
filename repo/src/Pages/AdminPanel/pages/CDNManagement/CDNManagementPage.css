@@ -750,3 +750,64 @@
 *[class*="ant-"] .ant-checkbox + span {
   color: #ffffff !important;
 }
+
+/* Dynamic key-value form styling */
+.key-value-form-container {
+  margin-bottom: 24px;
+  border: 1px solid #283555;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #1a2035;
+}
+
+.key-value-header {
+  margin-bottom: 12px;
+  padding: 8px 0;
+  font-weight: 500;
+  color: #e0e0e0;
+  border-bottom: 1px solid #283555;
+}
+
+.key-value-row {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #283555;
+}
+
+.key-value-row:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.key-column {
+  width: 25%;
+  padding-right: 8px;
+}
+
+.type-column {
+  width: 15%;
+  padding-right: 8px;
+}
+
+.value-column {
+  width: 50%;
+  padding-right: 8px;
+}
+
+.action-column {
+  width: 10%;
+  text-align: center;
+}
+
+/* Improve dropdown appearance in dark theme */
+.key-value-form-container .ant-select-selector {
+  background-color: #141b2d !important;
+  border-color: #283555 !important;
+  color: #e0e0e0 !important;
+}
+
+/* Special form styling for dynamically added items */
+.key-value-form-container .ant-form-item {
+  margin-bottom: 0 !important;
+}
