@@ -1272,3 +1272,216 @@
   background-color: #c30710;
   border-color: #c30710;
 }
+
+/* Add these styles at the end of your CSS file */
+
+/* Import Modal Enhancements */
+.import-modal .ant-modal-content {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.import-modal .ant-modal-header {
+  padding: 16px 24px;
+  background: linear-gradient(to right, #141b2d, #1f2a40);
+  border-bottom: 1px solid #283555;
+}
+
+.import-modal .ant-modal-title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.import-modal .ant-modal-body {
+  padding: 24px;
+}
+
+/* Import type selection */
+.import-type-selection {
+  margin-bottom: 24px;
+}
+
+.import-type-selection .ant-radio-button-wrapper {
+  height: 40px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.import-type-selection .anticon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Merge option styling */
+.merge-option {
+  background: rgba(20, 27, 45, 0.4);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border-left: 3px solid #e50914;
+}
+
+.merge-option .ant-switch-checked {
+  background-color: #e50914;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.section-title .anticon {
+  margin-right: 8px;
+  color: #e50914;
+}
+
+/* Footer actions */
+.import-modal-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #283555;
+}
+
+.import-button {
+  background-color: #e50914;
+  border-color: #e50914;
+  height: 40px;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 0 24px;
+}
+
+.import-button:hover {
+  background-color: #f40612 !important;
+  border-color: #f40612 !important;
+}
+
+/* Image preview grid */
+.image-preview-container {
+  margin-top: 24px;
+}
+
+.image-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.image-thumbnail {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  aspect-ratio: 2/3;
+  background-color: #141b2d;
+  border: 1px solid #283555;
+  transition: all 0.2s;
+}
+
+.image-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-thumbnail:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.thumbnail-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.image-thumbnail:hover .thumbnail-overlay {
+  opacity: 1;
+}
+
+.more-images {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(229, 9, 20, 0.1);
+  border: 1px dashed #e50914;
+}
+
+.more-count {
+  font-size: 18px;
+  font-weight: bold;
+  color: #e50914;
+}
+
+/* Statistics cards */
+.json-preview .summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.json-preview .summary-stat {
+  background-color: rgba(31, 42, 64, 0.8);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #283555;
+  transition: all 0.2s;
+}
+
+.json-preview .summary-stat:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.json-preview .ant-statistic-title {
+  color: #a0a0a0;
+  margin-bottom: 8px;
+}
+
+/* Upload progress */
+.upload-progress-container {
+  background-color: rgba(31, 42, 64, 0.6);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 24px 0;
+  border: 1px solid #283555;
+}
+
+.upload-progress-container .ant-progress-inner {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.upload-progress-container .ant-progress-bg {
+  background-color: #e50914;
+}
+
+.upload-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  color: #e0e0e0;
+}
+
+.upload-status .anticon {
+  margin-right: 8px;
+  font-size: 16px;
+}

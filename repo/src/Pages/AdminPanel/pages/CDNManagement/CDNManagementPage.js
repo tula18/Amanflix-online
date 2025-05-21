@@ -31,7 +31,16 @@ import {
   StarFilled,
   FilterOutlined,
   PlusOutlined,
-  ReloadOutlined  // Add this import
+  ReloadOutlined,  // Add this import
+  FileTextOutlined,
+  PictureOutlined, 
+  AppstoreAddOutlined,
+  TableOutlined,
+  ImportOutlined,
+  CloudUploadOutlined,
+  SyncOutlined,
+  LoadingOutlined,
+  FileImageOutlined
 } from '@ant-design/icons';
 import { API_URL } from "../../../../config";
 import './CDNManagementPage.css';
@@ -1204,30 +1213,50 @@ const convertItemToFormValues = (item) => {
         open={importModalVisible}
         onCancel={handleImportCancel}
         footer={null}
-        width={700}
+        width={800}
+        className="import-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item label="Import Type">
-            <Radio.Group value={importType} onChange={handleImportTypeChange}>
-              <Radio.Button value="json">JSON/CSV Data</Radio.Button>
-              <Radio.Button value="images">Images</Radio.Button>
-              <Radio.Button value="both">Both</Radio.Button>
+          {/* Import Type Selection */}
+          <Form.Item label={<span className="section-title"><ImportOutlined /> Choose Import Type</span>} className="import-type-selection">
+            <Radio.Group value={importType} onChange={handleImportTypeChange} buttonStyle="solid">
+              <Radio.Button value="json">
+                <FileTextOutlined /> JSON/CSV Data
+              </Radio.Button>
+              <Radio.Button value="images">
+                <PictureOutlined /> Images
+              </Radio.Button>
+              <Radio.Button value="both">
+                <AppstoreAddOutlined /> Both
+              </Radio.Button>
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item label="Content Import Options">
-            <Flex align="center">
-              <Switch checked={mergeContent} onChange={handleMergeChange} />
-              <span style={{ marginLeft: 8 }}>
-                Merge with existing content (if unchecked, will replace existing content)
-              </span>
+          {/* Content Import Options */}
+          <div className="merge-option">
+            <Flex align="center" justify="space-between">
+              <div>
+                <div style={{ fontWeight: 500, marginBottom: 4, color: '#e0e0e0' }}>Content Merge Option</div>
+                <div style={{ color: '#a0a0a0', fontSize: 13 }}>
+                  {mergeContent ? 
+                    "New content will be merged with existing data" : 
+                    "New content will replace existing data"}
+                </div>
+              </div>
+              <Flex align="center">
+                <Switch checked={mergeContent} onChange={handleMergeChange} />
+                <span style={{ marginLeft: 8, fontWeight: mergeContent ? 500 : 400, color: '#e0e0e0' }}>
+                  {mergeContent ? "Merge" : "Replace"}
+                </span>
+              </Flex>
             </Flex>
-          </Form.Item>
+          </div>
 
+          {/* JSON/CSV Upload Section */}
           {(importType === 'json' || importType === 'both') && (
             <>
               <Form.Item 
-                label={<span style={{ fontSize: '16px', fontWeight: 500 }}>Upload JSON/CSV Data</span>}
+                label={<span className="section-title"><FileTextOutlined /> JSON/CSV Data</span>}
                 name="jsonFile"
                 rules={[{ required: importType !== 'images', message: 'Please upload the data file' }]}
               >
@@ -1264,7 +1293,7 @@ const convertItemToFormValues = (item) => {
                         </div>
                       ) : (
                         <div className="upload-instructions">
-                          <p className="ant-upload-text">
+                          <p className="ant-upload-text" style={{ color: "#e0e0e0" }}>
                             Drop your JSON or CSV file here
                           </p>
                           <p className="upload-divider">OR</p>
@@ -1279,7 +1308,7 @@ const convertItemToFormValues = (item) => {
                           >
                             Browse Files
                           </Button>
-                          <p className="ant-upload-hint">
+                          <p className="ant-upload-hint" style={{ color: "#c0c0c0" }}>
                             Support for <Tag color="#108ee9">JSON</Tag> or <Tag color="#87d068">CSV</Tag> formats
                           </p>
                         </div>
@@ -1289,7 +1318,7 @@ const convertItemToFormValues = (item) => {
                 </div>
               </Form.Item>
               
-              {/* File type verification message */}
+              {/* File verification message */}
               {jsonFileList.length > 0 && (
                 <div className="file-verification-message">
                   <Alert
@@ -1303,10 +1332,11 @@ const convertItemToFormValues = (item) => {
             </>
           )}
 
+          {/* Image Upload Section */}
           {(importType === 'images' || importType === 'both') && (
             <>
               <Form.Item 
-                label={<span style={{ fontSize: '16px', fontWeight: 500 }}>Upload Image Files (JPG)</span>}
+                label={<span className="section-title"><PictureOutlined /> Image Files</span>}
                 name="imageFiles"
                 rules={[{ required: importType !== 'json', message: 'Please upload image files' }]}
               >
@@ -1340,10 +1370,10 @@ const convertItemToFormValues = (item) => {
                         </div>
                       ) : (
                         <div className="upload-instructions">
-                          <p className="ant-upload-text">
+                          <p className="ant-upload-text" style={{ color: "#e0e0e0" }}>
                             Drop your JPG images here
                           </p>
-                          <p className="upload-divider">OR</p>
+                          <p className="upload-divider" style={{ color: "#a0a0a0" }}>OR</p>
                           <Button 
                             type="primary" 
                             style={{ 
@@ -1355,7 +1385,7 @@ const convertItemToFormValues = (item) => {
                           >
                             Browse Images
                           </Button>
-                          <p className="ant-upload-hint">
+                          <p className="ant-upload-hint" style={{ color: "#c0c0c0" }}>
                             Select multiple poster and backdrop images
                           </p>
                         </div>
@@ -1379,9 +1409,9 @@ const convertItemToFormValues = (item) => {
               {/* Image thumbnails preview */}
               {imagesFileList.length > 0 && (
                 <div className="image-preview-container">
-                  <h4 style={{ margin: '16px 0 12px 0', color: '#e0e0e0' }}>Image Previews</h4>
+                  <div className="section-title"><FileImageOutlined /> Image Previews</div>
                   <div className="image-thumbnails">
-                    {imagesFileList.slice(0, 8).map((file, index) => (
+                    {imagesFileList.slice(0, 12).map((file, index) => (
                       <div key={file.uid} className="image-thumbnail">
                         <img src={file.thumbUrl} alt={`Preview ${index + 1}`} />
                         <div className="thumbnail-overlay">
@@ -1398,9 +1428,9 @@ const convertItemToFormValues = (item) => {
                         </div>
                       </div>
                     ))}
-                    {imagesFileList.length > 8 && (
+                    {imagesFileList.length > 12 && (
                       <div className="image-thumbnail more-images">
-                        <div className="more-count">+{imagesFileList.length - 8}</div>
+                        <div className="more-count">+{imagesFileList.length - 12}</div>
                       </div>
                     )}
                   </div>
@@ -1409,24 +1439,32 @@ const convertItemToFormValues = (item) => {
             </>
           )}
 
+          {/* Upload Progress */}
           {uploading && (
-            <div style={{ marginBottom: 16 }}>
-              <Divider>Upload Progress</Divider>
+            <div className="upload-progress-container">
               <Progress percent={uploadProgress} status="active" />
-              {uploadProgress <= 50 ? (
-                <p style={{ textAlign: 'center' }}>Uploading files...</p>
-              ) : (
-                <p style={{ textAlign: 'center' }}>Processing content...</p>
-              )}
+              <div className="upload-status">
+                {uploadProgress <= 50 ? (
+                  <>
+                    <CloudUploadOutlined /> Uploading files...
+                  </>
+                ) : (
+                  <>
+                    <SyncOutlined spin /> Processing content...
+                  </>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Add inside your Import Modal, after the JSON upload area */}
+          {/* JSON Preview Section */}
           {parsedJsonContent && (
             <div className="json-preview">
-              <Divider>Content Preview</Divider>
+              <Divider orientation="left">
+                <span className="section-title"><TableOutlined /> Content Preview</span>
+              </Divider>
               
-              <Flex gap="middle">
+              <div className="summary-stats">
                 <div className="summary-stat">
                   <Statistic 
                     title="Total Titles" 
@@ -1448,9 +1486,8 @@ const convertItemToFormValues = (item) => {
                     valueStyle={{ color: '#722ed1' }}
                   />
                 </div>
-              </Flex>
+              </div>
               
-              <h4 style={{ margin: '16px 0', color: '#e0e0e0' }}>Content Preview</h4>
               <Table 
                 dataSource={fullImportData}
                 size="small"
@@ -1525,14 +1562,21 @@ const convertItemToFormValues = (item) => {
             </div>
           )}
 
-          <Form.Item>
+          {/* Form Actions */}
+          <div className="import-modal-footer">
             <Flex justify="end" gap="small">
               <Button onClick={handleImportCancel}>Cancel</Button>
-              <Button type="primary" onClick={handleFormSubmit} loading={uploading}>
+              <Button 
+                type="primary" 
+                onClick={handleFormSubmit} 
+                loading={uploading}
+                className="import-button"
+                icon={uploading ? <LoadingOutlined /> : <CloudUploadOutlined />}
+              >
                 {uploading ? 'Importing...' : 'Start Import'}
               </Button>
             </Flex>
-          </Form.Item>
+          </div>
         </Form>
       </Modal>
 
@@ -1727,4 +1771,4 @@ const convertItemToFormValues = (item) => {
   );
 };
 
-export default CdnManagementPage;
+export default CdnManagementPage
