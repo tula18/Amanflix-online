@@ -1,0 +1,7047 @@
+[
+  {
+    "filename": "Movies/Fear and Loathing in Las Vegas (1998)/Fear.and.Loathing.in.Las.Vegas.720p.HDDVD.DTS.x264-ESiR.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Fear and Loathing in Las Vegas",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "TS",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Fear and Loathing in Las Vegas (1998)/Fear.and.Loathing.in.Las.Vegas.720p.HDDVD.DTS.x264-ESiR.mkv"
+    },
+    "guessit_result": {
+      "title": "Fear and Loathing in Las Vegas",
+      "year": 1998,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "HD-DVD",
+      "codec": "H.264",
+      "audio": "DTS",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Fear and Loathing in Las Vegas (1998)/Fear.and.Loathing.in.Las.Vegas.720p.HDDVD.DTS.x264-ESiR.mkv"
+    },
+    "expected_result": {
+      "title": "Fear and Loathing in Las Vegas",
+      "year": 1998,
+      "screen_size": "720p",
+      "source": "HD-DVD",
+      "audio_codec": "DTS",
+      "video_codec": "H.264",
+      "container": "mkv",
+      "release_group": "ESiR"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Fear and Loathing in Las Vegas",
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 1998,
+          "expected": 1998
+        },
+        "source": {
+          "custom": "TS",
+          "guessit": "HD-DVD",
+          "expected": "HD-DVD"
+        },
+        "audio": {
+          "custom": null,
+          "guessit": "DTS",
+          "expected": "DTS"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 1998,
+        "source": "HD-DVD",
+        "audio": "DTS"
+      }
+    }
+  },
+  {
+    "filename": "Movies/El Dia de la Bestia (1995)/El.dia.de.la.bestia.DVDrip.Spanish.DivX.by.Artik[SEDG].avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "El dia de la bestia",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "DivX",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/El Dia de la Bestia (1995)/El.dia.de.la.bestia.DVDrip.Spanish.DivX.by.Artik[SEDG].avi"
+    },
+    "guessit_result": {
+      "title": "El Dia de la Bestia",
+      "year": 1995,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "DivX",
+      "audio": null,
+      "language": "es",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/El Dia de la Bestia (1995)/El.dia.de.la.bestia.DVDrip.Spanish.DivX.by.Artik[SEDG].avi"
+    },
+    "expected_result": {
+      "title": "El Dia de la Bestia",
+      "year": 1995,
+      "source": "DVD",
+      "other": "Rip",
+      "language": "spanish",
+      "video_codec": "DivX",
+      "release_group": "Artik[SEDG]",
+      "container": "avi"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "El dia de la bestia",
+        "codec": "DivX"
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 1995,
+          "expected": 1995
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "es",
+          "expected": "spanish"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 1995,
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Dark City (1998)/Dark.City.(1998).DC.BDRip.720p.DTS.X264-CHD.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Dark City",
+      "year": 1998,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "BDRip",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Dark City (1998)/Dark.City.(1998).DC.BDRip.720p.DTS.X264-CHD.mkv"
+    },
+    "guessit_result": {
+      "title": "Dark City",
+      "year": 1998,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "DTS",
+      "language": null,
+      "edition": "Director's Cut",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Dark City (1998)/Dark.City.(1998).DC.BDRip.720p.DTS.X264-CHD.mkv"
+    },
+    "expected_result": {
+      "title": "Dark City",
+      "year": 1998,
+      "source": "Blu-ray",
+      "other": "Rip",
+      "screen_size": "720p",
+      "audio_codec": "DTS",
+      "video_codec": "H.264",
+      "release_group": "CHD"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Dark City",
+        "year": 1998,
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "source": {
+          "custom": "BDRip",
+          "guessit": "Blu-ray",
+          "expected": "Blu-ray"
+        },
+        "audio": {
+          "custom": null,
+          "guessit": "DTS",
+          "expected": "DTS"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "Blu-ray",
+        "audio": "DTS"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Sin City (BluRay) (2005)/Sin.City.2005.BDRip.720p.x264.AC3-SEPTiC.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Sin City",
+      "year": 2005,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "AC3",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Sin City (BluRay) (2005)/Sin.City.2005.BDRip.720p.x264.AC3-SEPTiC.mkv"
+    },
+    "guessit_result": {
+      "title": "Sin City",
+      "year": 2005,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Sin City (BluRay) (2005)/Sin.City.2005.BDRip.720p.x264.AC3-SEPTiC.mkv"
+    },
+    "expected_result": {
+      "title": "Sin City",
+      "year": 2005,
+      "source": "Blu-ray",
+      "other": "Rip",
+      "screen_size": "720p",
+      "video_codec": "H.264",
+      "audio_codec": "Dolby Digital",
+      "release_group": "SEPTiC"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Sin City",
+        "year": 2005,
+        "quality": "720p",
+        "source": "Blu-ray",
+        "codec": "H.264"
+      },
+      "differences": {
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Borat (2006)/Borat.(2006).R5.PROPER.REPACK.DVDRip.XviD-PUKKA.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Borat",
+      "year": 2006,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Borat (2006)/Borat.(2006).R5.PROPER.REPACK.DVDRip.XviD-PUKKA.avi"
+    },
+    "guessit_result": {
+      "title": "Borat",
+      "year": 2006,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Borat (2006)/Borat.(2006).R5.PROPER.REPACK.DVDRip.XviD-PUKKA.avi"
+    },
+    "expected_result": {
+      "title": "Borat",
+      "year": 2006,
+      "proper_count": 2,
+      "source": "DVD",
+      "other": [
+        "Region 5",
+        "Proper",
+        "Rip"
+      ],
+      "video_codec": "Xvid",
+      "release_group": "PUKKA"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Borat",
+        "year": 2006,
+        "codec": "Xvid"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Enter.the.Void.2009.2in1.1080p.BluRay.DD5.1.x264-EbP.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Enter the Void",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "1080p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "Dolby Digital 5.1",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Enter.the.Void.2009.2in1.1080p.BluRay.DD5.1.x264-EbP.mkv"
+    },
+    "guessit_result": {
+      "title": "Enter the Void",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "1080p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Enter.the.Void.2009.2in1.1080p.BluRay.DD5.1.x264-EbP.mkv"
+    },
+    "expected_result": {
+      "title": "Enter the Void",
+      "year": 2009,
+      "other": "2in1",
+      "screen_size": "1080p",
+      "source": "Blu-ray",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "H.264",
+      "release_group": "EbP"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Enter the Void",
+        "year": 2009,
+        "quality": "1080p",
+        "source": "Blu-ray",
+        "codec": "H.264"
+      },
+      "differences": {
+        "audio": {
+          "custom": "Dolby Digital 5.1",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "[XCT].Le.Prestige.(The.Prestige).DVDRip.[x264.HP.He-Aac.{Fr-Eng}.St{Fr-Eng}.Chaps].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Le Prestige (The Prestige)",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "H.264",
+      "audio": "Aac",
+      "language": "Eng",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "[XCT].Le.Prestige.(The.Prestige).DVDRip.[x264.HP.He-Aac.{Fr-Eng}.St{Fr-Eng}.Chaps].mkv"
+    },
+    "guessit_result": {
+      "title": "Le Prestige",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "H.264",
+      "audio": "AAC",
+      "language": "[<Language [fr]>, <Language [en]>]",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "[XCT].Le.Prestige.(The.Prestige).DVDRip.[x264.HP.He-Aac.{Fr-Eng}.St{Fr-Eng}.Chaps].mkv"
+    },
+    "expected_result": {
+      "title": "Le Prestige",
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "H.264",
+      "video_profile": "High",
+      "audio_codec": "AAC",
+      "audio_profile": "High Efficiency",
+      "language": [
+        "french",
+        "english"
+      ],
+      "subtitle_language": [
+        "french",
+        "english"
+      ],
+      "release_group": "Chaps"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "H.264",
+        "audio": "Aac"
+      },
+      "differences": {
+        "title": {
+          "custom": "Le Prestige (The Prestige)",
+          "guessit": "Le Prestige",
+          "expected": "Le Prestige"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": "Eng",
+          "guessit": "[<Language [fr]>, <Language [en]>]",
+          "expected": [
+            "french",
+            "english"
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Le Prestige",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Battle Royale (2000)/Battle.Royale.(Batoru.Rowaiaru).(2000).(Special.Edition).CD1of2.DVDRiP.XviD-[ZeaL].avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Battle Royale (Batoru Rowaiaru)",
+      "year": 2000,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": "Special",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Battle Royale (2000)/Battle.Royale.(Batoru.Rowaiaru).(2000).(Special.Edition).CD1of2.DVDRiP.XviD-[ZeaL].avi"
+    },
+    "guessit_result": {
+      "title": "Battle Royale",
+      "year": 2000,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": "Special",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Battle Royale (2000)/Battle.Royale.(Batoru.Rowaiaru).(2000).(Special.Edition).CD1of2.DVDRiP.XviD-[ZeaL].avi"
+    },
+    "expected_result": {
+      "title": "Battle Royale",
+      "year": 2000,
+      "edition": "Special",
+      "cd": 1,
+      "cd_count": 2,
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "ZeaL"
+    },
+    "comparison": {
+      "agreement": {
+        "year": 2000,
+        "codec": "Xvid",
+        "edition": "Special"
+      },
+      "differences": {
+        "title": {
+          "custom": "Battle Royale (Batoru Rowaiaru)",
+          "guessit": "Battle Royale",
+          "expected": "Battle Royale"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Battle Royale",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Brazil (1985)/Brazil_Criterion_Edition_(1985).CD2.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Brazil Criterion Edition CD2",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Brazil (1985)/Brazil_Criterion_Edition_(1985).CD2.avi"
+    },
+    "guessit_result": {
+      "title": "Brazil",
+      "year": 1985,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": "Criterion",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Brazil (1985)/Brazil_Criterion_Edition_(1985).CD2.avi"
+    },
+    "expected_result": {
+      "title": "Brazil",
+      "edition": "Criterion",
+      "year": 1985,
+      "cd": 2
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Brazil Criterion Edition CD2",
+          "guessit": "Brazil",
+          "expected": "Brazil"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 1985,
+          "expected": 1985
+        },
+        "edition": {
+          "custom": null,
+          "guessit": "Criterion",
+          "expected": "Criterion"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Brazil",
+        "year": 1985,
+        "edition": "Criterion"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Picnic.at.Hanging.Rock.1975.Criterion.Collection.1080p.BluRay.x264.DTS-WiKi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Picnic at Hanging Rock",
+      "year": 1975,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "1080p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": "Criterion",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Picnic.at.Hanging.Rock.1975.Criterion.Collection.1080p.BluRay.x264.DTS-WiKi"
+    },
+    "guessit_result": {
+      "title": "Picnic at Hanging Rock",
+      "year": 1975,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "1080p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "DTS",
+      "language": null,
+      "edition": "Criterion",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Picnic.at.Hanging.Rock.1975.Criterion.Collection.1080p.BluRay.x264.DTS-WiKi"
+    },
+    "expected_result": {
+      "title": "Picnic at Hanging Rock",
+      "edition": "Criterion",
+      "year": 1975
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Picnic at Hanging Rock",
+        "year": 1975,
+        "edition": "Criterion"
+      },
+      "differences": {},
+      "confidence_scores": {},
+      "recommended": {}
+    }
+  },
+  {
+    "filename": "Movies/Persepolis (2007)/[XCT] Persepolis [H264+Aac-128(Fr-Eng)+ST(Fr-Eng)+Ind].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Persepolis",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": "H.264",
+      "audio": "Aac",
+      "language": "Eng",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Persepolis (2007)/[XCT] Persepolis [H264+Aac-128(Fr-Eng)+ST(Fr-Eng)+Ind].mkv"
+    },
+    "guessit_result": {
+      "title": "Persepolis",
+      "year": 2007,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": "H.264",
+      "audio": "AAC",
+      "language": "[<Language [fr]>, <Language [en]>]",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Persepolis (2007)/[XCT] Persepolis [H264+Aac-128(Fr-Eng)+ST(Fr-Eng)+Ind].mkv"
+    },
+    "expected_result": {
+      "title": "Persepolis",
+      "year": 2007,
+      "video_codec": "H.264",
+      "audio_codec": "AAC",
+      "language": [
+        "French",
+        "English"
+      ],
+      "subtitle_language": [
+        "French",
+        "English"
+      ],
+      "release_group": "Ind"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Persepolis",
+        "codec": "H.264",
+        "audio": "Aac"
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 2007,
+          "expected": 2007
+        },
+        "language": {
+          "custom": "Eng",
+          "guessit": "[<Language [fr]>, <Language [en]>]",
+          "expected": [
+            "French",
+            "English"
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 2007
+      }
+    }
+  },
+  {
+    "filename": "Movies/Toy Story (1995)/Toy Story [HDTV 720p English-Spanish].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Toy Story [",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Toy Story (1995)/Toy Story [HDTV 720p English-Spanish].mkv"
+    },
+    "guessit_result": {
+      "title": "Toy Story",
+      "year": 1995,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": null,
+      "audio": null,
+      "language": "[<Language [en]>, <Language [es]>]",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Toy Story (1995)/Toy Story [HDTV 720p English-Spanish].mkv"
+    },
+    "expected_result": {
+      "title": "Toy Story",
+      "year": 1995,
+      "source": "HDTV",
+      "screen_size": "720p",
+      "language": [
+        "english",
+        "spanish"
+      ]
+    },
+    "comparison": {
+      "agreement": {
+        "quality": "720p",
+        "source": "HDTV"
+      },
+      "differences": {
+        "title": {
+          "custom": "Toy Story [",
+          "guessit": "Toy Story",
+          "expected": "Toy Story"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 1995,
+          "expected": 1995
+        },
+        "language": {
+          "custom": null,
+          "guessit": "[<Language [en]>, <Language [es]>]",
+          "expected": [
+            "english",
+            "spanish"
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Toy Story",
+        "year": 1995
+      }
+    }
+  },
+  {
+    "filename": "Movies/Office Space (1999)/Office.Space.[Dual-DVDRip].[Spanish-English].[XviD-AC3-AC3].[by.Oswald].avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Office Space",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": "AC3",
+      "language": "Dual",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Office Space (1999)/Office.Space.[Dual-DVDRip].[Spanish-English].[XviD-AC3-AC3].[by.Oswald].avi"
+    },
+    "guessit_result": {
+      "title": "Office Space",
+      "year": 1999,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": "Dolby Digital",
+      "language": "[<Language [es]>, <Language [en]>]",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Office Space (1999)/Office.Space.[Dual-DVDRip].[Spanish-English].[XviD-AC3-AC3].[by.Oswald].avi"
+    },
+    "expected_result": {
+      "title": "Office Space",
+      "year": 1999,
+      "other": [
+        "Dual Audio",
+        "Rip"
+      ],
+      "source": "DVD",
+      "language": [
+        "english",
+        "spanish"
+      ],
+      "video_codec": "Xvid",
+      "audio_codec": "Dolby Digital"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Office Space",
+        "codec": "Xvid"
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 1999,
+          "expected": 1999
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        },
+        "language": {
+          "custom": "Dual",
+          "guessit": "[<Language [es]>, <Language [en]>]",
+          "expected": [
+            "english",
+            "spanish"
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 1999,
+        "source": "DVD",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Wild Zero (2000)/Wild.Zero.DVDivX-EPiC.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Wild Zero DVDivX",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": "DivX",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Wild Zero (2000)/Wild.Zero.DVDivX-EPiC.avi"
+    },
+    "guessit_result": {
+      "title": "Wild Zero",
+      "year": 2000,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": "DivX",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Wild Zero (2000)/Wild.Zero.DVDivX-EPiC.avi"
+    },
+    "expected_result": {
+      "title": "Wild Zero",
+      "year": 2000,
+      "video_codec": "DivX",
+      "release_group": "EPiC"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "DivX"
+      },
+      "differences": {
+        "title": {
+          "custom": "Wild Zero DVDivX",
+          "guessit": "Wild Zero",
+          "expected": "Wild Zero"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2000,
+          "expected": 2000
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Wild Zero",
+        "year": 2000
+      }
+    }
+  },
+  {
+    "filename": "movies/Baraka_Edition_Collector.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Baraka Edition Collector",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Baraka_Edition_Collector.avi"
+    },
+    "guessit_result": {
+      "title": "Baraka",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": "Collector",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Baraka_Edition_Collector.avi"
+    },
+    "expected_result": {
+      "title": "Baraka",
+      "edition": "Collector"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Baraka Edition Collector",
+          "guessit": "Baraka",
+          "expected": "Baraka"
+        },
+        "edition": {
+          "custom": null,
+          "guessit": "Collector",
+          "expected": "Collector"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Baraka",
+        "edition": "Collector"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Blade Runner (1982)/Blade.Runner.(1982).(Director's.Cut).CD1.DVDRip.XviD.AC3-WAF.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Blade Runner",
+      "year": 1982,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": "AC3",
+      "language": null,
+      "edition": "Director",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Blade Runner (1982)/Blade.Runner.(1982).(Director's.Cut).CD1.DVDRip.XviD.AC3-WAF.avi"
+    },
+    "guessit_result": {
+      "title": "Blade Runner",
+      "year": 1982,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": "Director's Cut",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Blade Runner (1982)/Blade.Runner.(1982).(Director's.Cut).CD1.DVDRip.XviD.AC3-WAF.avi"
+    },
+    "expected_result": {
+      "title": "Blade Runner",
+      "year": 1982,
+      "edition": "Director's Cut",
+      "cd": 1,
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "audio_codec": "Dolby Digital",
+      "release_group": "WAF"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Blade Runner",
+        "year": 1982,
+        "codec": "Xvid"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        },
+        "edition": {
+          "custom": "Director",
+          "guessit": "Director's Cut",
+          "expected": "Director's Cut"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD",
+        "audio": "Dolby Digital",
+        "edition": "Director's Cut"
+      }
+    }
+  },
+  {
+    "filename": "movies/American.The.Bill.Hicks.Story.2009.DVDRip.XviD-EPiSODE.[UsaBit.com]/UsaBit.com_esd-americanbh.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "UsaBit com esd americanbh",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/American.The.Bill.Hicks.Story.2009.DVDRip.XviD-EPiSODE.[UsaBit.com]/UsaBit.com_esd-americanbh.avi"
+    },
+    "guessit_result": {
+      "title": "American The Bill Hicks Story",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/American.The.Bill.Hicks.Story.2009.DVDRip.XviD-EPiSODE.[UsaBit.com]/UsaBit.com_esd-americanbh.avi"
+    },
+    "expected_result": {
+      "title": "American The Bill Hicks Story",
+      "year": 2009,
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "EPiSODE",
+      "website": "UsaBit.com"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "UsaBit com esd americanbh",
+          "guessit": "American The Bill Hicks Story",
+          "expected": "American The Bill Hicks Story"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2009,
+          "expected": 2009
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "American The Bill Hicks Story",
+        "year": 2009,
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "movies/Charlie.And.Boots.DVDRip.XviD-TheWretched/wthd-cab.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "wthd cab",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Charlie.And.Boots.DVDRip.XviD-TheWretched/wthd-cab.avi"
+    },
+    "guessit_result": {
+      "title": "Charlie And Boots",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Charlie.And.Boots.DVDRip.XviD-TheWretched/wthd-cab.avi"
+    },
+    "expected_result": {
+      "title": "Charlie And Boots",
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "TheWretched"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "wthd cab",
+          "guessit": "Charlie And Boots",
+          "expected": "Charlie And Boots"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Charlie And Boots",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "movies/Steig Larsson Millenium Trilogy (2009) BRrip 720 AAC x264/(1)The Girl With The Dragon Tattoo (2009) BRrip 720 AAC x264.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "(1)The Girl With The Dragon Tattoo",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "BRRip",
+      "codec": "H.264",
+      "audio": "AAC",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Steig Larsson Millenium Trilogy (2009) BRrip 720 AAC x264/(1)The Girl With The Dragon Tattoo (2009) BRrip 720 AAC x264.mkv"
+    },
+    "guessit_result": {
+      "title": "The Girl With The Dragon Tattoo",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "AAC",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Steig Larsson Millenium Trilogy (2009) BRrip 720 AAC x264/(1)The Girl With The Dragon Tattoo (2009) BRrip 720 AAC x264.mkv"
+    },
+    "expected_result": {
+      "title": "The Girl With The Dragon Tattoo",
+      "year": 2009,
+      "source": "Blu-ray",
+      "other": [
+        "Reencoded",
+        "Rip"
+      ],
+      "audio_codec": "AAC",
+      "video_codec": "H.264",
+      "screen_size": "720p"
+    },
+    "comparison": {
+      "agreement": {
+        "year": 2009,
+        "codec": "H.264",
+        "audio": "AAC"
+      },
+      "differences": {
+        "title": {
+          "custom": "(1)The Girl With The Dragon Tattoo",
+          "guessit": "The Girl With The Dragon Tattoo",
+          "expected": "The Girl With The Dragon Tattoo"
+        },
+        "quality": {
+          "custom": null,
+          "guessit": "720p",
+          "expected": "720p"
+        },
+        "source": {
+          "custom": "BRRip",
+          "guessit": "Blu-ray",
+          "expected": "Blu-ray"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Girl With The Dragon Tattoo",
+        "quality": "720p",
+        "source": "Blu-ray"
+      }
+    }
+  },
+  {
+    "filename": "movies/Greenberg.REPACK.LiMiTED.DVDRip.XviD-ARROW/arw-repack-greenberg.dvdrip.xvid.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "arw greenberg",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Greenberg.REPACK.LiMiTED.DVDRip.XviD-ARROW/arw-repack-greenberg.dvdrip.xvid.avi"
+    },
+    "guessit_result": {
+      "title": "Greenberg",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": "Limited",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/Greenberg.REPACK.LiMiTED.DVDRip.XviD-ARROW/arw-repack-greenberg.dvdrip.xvid.avi"
+    },
+    "expected_result": {
+      "title": "Greenberg",
+      "source": "DVD",
+      "video_codec": "Xvid",
+      "release_group": "ARROW",
+      "other": [
+        "Proper",
+        "Rip"
+      ],
+      "edition": "Limited",
+      "proper_count": 1
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "arw greenberg",
+          "guessit": "Greenberg",
+          "expected": "Greenberg"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "edition": {
+          "custom": null,
+          "guessit": "Limited",
+          "expected": "Limited"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Greenberg",
+        "source": "DVD",
+        "edition": "Limited"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Fr - Paris 2054, Renaissance (2005) - De Christian Volckman - (Film Divx Science Fiction Fantastique Thriller Policier N&B).avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Fr Paris 2054, Renaissance",
+      "year": 2005,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": "Divx",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Fr - Paris 2054, Renaissance (2005) - De Christian Volckman - (Film Divx Science Fiction Fantastique Thriller Policier N&B).avi"
+    },
+    "guessit_result": {
+      "title": "Paris 2054, Renaissance",
+      "year": 2005,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": "DivX",
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Fr - Paris 2054, Renaissance (2005) - De Christian Volckman - (Film Divx Science Fiction Fantastique Thriller Policier N&B).avi"
+    },
+    "expected_result": {
+      "title": "Paris 2054, Renaissance",
+      "year": 2005,
+      "language": "french",
+      "video_codec": "DivX"
+    },
+    "comparison": {
+      "agreement": {
+        "year": 2005,
+        "codec": "Divx"
+      },
+      "differences": {
+        "title": {
+          "custom": "Fr Paris 2054, Renaissance",
+          "guessit": "Paris 2054, Renaissance",
+          "expected": "Paris 2054, Renaissance"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "french"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Paris 2054, Renaissance"
+      }
+    }
+  },
+  {
+    "filename": "Movies/[阿维达].Avida.2006.FRENCH.DVDRiP.XViD-PROD.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Avida",
+      "year": 2006,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/[阿维达].Avida.2006.FRENCH.DVDRiP.XViD-PROD.avi"
+    },
+    "guessit_result": {
+      "title": "Avida",
+      "year": 2006,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/[阿维达].Avida.2006.FRENCH.DVDRiP.XViD-PROD.avi"
+    },
+    "expected_result": {
+      "title": "Avida",
+      "year": 2006,
+      "language": "french",
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "PROD"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Avida",
+        "year": 2006,
+        "codec": "Xvid"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "french"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Alice in Wonderland DVDRip.XviD-DiAMOND/dmd-aw.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "dmd aw",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Alice in Wonderland DVDRip.XviD-DiAMOND/dmd-aw.avi"
+    },
+    "guessit_result": {
+      "title": "Alice in Wonderland",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Alice in Wonderland DVDRip.XviD-DiAMOND/dmd-aw.avi"
+    },
+    "expected_result": {
+      "title": "Alice in Wonderland",
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "DiAMOND"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "dmd aw",
+          "guessit": "Alice in Wonderland",
+          "expected": "Alice in Wonderland"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Alice in Wonderland",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Ne.Le.Dis.A.Personne.Fr 2 cd/personnea_mp.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "personnea mp",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Ne.Le.Dis.A.Personne.Fr 2 cd/personnea_mp.avi"
+    },
+    "guessit_result": {
+      "title": "Ne Le Dis A Personne",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Ne.Le.Dis.A.Personne.Fr 2 cd/personnea_mp.avi"
+    },
+    "expected_result": {
+      "title": "Ne Le Dis A Personne",
+      "language": "french",
+      "cd_count": 2
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "personnea mp",
+          "guessit": "Ne Le Dis A Personne",
+          "expected": "Ne Le Dis A Personne"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "french"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Ne Le Dis A Personne"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Bunker Palace Hôtel (Enki Bilal) (1989)/Enki Bilal - Bunker Palace Hotel (Fr Vhs Rip).avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Enki Bilal Bunker Palace Hotel",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Bunker Palace Hôtel (Enki Bilal) (1989)/Enki Bilal - Bunker Palace Hotel (Fr Vhs Rip).avi"
+    },
+    "guessit_result": {
+      "title": "Bunker Palace Hôtel",
+      "year": 1989,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "VHS",
+      "codec": null,
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Bunker Palace Hôtel (Enki Bilal) (1989)/Enki Bilal - Bunker Palace Hotel (Fr Vhs Rip).avi"
+    },
+    "expected_result": {
+      "title": "Bunker Palace Hôtel",
+      "year": 1989,
+      "language": "french",
+      "source": "VHS",
+      "other": "Rip"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Enki Bilal Bunker Palace Hotel",
+          "guessit": "Bunker Palace Hôtel",
+          "expected": "Bunker Palace Hôtel"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 1989,
+          "expected": 1989
+        },
+        "source": {
+          "custom": null,
+          "guessit": "VHS",
+          "expected": "VHS"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "french"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Bunker Palace Hôtel",
+        "year": 1989,
+        "source": "VHS"
+      }
+    }
+  },
+  {
+    "filename": "Movies/21 (2008)/21.(2008).DVDRip.x264.AC3-FtS.[sharethefiles.com].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "21",
+      "year": 2008,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "H.264",
+      "audio": "AC3",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/21 (2008)/21.(2008).DVDRip.x264.AC3-FtS.[sharethefiles.com].mkv"
+    },
+    "guessit_result": {
+      "title": "21",
+      "year": 2008,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/21 (2008)/21.(2008).DVDRip.x264.AC3-FtS.[sharethefiles.com].mkv"
+    },
+    "expected_result": {
+      "title": "21",
+      "year": 2008,
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "H.264",
+      "audio_codec": "Dolby Digital",
+      "release_group": "FtS",
+      "website": "sharethefiles.com"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "21",
+        "year": 2008,
+        "codec": "H.264"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/9 (2009)/9.2009.Blu-ray.DTS.720p.x264.HDBRiSe.[sharethefiles.com].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "9",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/9 (2009)/9.2009.Blu-ray.DTS.720p.x264.HDBRiSe.[sharethefiles.com].mkv"
+    },
+    "guessit_result": {
+      "title": "9",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "DTS",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/9 (2009)/9.2009.Blu-ray.DTS.720p.x264.HDBRiSe.[sharethefiles.com].mkv"
+    },
+    "expected_result": {
+      "title": "9",
+      "year": 2009,
+      "source": "Blu-ray",
+      "audio_codec": "DTS",
+      "screen_size": "720p",
+      "video_codec": "H.264",
+      "release_group": "HDBRiSe",
+      "website": "sharethefiles.com"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "9",
+        "year": 2009,
+        "quality": "720p",
+        "source": "Blu-ray",
+        "codec": "H.264"
+      },
+      "differences": {
+        "audio": {
+          "custom": null,
+          "guessit": "DTS",
+          "expected": "DTS"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "audio": "DTS"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Mamma.Mia.2008.DVDRip.AC3.XviD-CrazyTeam/Mamma.Mia.2008.DVDRip.AC3.XviD-CrazyTeam.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Mamma Mia",
+      "year": 2008,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": "AC3",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Mamma.Mia.2008.DVDRip.AC3.XviD-CrazyTeam/Mamma.Mia.2008.DVDRip.AC3.XviD-CrazyTeam.avi"
+    },
+    "guessit_result": {
+      "title": "Mamma Mia",
+      "year": 2008,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Mamma.Mia.2008.DVDRip.AC3.XviD-CrazyTeam/Mamma.Mia.2008.DVDRip.AC3.XviD-CrazyTeam.avi"
+    },
+    "expected_result": {
+      "title": "Mamma Mia",
+      "year": 2008,
+      "source": "DVD",
+      "other": "Rip",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "Xvid",
+      "release_group": "CrazyTeam"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Mamma Mia",
+        "year": 2008,
+        "codec": "Xvid"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/M.A.S.H. (1970)/MASH.(1970).[Divx.5.02][Dual-Subtitulos][DVDRip].ogm",
+    "type": "movie",
+    "custom_result": {
+      "title": "MASH",
+      "year": 1970,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Divx",
+      "audio": null,
+      "language": "Dual",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/M.A.S.H. (1970)/MASH.(1970).[Divx.5.02][Dual-Subtitulos][DVDRip].ogm"
+    },
+    "guessit_result": {
+      "title": "MASH",
+      "year": 1970,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "DivX",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/M.A.S.H. (1970)/MASH.(1970).[Divx.5.02][Dual-Subtitulos][DVDRip].ogm"
+    },
+    "expected_result": {
+      "title": "MASH",
+      "year": 1970,
+      "video_codec": "DivX",
+      "source": "DVD",
+      "other": [
+        "Dual Audio",
+        "Rip"
+      ]
+    },
+    "comparison": {
+      "agreement": {
+        "title": "MASH",
+        "year": 1970,
+        "codec": "Divx"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/The Doors (1991)/09.03.08.The.Doors.(1991).BDRip.720p.AC3.X264-HiS@SiLUHD-English.[sharethefiles.com].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "09 03 08 The Doors",
+      "year": 1991,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "BDRip",
+      "codec": "H.264",
+      "audio": "AC3",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/The Doors (1991)/09.03.08.The.Doors.(1991).BDRip.720p.AC3.X264-HiS@SiLUHD-English.[sharethefiles.com].mkv"
+    },
+    "guessit_result": {
+      "title": "The Doors",
+      "year": 1991,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": "en",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/The Doors (1991)/09.03.08.The.Doors.(1991).BDRip.720p.AC3.X264-HiS@SiLUHD-English.[sharethefiles.com].mkv"
+    },
+    "expected_result": {
+      "title": "The Doors",
+      "year": 1991,
+      "date": "2008-03-09",
+      "source": "Blu-ray",
+      "other": "Rip",
+      "screen_size": "720p",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "H.264",
+      "release_group": "HiS@SiLUHD",
+      "language": "english",
+      "website": "sharethefiles.com"
+    },
+    "comparison": {
+      "agreement": {
+        "year": 1991,
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "09 03 08 The Doors",
+          "guessit": "The Doors",
+          "expected": "The Doors"
+        },
+        "source": {
+          "custom": "BDRip",
+          "guessit": "Blu-ray",
+          "expected": "Blu-ray"
+        },
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "en",
+          "expected": "english"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Doors",
+        "source": "Blu-ray",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/The Doors (1991)/08.03.09.The.Doors.(1991).BDRip.720p.AC3.X264-HiS@SiLUHD-English.[sharethefiles.com].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "08 03 09 The Doors",
+      "year": 1991,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "BDRip",
+      "codec": "H.264",
+      "audio": "AC3",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/The Doors (1991)/08.03.09.The.Doors.(1991).BDRip.720p.AC3.X264-HiS@SiLUHD-English.[sharethefiles.com].mkv"
+    },
+    "guessit_result": {
+      "title": "The Doors",
+      "year": 1991,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": "en",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/The Doors (1991)/08.03.09.The.Doors.(1991).BDRip.720p.AC3.X264-HiS@SiLUHD-English.[sharethefiles.com].mkv"
+    },
+    "expected_result": {
+      "options": "--date-year-first",
+      "title": "The Doors",
+      "year": 1991,
+      "date": "2008-03-09",
+      "source": "Blu-ray",
+      "other": "Rip",
+      "screen_size": "720p",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "H.264",
+      "release_group": "HiS@SiLUHD",
+      "language": "english",
+      "website": "sharethefiles.com"
+    },
+    "comparison": {
+      "agreement": {
+        "year": 1991,
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "08 03 09 The Doors",
+          "guessit": "The Doors",
+          "expected": "The Doors"
+        },
+        "source": {
+          "custom": "BDRip",
+          "guessit": "Blu-ray",
+          "expected": "Blu-ray"
+        },
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "en",
+          "expected": "english"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Doors",
+        "source": "Blu-ray",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Ratatouille/video_ts-ratatouille.srt",
+    "type": "movie",
+    "custom_result": {
+      "title": "video ts ratatouille",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "TS",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Ratatouille/video_ts-ratatouille.srt"
+    },
+    "guessit_result": {
+      "title": "Ratatouille",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Ratatouille/video_ts-ratatouille.srt"
+    },
+    "expected_result": {
+      "title": "Ratatouille",
+      "source": "DVD"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "video ts ratatouille",
+          "guessit": "Ratatouille",
+          "expected": "Ratatouille"
+        },
+        "source": {
+          "custom": "TS",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Ratatouille",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Comme une Image (2004)/Comme.Une.Image.FRENCH.DVDRiP.XViD-NTK.par-www.divx-overnet.com.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "Comme Une Image FRENCH",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Comme une Image (2004)/Comme.Une.Image.FRENCH.DVDRiP.XViD-NTK.par-www.divx-overnet.com.avi"
+    },
+    "guessit_result": {
+      "title": "Comme une Image",
+      "year": 2004,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Comme une Image (2004)/Comme.Une.Image.FRENCH.DVDRiP.XViD-NTK.par-www.divx-overnet.com.avi"
+    },
+    "expected_result": {
+      "title": "Comme une Image",
+      "year": 2004,
+      "language": "french",
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "NTK",
+      "website": "www.divx-overnet.com"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "Comme Une Image FRENCH",
+          "guessit": "Comme une Image",
+          "expected": "Comme une Image"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2004,
+          "expected": 2004
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "french"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Comme une Image",
+        "year": 2004,
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Fantastic Mr Fox/Fantastic.Mr.Fox.2009.DVDRip.{x264+LC-AAC.5.1}{Fr-Eng}{Sub.Fr-Eng}-™.[sharethefiles.com].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Fantastic Mr Fox",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "H.264",
+      "audio": "AAC",
+      "language": "Eng",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Fantastic Mr Fox/Fantastic.Mr.Fox.2009.DVDRip.{x264+LC-AAC.5.1}{Fr-Eng}{Sub.Fr-Eng}-™.[sharethefiles.com].mkv"
+    },
+    "guessit_result": {
+      "title": "Fantastic Mr Fox",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "H.264",
+      "audio": "AAC",
+      "language": "[<Language [fr]>, <Language [en]>]",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Fantastic Mr Fox/Fantastic.Mr.Fox.2009.DVDRip.{x264+LC-AAC.5.1}{Fr-Eng}{Sub.Fr-Eng}-™.[sharethefiles.com].mkv"
+    },
+    "expected_result": {
+      "title": "Fantastic Mr Fox",
+      "year": 2009,
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "H.264",
+      "audio_codec": "AAC",
+      "audio_profile": "Low Complexity",
+      "audio_channels": "5.1",
+      "language": [
+        "french",
+        "english"
+      ],
+      "subtitle_language": [
+        "french",
+        "english"
+      ],
+      "website": "sharethefiles.com"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Fantastic Mr Fox",
+        "year": 2009,
+        "codec": "H.264",
+        "audio": "AAC"
+      },
+      "differences": {
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": "Eng",
+          "guessit": "[<Language [fr]>, <Language [en]>]",
+          "expected": [
+            "french",
+            "english"
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Somewhere.2010.DVDRip.XviD-iLG/i-smwhr.avi",
+    "type": "movie",
+    "custom_result": {
+      "title": "i smwhr",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Somewhere.2010.DVDRip.XviD-iLG/i-smwhr.avi"
+    },
+    "guessit_result": {
+      "title": "Somewhere",
+      "year": 2010,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Somewhere.2010.DVDRip.XviD-iLG/i-smwhr.avi"
+    },
+    "expected_result": {
+      "title": "Somewhere",
+      "year": 2010,
+      "source": "DVD",
+      "other": "Rip",
+      "video_codec": "Xvid",
+      "release_group": "iLG"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "i smwhr",
+          "guessit": "Somewhere",
+          "expected": "Somewhere"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2010,
+          "expected": 2010
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Somewhere",
+        "year": 2010,
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Moon_(2009).mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Moon",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Moon_(2009).mkv"
+    },
+    "guessit_result": {
+      "title": "Moon",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Moon_(2009).mkv"
+    },
+    "expected_result": {
+      "title": "Moon",
+      "year": 2009
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Moon"
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 2009,
+          "expected": 2009
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 2009
+      }
+    }
+  },
+  {
+    "filename": "Movies/Moon_(2009)-x02-Making_Of.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Moon x02 Making Of",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Moon_(2009)-x02-Making_Of.mkv"
+    },
+    "guessit_result": {
+      "title": "Moon",
+      "year": 2009,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Moon_(2009)-x02-Making_Of.mkv"
+    },
+    "expected_result": {
+      "title": "Moon",
+      "year": 2009,
+      "bonus": 2,
+      "bonus_title": "Making Of"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Moon x02 Making Of",
+          "guessit": "Moon",
+          "expected": "Moon"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2009,
+          "expected": 2009
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Moon",
+        "year": 2009
+      }
+    }
+  },
+  {
+    "filename": "movies/James_Bond-f17-Goldeneye.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "James Bond f17 Goldeneye",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/James_Bond-f17-Goldeneye.mkv"
+    },
+    "guessit_result": {
+      "title": "Goldeneye",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "movies/James_Bond-f17-Goldeneye.mkv"
+    },
+    "expected_result": {
+      "title": "Goldeneye",
+      "film_title": "James Bond",
+      "film": 17
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "James Bond f17 Goldeneye",
+          "guessit": "Goldeneye",
+          "expected": "Goldeneye"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Goldeneye"
+      }
+    }
+  },
+  {
+    "filename": "/movies/James_Bond-f21-Casino_Royale.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "James Bond f21 Casino Royale",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/movies/James_Bond-f21-Casino_Royale.mkv"
+    },
+    "guessit_result": {
+      "title": "Casino Royale",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/movies/James_Bond-f21-Casino_Royale.mkv"
+    },
+    "expected_result": {
+      "title": "Casino Royale",
+      "film_title": "James Bond",
+      "film": 21
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "James Bond f21 Casino Royale",
+          "guessit": "Casino Royale",
+          "expected": "Casino Royale"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Casino Royale"
+      }
+    }
+  },
+  {
+    "filename": "/movies/James_Bond-f21-Casino_Royale-x01-Becoming_Bond.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "James Bond f21 Casino Royale x01 Becoming Bond",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/movies/James_Bond-f21-Casino_Royale-x01-Becoming_Bond.mkv"
+    },
+    "guessit_result": {
+      "title": "Casino Royale",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/movies/James_Bond-f21-Casino_Royale-x01-Becoming_Bond.mkv"
+    },
+    "expected_result": {
+      "title": "Casino Royale",
+      "film_title": "James Bond",
+      "film": 21,
+      "bonus": 1,
+      "bonus_title": "Becoming Bond"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "James Bond f21 Casino Royale x01 Becoming Bond",
+          "guessit": "Casino Royale",
+          "expected": "Casino Royale"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Casino Royale"
+      }
+    }
+  },
+  {
+    "filename": "/movies/James_Bond-f21-Casino_Royale-x02-Stunts.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "James Bond f21 Casino Royale x02 Stunts",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "TS",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/movies/James_Bond-f21-Casino_Royale-x02-Stunts.mkv"
+    },
+    "guessit_result": {
+      "title": "Casino Royale",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/movies/James_Bond-f21-Casino_Royale-x02-Stunts.mkv"
+    },
+    "expected_result": {
+      "title": "Casino Royale",
+      "film_title": "James Bond",
+      "film": 21,
+      "bonus": 2,
+      "bonus_title": "Stunts"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "James Bond f21 Casino Royale x02 Stunts",
+          "guessit": "Casino Royale",
+          "expected": "Casino Royale"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Casino Royale"
+      }
+    }
+  },
+  {
+    "filename": "OSS_117--Cairo,_Nest_of_Spies.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "OSS 117 Cairo, Nest of Spies",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "OSS_117--Cairo,_Nest_of_Spies.mkv"
+    },
+    "guessit_result": {
+      "title": "OSS 117",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "OSS_117--Cairo,_Nest_of_Spies.mkv"
+    },
+    "expected_result": {
+      "title": "OSS 117"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "OSS 117 Cairo, Nest of Spies",
+          "guessit": "OSS 117",
+          "expected": "OSS 117"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "OSS 117"
+      }
+    }
+  },
+  {
+    "filename": "The Godfather Part 3.mkv",
+    "error": "argument of type 'NoneType' is not iterable",
+    "type": "movie",
+    "failure_score": 100.0
+  },
+  {
+    "filename": "The Godfather Part III.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "The Godfather Part III",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The Godfather Part III.mkv"
+    },
+    "guessit_result": {
+      "title": "The Godfather",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": 3,
+      "confidence": 0.0,
+      "original_filename": "The Godfather Part III.mkv"
+    },
+    "expected_result": {
+      "title": "The Godfather",
+      "part": 3
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "The Godfather Part III",
+          "guessit": "The Godfather",
+          "expected": "The Godfather"
+        },
+        "part": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Godfather",
+        "part": 3
+      }
+    }
+  },
+  {
+    "filename": "Foobar Part VI.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Foobar Part VI",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Foobar Part VI.mkv"
+    },
+    "guessit_result": {
+      "title": "Foobar",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": 6,
+      "confidence": 0.0,
+      "original_filename": "Foobar Part VI.mkv"
+    },
+    "expected_result": {
+      "title": "Foobar",
+      "part": 6
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Foobar Part VI",
+          "guessit": "Foobar",
+          "expected": "Foobar"
+        },
+        "part": {
+          "custom": null,
+          "guessit": 6,
+          "expected": 6
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Foobar",
+        "part": 6
+      }
+    }
+  },
+  {
+    "filename": "The_Insider-(1999)-x02-60_Minutes_Interview-1996.mp4",
+    "type": "movie",
+    "custom_result": {
+      "title": "The Insider x02 60 Minutes Interview 1996",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The_Insider-(1999)-x02-60_Minutes_Interview-1996.mp4"
+    },
+    "guessit_result": {
+      "title": "The Insider",
+      "year": 1999,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The_Insider-(1999)-x02-60_Minutes_Interview-1996.mp4"
+    },
+    "expected_result": {
+      "title": "The Insider",
+      "year": 1999,
+      "bonus": 2,
+      "bonus_title": "60 Minutes Interview-1996"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "The Insider x02 60 Minutes Interview 1996",
+          "guessit": "The Insider",
+          "expected": "The Insider"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 1999,
+          "expected": 1999
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Insider",
+        "year": 1999
+      }
+    }
+  },
+  {
+    "filename": "Rush.._Beyond_The_Lighted_Stage-x09-Between_Sun_and_Moon-2002_Hartford.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Rush Beyond The Lighted Stage x09 Between Sun and Moon 2002 Hartford",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Rush.._Beyond_The_Lighted_Stage-x09-Between_Sun_and_Moon-2002_Hartford.mkv"
+    },
+    "guessit_result": {
+      "title": "Rush Beyond The Lighted Stage",
+      "year": 2002,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Rush.._Beyond_The_Lighted_Stage-x09-Between_Sun_and_Moon-2002_Hartford.mkv"
+    },
+    "expected_result": {
+      "title": "Rush Beyond The Lighted Stage",
+      "bonus": 9,
+      "bonus_title": "Between Sun and Moon",
+      "year": 2002
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Rush Beyond The Lighted Stage x09 Between Sun and Moon 2002 Hartford",
+          "guessit": "Rush Beyond The Lighted Stage",
+          "expected": "Rush Beyond The Lighted Stage"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2002,
+          "expected": 2002
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Rush Beyond The Lighted Stage",
+        "year": 2002
+      }
+    }
+  },
+  {
+    "filename": "/public/uTorrent/Downloads Finished/Movies/Indiana.Jones.and.the.Temple.of.Doom.1984.HDTV.720p.x264.AC3.5.1-REDµX/Indiana.Jones.and.the.Temple.of.Doom.1984.HDTV.720p.x264.AC3.5.1-REDµX.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "Indiana Jones and the Temple of Doom",
+      "year": 1984,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": "H.264",
+      "audio": "AC3",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/public/uTorrent/Downloads Finished/Movies/Indiana.Jones.and.the.Temple.of.Doom.1984.HDTV.720p.x264.AC3.5.1-REDµX/Indiana.Jones.and.the.Temple.of.Doom.1984.HDTV.720p.x264.AC3.5.1-REDµX.mkv"
+    },
+    "guessit_result": {
+      "title": "Indiana Jones and the Temple of Doom",
+      "year": 1984,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/public/uTorrent/Downloads Finished/Movies/Indiana.Jones.and.the.Temple.of.Doom.1984.HDTV.720p.x264.AC3.5.1-REDµX/Indiana.Jones.and.the.Temple.of.Doom.1984.HDTV.720p.x264.AC3.5.1-REDµX.mkv"
+    },
+    "expected_result": {
+      "title": "Indiana Jones and the Temple of Doom",
+      "year": 1984,
+      "source": "HDTV",
+      "screen_size": "720p",
+      "video_codec": "H.264",
+      "audio_codec": "Dolby Digital",
+      "audio_channels": "5.1",
+      "release_group": "REDµX"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Indiana Jones and the Temple of Doom",
+        "year": 1984,
+        "quality": "720p",
+        "source": "HDTV",
+        "codec": "H.264"
+      },
+      "differences": {
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "The.Director’s.Notebook.2006.Blu-Ray.x264.DXVA.720p.AC3-de[42].mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "The Director’s Notebook",
+      "year": 2006,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "AC3",
+      "language": null,
+      "edition": "Director",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Director’s.Notebook.2006.Blu-Ray.x264.DXVA.720p.AC3-de[42].mkv"
+    },
+    "guessit_result": {
+      "title": "The Director’s Notebook",
+      "year": 2006,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Director’s.Notebook.2006.Blu-Ray.x264.DXVA.720p.AC3-de[42].mkv"
+    },
+    "expected_result": {
+      "title": "The Director’s Notebook",
+      "year": 2006,
+      "source": "Blu-ray",
+      "video_codec": "H.264",
+      "video_api": "DXVA",
+      "screen_size": "720p",
+      "audio_codec": "Dolby Digital",
+      "release_group": "de[42]"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "The Director’s Notebook",
+        "year": 2006,
+        "quality": "720p",
+        "source": "Blu-ray",
+        "codec": "H.264"
+      },
+      "differences": {
+        "audio": {
+          "custom": "AC3",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "Movies/Cosmopolis.2012.LiMiTED.720p.BluRay.x264-AN0NYM0US[bb]/ano-cosmo.720p.mkv",
+    "type": "movie",
+    "custom_result": {
+      "title": "ano cosmo",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Cosmopolis.2012.LiMiTED.720p.BluRay.x264-AN0NYM0US[bb]/ano-cosmo.720p.mkv"
+    },
+    "guessit_result": {
+      "title": "Cosmopolis",
+      "year": 2012,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": "720p",
+      "source": "Blu-ray",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": "Limited",
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Movies/Cosmopolis.2012.LiMiTED.720p.BluRay.x264-AN0NYM0US[bb]/ano-cosmo.720p.mkv"
+    },
+    "expected_result": {
+      "title": "Cosmopolis",
+      "year": 2012,
+      "screen_size": "720p",
+      "video_codec": "H.264",
+      "release_group": "AN0NYM0US[bb]",
+      "source": "Blu-ray",
+      "edition": "Limited"
+    },
+    "comparison": {
+      "agreement": {
+        "quality": "720p",
+        "source": "Blu-ray",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "ano cosmo",
+          "guessit": "Cosmopolis",
+          "expected": "Cosmopolis"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2012,
+          "expected": 2012
+        },
+        "edition": {
+          "custom": null,
+          "guessit": "Limited",
+          "expected": "Limited"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Cosmopolis",
+        "year": 2012,
+        "edition": "Limited"
+      }
+    }
+  },
+  {
+    "filename": "Series/Californication/Season 2/Californication.2x05.Vaginatown.HDTV.XviD-0TV.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Californication",
+      "year": null,
+      "season": 2,
+      "episode": 5,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Californication/Season 2/Californication.2x05.Vaginatown.HDTV.XviD-0TV.avi"
+    },
+    "guessit_result": {
+      "title": "Californication",
+      "year": null,
+      "season": 2,
+      "episode": 5,
+      "episode_title": "Vaginatown",
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Californication/Season 2/Californication.2x05.Vaginatown.HDTV.XviD-0TV.avi"
+    },
+    "expected_result": {
+      "title": "Californication",
+      "season": 2,
+      "episode": 5,
+      "episode_title": "Vaginatown",
+      "source": "HDTV",
+      "video_codec": "Xvid",
+      "release_group": "0TV",
+      "container": "avi"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Californication",
+        "season": 2,
+        "episode": 5,
+        "source": "HDTV",
+        "codec": "Xvid"
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "Vaginatown",
+          "expected": "Vaginatown"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "Vaginatown"
+      }
+    }
+  },
+  {
+    "filename": "Series/dexter/Dexter.5x02.Hello,.Bandit.ENG.-.sub.FR.HDTV.XviD-AlFleNi-TeaM.[tvu.org.ru].avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Dexter",
+      "year": null,
+      "season": 5,
+      "episode": 2,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": "ENG",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/dexter/Dexter.5x02.Hello,.Bandit.ENG.-.sub.FR.HDTV.XviD-AlFleNi-TeaM.[tvu.org.ru].avi"
+    },
+    "guessit_result": {
+      "title": "Dexter",
+      "year": null,
+      "season": 5,
+      "episode": 2,
+      "episode_title": "Hello, Bandit",
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": "en",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/dexter/Dexter.5x02.Hello,.Bandit.ENG.-.sub.FR.HDTV.XviD-AlFleNi-TeaM.[tvu.org.ru].avi"
+    },
+    "expected_result": {
+      "title": "Dexter",
+      "season": 5,
+      "episode": 2,
+      "episode_title": "Hello, Bandit",
+      "language": "English",
+      "subtitle_language": "French",
+      "source": "HDTV",
+      "video_codec": "Xvid",
+      "release_group": "AlFleNi-TeaM",
+      "website": "tvu.org.ru",
+      "container": "avi"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Dexter",
+        "season": 5,
+        "episode": 2,
+        "source": "HDTV",
+        "codec": "Xvid"
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "Hello, Bandit",
+          "expected": "Hello, Bandit"
+        },
+        "language": {
+          "custom": "ENG",
+          "guessit": "en",
+          "expected": "English"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "Hello, Bandit"
+      }
+    }
+  },
+  {
+    "filename": "Series/Treme/Treme.1x03.Right.Place,.Wrong.Time.HDTV.XviD-NoTV.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Treme",
+      "year": null,
+      "season": 1,
+      "episode": 3,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Treme/Treme.1x03.Right.Place,.Wrong.Time.HDTV.XviD-NoTV.avi"
+    },
+    "guessit_result": {
+      "title": "Treme",
+      "year": null,
+      "season": 1,
+      "episode": 3,
+      "episode_title": "Right Place, Wrong Time",
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Treme/Treme.1x03.Right.Place,.Wrong.Time.HDTV.XviD-NoTV.avi"
+    },
+    "expected_result": {
+      "title": "Treme",
+      "season": 1,
+      "episode": 3,
+      "episode_title": "Right Place, Wrong Time",
+      "source": "HDTV",
+      "video_codec": "Xvid",
+      "release_group": "NoTV"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Treme",
+        "season": 1,
+        "episode": 3,
+        "source": "HDTV",
+        "codec": "Xvid"
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "Right Place, Wrong Time",
+          "expected": "Right Place, Wrong Time"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "Right Place, Wrong Time"
+      }
+    }
+  },
+  {
+    "filename": "Series/Duckman/Duckman - S1E13 Joking The Chicken (unedited).avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Duckman",
+      "year": null,
+      "season": 1,
+      "episode": 13,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Duckman/Duckman - S1E13 Joking The Chicken (unedited).avi"
+    },
+    "guessit_result": {
+      "title": "Duckman",
+      "year": null,
+      "season": 1,
+      "episode": 13,
+      "episode_title": "Joking The Chicken",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Duckman/Duckman - S1E13 Joking The Chicken (unedited).avi"
+    },
+    "expected_result": {
+      "title": "Duckman",
+      "season": 1,
+      "episode": 13,
+      "episode_title": "Joking The Chicken"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Duckman",
+        "season": 1,
+        "episode": 13
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "Joking The Chicken",
+          "expected": "Joking The Chicken"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "Joking The Chicken"
+      }
+    }
+  },
+  {
+    "filename": "Series/Simpsons/Saison 12 Français/Simpsons,.The.12x08.A.Bas.Le.Sergent.Skinner.FR.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Simpsons,.The",
+      "year": null,
+      "season": 12,
+      "episode": 8,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Simpsons/Saison 12 Français/Simpsons,.The.12x08.A.Bas.Le.Sergent.Skinner.FR.avi"
+    },
+    "guessit_result": {
+      "title": "The Simpsons",
+      "year": null,
+      "season": 12,
+      "episode": 8,
+      "episode_title": "A Bas Le Sergent Skinner",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Simpsons/Saison 12 Français/Simpsons,.The.12x08.A.Bas.Le.Sergent.Skinner.FR.avi"
+    },
+    "expected_result": {
+      "title": "The Simpsons",
+      "season": 12,
+      "episode": 8,
+      "episode_title": "A Bas Le Sergent Skinner",
+      "language": "French"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 12,
+        "episode": 8
+      },
+      "differences": {
+        "title": {
+          "custom": "Simpsons,.The",
+          "guessit": "The Simpsons",
+          "expected": "The Simpsons"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "A Bas Le Sergent Skinner",
+          "expected": "A Bas Le Sergent Skinner"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "French"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Simpsons",
+        "episode_title": "A Bas Le Sergent Skinner"
+      }
+    }
+  },
+  {
+    "filename": "Series/Duckman/Duckman - 101 (01) - 20021107 - I, Duckman.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Duckman 101 (01) 20021107 I, Duckman",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Duckman/Duckman - 101 (01) - 20021107 - I, Duckman.avi"
+    },
+    "guessit_result": {
+      "title": "Duckman",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": "I, Duckman",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Duckman/Duckman - 101 (01) - 20021107 - I, Duckman.avi"
+    },
+    "expected_result": {
+      "title": "Duckman",
+      "season": 1,
+      "episode": 1,
+      "episode_title": "I, Duckman",
+      "date": "2002-11-07"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Duckman 101 (01) 20021107 I, Duckman",
+          "guessit": "Duckman",
+          "expected": "Duckman"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "I, Duckman",
+          "expected": "I, Duckman"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Duckman",
+        "season": 1,
+        "episode": 1,
+        "episode_title": "I, Duckman"
+      }
+    }
+  },
+  {
+    "filename": "Series/Futurama/Season 3 (mkv)/[™] Futurama - S03E22 - Le chef de fer à 30% ( 30 Percent Iron Chef ).mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "[™] Futurama",
+      "year": null,
+      "season": 3,
+      "episode": 22,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Futurama/Season 3 (mkv)/[™] Futurama - S03E22 - Le chef de fer à 30% ( 30 Percent Iron Chef ).mkv"
+    },
+    "guessit_result": {
+      "title": "Futurama",
+      "year": null,
+      "season": 3,
+      "episode": 22,
+      "episode_title": "Le chef de fer à 30%",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Futurama/Season 3 (mkv)/[™] Futurama - S03E22 - Le chef de fer à 30% ( 30 Percent Iron Chef ).mkv"
+    },
+    "expected_result": {
+      "title": "Futurama",
+      "season": 3,
+      "episode": 22,
+      "episode_title": "Le chef de fer à 30%"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 3,
+        "episode": 22
+      },
+      "differences": {
+        "title": {
+          "custom": "[™] Futurama",
+          "guessit": "Futurama",
+          "expected": "Futurama"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Le chef de fer à 30%",
+          "expected": "Le chef de fer à 30%"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Futurama",
+        "episode_title": "Le chef de fer à 30%"
+      }
+    }
+  },
+  {
+    "filename": "Series/The Office/Season 6/The Office - S06xE01.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "The Office S06xE01",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/The Office/Season 6/The Office - S06xE01.avi"
+    },
+    "guessit_result": {
+      "title": "The Office",
+      "year": null,
+      "season": 6,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/The Office/Season 6/The Office - S06xE01.avi"
+    },
+    "expected_result": {
+      "title": "The Office",
+      "season": 6,
+      "episode": 1
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "The Office S06xE01",
+          "guessit": "The Office",
+          "expected": "The Office"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 6,
+          "expected": 6
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Office",
+        "season": 6,
+        "episode": 1
+      }
+    }
+  },
+  {
+    "filename": "series/The Office/Season 4/The Office [401] Fun Run.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "The Office [401] Fun Run",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/The Office/Season 4/The Office [401] Fun Run.avi"
+    },
+    "guessit_result": {
+      "title": "The Office",
+      "year": null,
+      "season": 4,
+      "episode": 1,
+      "episode_title": "Fun Run",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/The Office/Season 4/The Office [401] Fun Run.avi"
+    },
+    "expected_result": {
+      "title": "The Office",
+      "season": 4,
+      "episode": 1,
+      "episode_title": "Fun Run"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "The Office [401] Fun Run",
+          "guessit": "The Office",
+          "expected": "The Office"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 4,
+          "expected": 4
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Fun Run",
+          "expected": "Fun Run"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Office",
+        "season": 4,
+        "episode": 1,
+        "episode_title": "Fun Run"
+      }
+    }
+  },
+  {
+    "filename": "Series/Mad Men Season 1 Complete/Mad.Men.S01E01.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Mad.Men",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Mad Men Season 1 Complete/Mad.Men.S01E01.avi"
+    },
+    "guessit_result": {
+      "title": "Mad Men",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Mad Men Season 1 Complete/Mad.Men.S01E01.avi"
+    },
+    "expected_result": {
+      "title": "Mad Men",
+      "season": 1,
+      "episode": 1,
+      "other": "Complete"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 1,
+        "episode": 1
+      },
+      "differences": {
+        "title": {
+          "custom": "Mad.Men",
+          "guessit": "Mad Men",
+          "expected": "Mad Men"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Mad Men"
+      }
+    }
+  },
+  {
+    "filename": "series/Psych/Psych S02 Season 2 Complete English DVD/Psych.S02E02.65.Million.Years.Off.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Psych",
+      "year": null,
+      "season": 2,
+      "episode": 2,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/Psych/Psych S02 Season 2 Complete English DVD/Psych.S02E02.65.Million.Years.Off.avi"
+    },
+    "guessit_result": {
+      "title": "Psych",
+      "year": null,
+      "season": 2,
+      "episode": 2,
+      "episode_title": "65 Million Years Off",
+      "media_type": "episode",
+      "quality": null,
+      "source": "DVD",
+      "codec": null,
+      "audio": null,
+      "language": "en",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/Psych/Psych S02 Season 2 Complete English DVD/Psych.S02E02.65.Million.Years.Off.avi"
+    },
+    "expected_result": {
+      "title": "Psych",
+      "season": 2,
+      "episode": 2,
+      "episode_title": "65 Million Years Off",
+      "language": "english",
+      "source": "DVD",
+      "other": "Complete"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Psych",
+        "season": 2,
+        "episode": 2
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "65 Million Years Off",
+          "expected": "65 Million Years Off"
+        },
+        "source": {
+          "custom": null,
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "en",
+          "expected": "english"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "65 Million Years Off",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "series/Psych/Psych S02 Season 2 Complete English DVD/Psych.S02E03.Psy.Vs.Psy.Français.srt",
+    "type": "episode",
+    "custom_result": {
+      "title": "Psych",
+      "year": null,
+      "season": 2,
+      "episode": 3,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/Psych/Psych S02 Season 2 Complete English DVD/Psych.S02E03.Psy.Vs.Psy.Français.srt"
+    },
+    "guessit_result": {
+      "title": "Psych",
+      "year": null,
+      "season": 2,
+      "episode": 3,
+      "episode_title": "Psy Vs Psy",
+      "media_type": "episode",
+      "quality": null,
+      "source": "DVD",
+      "codec": null,
+      "audio": null,
+      "language": "en",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/Psych/Psych S02 Season 2 Complete English DVD/Psych.S02E03.Psy.Vs.Psy.Français.srt"
+    },
+    "expected_result": {
+      "title": "Psych",
+      "season": 2,
+      "episode": 3,
+      "episode_title": "Psy Vs Psy",
+      "source": "DVD",
+      "language": "English",
+      "subtitle_language": "French",
+      "other": "Complete"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Psych",
+        "season": 2,
+        "episode": 3
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "Psy Vs Psy",
+          "expected": "Psy Vs Psy"
+        },
+        "source": {
+          "custom": null,
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "en",
+          "expected": "English"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "Psy Vs Psy",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Series/Pure Laine/Pure.Laine.1x01.Toutes.Couleurs.Unies.FR.(Québec).DVB-Kceb.[tvu.org.ru].avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Pure.Laine",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Pure Laine/Pure.Laine.1x01.Toutes.Couleurs.Unies.FR.(Québec).DVB-Kceb.[tvu.org.ru].avi"
+    },
+    "guessit_result": {
+      "title": "Pure Laine",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": "Toutes Couleurs Unies",
+      "media_type": "episode",
+      "quality": null,
+      "source": "Digital TV",
+      "codec": null,
+      "audio": null,
+      "language": "fr",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Pure Laine/Pure.Laine.1x01.Toutes.Couleurs.Unies.FR.(Québec).DVB-Kceb.[tvu.org.ru].avi"
+    },
+    "expected_result": {
+      "title": "Pure Laine",
+      "season": 1,
+      "episode": 1,
+      "episode_title": "Toutes Couleurs Unies",
+      "source": "Digital TV",
+      "release_group": "Kceb",
+      "language": "french",
+      "website": "tvu.org.ru"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 1,
+        "episode": 1
+      },
+      "differences": {
+        "title": {
+          "custom": "Pure.Laine",
+          "guessit": "Pure Laine",
+          "expected": "Pure Laine"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Toutes Couleurs Unies",
+          "expected": "Toutes Couleurs Unies"
+        },
+        "source": {
+          "custom": null,
+          "guessit": "Digital TV",
+          "expected": "Digital TV"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "fr",
+          "expected": "french"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Pure Laine",
+        "episode_title": "Toutes Couleurs Unies",
+        "source": "Digital TV"
+      }
+    }
+  },
+  {
+    "filename": "Series/Pure Laine/2x05 - Pure Laine - Je Me Souviens.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "2x05 Pure Laine Je Me Souviens",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Pure Laine/2x05 - Pure Laine - Je Me Souviens.avi"
+    },
+    "guessit_result": {
+      "title": "Pure Laine",
+      "year": null,
+      "season": 2,
+      "episode": 5,
+      "episode_title": "Je Me Souviens",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Pure Laine/2x05 - Pure Laine - Je Me Souviens.avi"
+    },
+    "expected_result": {
+      "title": "Pure Laine",
+      "season": 2,
+      "episode": 5,
+      "episode_title": "Je Me Souviens"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "2x05 Pure Laine Je Me Souviens",
+          "guessit": "Pure Laine",
+          "expected": "Pure Laine"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 2,
+          "expected": 2
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 5,
+          "expected": 5
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Je Me Souviens",
+          "expected": "Je Me Souviens"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Pure Laine",
+        "season": 2,
+        "episode": 5,
+        "episode_title": "Je Me Souviens"
+      }
+    }
+  },
+  {
+    "filename": "Series/Tout sur moi/Tout sur moi - S02E02 - Ménage à trois (14-01-2008) [Rip by Ampli].avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Tout sur moi S02E02 Menage a trois (14",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": "2008)",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Tout sur moi/Tout sur moi - S02E02 - Ménage à trois (14-01-2008) [Rip by Ampli].avi"
+    },
+    "guessit_result": {
+      "title": "Tout sur moi",
+      "year": null,
+      "season": 2,
+      "episode": 2,
+      "episode_title": "Ménage à trois",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Tout sur moi/Tout sur moi - S02E02 - Ménage à trois (14-01-2008) [Rip by Ampli].avi"
+    },
+    "expected_result": {
+      "title": "Tout sur moi",
+      "season": 2,
+      "episode": 2,
+      "episode_title": "Ménage à trois",
+      "date": "2008-01-14"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Tout sur moi S02E02 Menage a trois (14",
+          "guessit": "Tout sur moi",
+          "expected": "Tout sur moi"
+        },
+        "season": {
+          "custom": 1,
+          "guessit": 2,
+          "expected": 2
+        },
+        "episode": {
+          "custom": 1,
+          "guessit": 2,
+          "expected": 2
+        },
+        "episode_title": {
+          "custom": "2008)",
+          "guessit": "Ménage à trois",
+          "expected": "Ménage à trois"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Tout sur moi",
+        "season": 2,
+        "episode": 2,
+        "episode_title": "Ménage à trois"
+      }
+    }
+  },
+  {
+    "filename": "The.Mentalist.2x21.18-5-4.ENG.-.sub.FR.HDTV.XviD-AlFleNi-TeaM.[tvu.org.ru].avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "The.Mentalist",
+      "year": null,
+      "season": 2,
+      "episode": 21,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": "ENG",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Mentalist.2x21.18-5-4.ENG.-.sub.FR.HDTV.XviD-AlFleNi-TeaM.[tvu.org.ru].avi"
+    },
+    "guessit_result": {
+      "title": "The Mentalist",
+      "year": null,
+      "season": 2,
+      "episode": 21,
+      "episode_title": "18-5-4",
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": "en",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Mentalist.2x21.18-5-4.ENG.-.sub.FR.HDTV.XviD-AlFleNi-TeaM.[tvu.org.ru].avi"
+    },
+    "expected_result": {
+      "title": "The Mentalist",
+      "season": 2,
+      "episode": 21,
+      "episode_title": "18-5-4",
+      "language": "english",
+      "subtitle_language": "french",
+      "source": "HDTV",
+      "video_codec": "Xvid",
+      "release_group": "AlFleNi-TeaM",
+      "website": "tvu.org.ru"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 2,
+        "episode": 21,
+        "source": "HDTV",
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "The.Mentalist",
+          "guessit": "The Mentalist",
+          "expected": "The Mentalist"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "18-5-4",
+          "expected": "18-5-4"
+        },
+        "language": {
+          "custom": "ENG",
+          "guessit": "en",
+          "expected": "english"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Mentalist",
+        "episode_title": "18-5-4"
+      }
+    }
+  },
+  {
+    "filename": "series/__ Incomplete __/Dr Slump (Catalan)/Dr._Slump_-_003_DVB-Rip_Catalan_by_kelf.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Dr Slump 003 DVB Rip Catalan by kelf",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/__ Incomplete __/Dr Slump (Catalan)/Dr._Slump_-_003_DVB-Rip_Catalan_by_kelf.avi"
+    },
+    "guessit_result": {
+      "title": "Dr Slump",
+      "year": null,
+      "season": 0,
+      "episode": 3,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "Digital TV",
+      "codec": null,
+      "audio": null,
+      "language": "ca",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/__ Incomplete __/Dr Slump (Catalan)/Dr._Slump_-_003_DVB-Rip_Catalan_by_kelf.avi"
+    },
+    "expected_result": {
+      "title": "Dr Slump",
+      "episode": 3,
+      "source": "Digital TV",
+      "other": "Rip",
+      "language": "catalan"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Dr Slump 003 DVB Rip Catalan by kelf",
+          "guessit": "Dr Slump",
+          "expected": "Dr Slump"
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        },
+        "source": {
+          "custom": null,
+          "guessit": "Digital TV",
+          "expected": "Digital TV"
+        },
+        "language": {
+          "custom": null,
+          "guessit": "ca",
+          "expected": "catalan"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Dr Slump",
+        "episode": 3,
+        "source": "Digital TV"
+      }
+    }
+  },
+  {
+    "filename": "Series/Neverwhere/Neverwhere.05.Down.Street.[tvu.org.ru].avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Neverwhere 05 Down Street",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Neverwhere/Neverwhere.05.Down.Street.[tvu.org.ru].avi"
+    },
+    "guessit_result": {
+      "title": "Neverwhere",
+      "year": null,
+      "season": null,
+      "episode": 5,
+      "episode_title": "Down Street",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Neverwhere/Neverwhere.05.Down.Street.[tvu.org.ru].avi"
+    },
+    "expected_result": {
+      "title": "Neverwhere",
+      "episode": 5,
+      "episode_title": "Down Street",
+      "website": "tvu.org.ru"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Neverwhere 05 Down Street",
+          "guessit": "Neverwhere",
+          "expected": "Neverwhere"
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 5,
+          "expected": 5
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Down Street",
+          "expected": "Down Street"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Neverwhere",
+        "episode": 5,
+        "episode_title": "Down Street"
+      }
+    }
+  },
+  {
+    "filename": "Series/South Park/Season 4/South.Park.4x07.Cherokee.Hair.Tampons.DVDRip.[tvu.org.ru].avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "South.Park",
+      "year": null,
+      "season": 4,
+      "episode": 7,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/South Park/Season 4/South.Park.4x07.Cherokee.Hair.Tampons.DVDRip.[tvu.org.ru].avi"
+    },
+    "guessit_result": {
+      "title": "South Park",
+      "year": null,
+      "season": 4,
+      "episode": 7,
+      "episode_title": "Cherokee Hair Tampons",
+      "media_type": "episode",
+      "quality": null,
+      "source": "DVD",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/South Park/Season 4/South.Park.4x07.Cherokee.Hair.Tampons.DVDRip.[tvu.org.ru].avi"
+    },
+    "expected_result": {
+      "title": "South Park",
+      "season": 4,
+      "episode": 7,
+      "episode_title": "Cherokee Hair Tampons",
+      "source": "DVD",
+      "other": "Rip",
+      "website": "tvu.org.ru"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 4,
+        "episode": 7
+      },
+      "differences": {
+        "title": {
+          "custom": "South.Park",
+          "guessit": "South Park",
+          "expected": "South Park"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Cherokee Hair Tampons",
+          "expected": "Cherokee Hair Tampons"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "South Park",
+        "episode_title": "Cherokee Hair Tampons",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "Series/Kaamelott/Kaamelott - Livre V - Ep 23 - Le Forfait.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Kaamelott Livre V Ep 23 Le Forfait",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Kaamelott/Kaamelott - Livre V - Ep 23 - Le Forfait.avi"
+    },
+    "guessit_result": {
+      "title": "Kaamelott",
+      "year": null,
+      "season": null,
+      "episode": 23,
+      "episode_title": "Le Forfait",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Kaamelott/Kaamelott - Livre V - Ep 23 - Le Forfait.avi"
+    },
+    "expected_result": {
+      "title": "Kaamelott",
+      "alternative_title": "Livre V",
+      "episode": 23,
+      "episode_title": "Le Forfait"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Kaamelott Livre V Ep 23 Le Forfait",
+          "guessit": "Kaamelott",
+          "expected": "Kaamelott"
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 23,
+          "expected": 23
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Le Forfait",
+          "expected": "Le Forfait"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Kaamelott",
+        "episode": 23,
+        "episode_title": "Le Forfait"
+      }
+    }
+  },
+  {
+    "filename": "Series/Duckman/Duckman - 110 (10) - 20021218 - Cellar Beware.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Duckman 110 (10) 20021218 Cellar Beware",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Duckman/Duckman - 110 (10) - 20021218 - Cellar Beware.avi"
+    },
+    "guessit_result": {
+      "title": "Duckman",
+      "year": null,
+      "season": 1,
+      "episode": 10,
+      "episode_title": "Cellar Beware",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Duckman/Duckman - 110 (10) - 20021218 - Cellar Beware.avi"
+    },
+    "expected_result": {
+      "title": "Duckman",
+      "season": 1,
+      "episode": 10,
+      "date": "2002-12-18",
+      "episode_title": "Cellar Beware"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Duckman 110 (10) 20021218 Cellar Beware",
+          "guessit": "Duckman",
+          "expected": "Duckman"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 10,
+          "expected": 10
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Cellar Beware",
+          "expected": "Cellar Beware"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Duckman",
+        "season": 1,
+        "episode": 10,
+        "episode_title": "Cellar Beware"
+      }
+    }
+  },
+  {
+    "filename": "Series/Breaking Bad/Minisodes/Breaking.Bad.(Minisodes).01.Good.Cop.Bad.Cop.WEBRip.XviD.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Breaking Bad (Minisodes) 01 Good Cop Bad Cop",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "WEBRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Breaking Bad/Minisodes/Breaking.Bad.(Minisodes).01.Good.Cop.Bad.Cop.WEBRip.XviD.avi"
+    },
+    "guessit_result": {
+      "title": "Breaking Bad",
+      "year": null,
+      "season": null,
+      "episode": 1,
+      "episode_title": "Good Cop Bad Cop",
+      "media_type": "episode",
+      "quality": null,
+      "source": "Web",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Breaking Bad/Minisodes/Breaking.Bad.(Minisodes).01.Good.Cop.Bad.Cop.WEBRip.XviD.avi"
+    },
+    "expected_result": {
+      "title": "Breaking Bad",
+      "episode_format": "Minisode",
+      "episode": 1,
+      "episode_title": "Good Cop Bad Cop",
+      "source": "Web",
+      "other": "Rip",
+      "video_codec": "Xvid"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "Breaking Bad (Minisodes) 01 Good Cop Bad Cop",
+          "guessit": "Breaking Bad",
+          "expected": "Breaking Bad"
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Good Cop Bad Cop",
+          "expected": "Good Cop Bad Cop"
+        },
+        "source": {
+          "custom": "WEBRip",
+          "guessit": "Web",
+          "expected": "Web"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Breaking Bad",
+        "episode": 1,
+        "episode_title": "Good Cop Bad Cop",
+        "source": "Web"
+      }
+    }
+  },
+  {
+    "filename": "Series/My Name Is Earl/My.Name.Is.Earl.S01Extras.-.Bad.Karma.DVDRip.XviD.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "My Name Is Earl S01Extras Bad Karma",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "DVDRip",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/My Name Is Earl/My.Name.Is.Earl.S01Extras.-.Bad.Karma.DVDRip.XviD.avi"
+    },
+    "guessit_result": {
+      "title": "My Name Is Earl",
+      "year": null,
+      "season": 1,
+      "episode": null,
+      "episode_title": "Bad Karma",
+      "media_type": "episode",
+      "quality": null,
+      "source": "DVD",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/My Name Is Earl/My.Name.Is.Earl.S01Extras.-.Bad.Karma.DVDRip.XviD.avi"
+    },
+    "expected_result": {
+      "title": "My Name Is Earl",
+      "season": 1,
+      "episode_title": "Bad Karma",
+      "source": "DVD",
+      "other": [
+        "Extras",
+        "Rip"
+      ],
+      "video_codec": "Xvid"
+    },
+    "comparison": {
+      "agreement": {
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "My Name Is Earl S01Extras Bad Karma",
+          "guessit": "My Name Is Earl",
+          "expected": "My Name Is Earl"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Bad Karma",
+          "expected": "Bad Karma"
+        },
+        "source": {
+          "custom": "DVDRip",
+          "guessit": "DVD",
+          "expected": "DVD"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "My Name Is Earl",
+        "season": 1,
+        "episode_title": "Bad Karma",
+        "source": "DVD"
+      }
+    }
+  },
+  {
+    "filename": "series/Freaks And Geeks/Season 1/Episode 4 - Kim Kelly Is My Friend-eng(1).srt",
+    "type": "episode",
+    "custom_result": {
+      "title": "Episode 4 Kim Kelly Is My Friend eng(1)",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": "eng",
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/Freaks And Geeks/Season 1/Episode 4 - Kim Kelly Is My Friend-eng(1).srt"
+    },
+    "guessit_result": {
+      "title": "Freaks And Geeks",
+      "year": null,
+      "season": 1,
+      "episode": 4,
+      "episode_title": "Kim Kelly Is My Friend",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "series/Freaks And Geeks/Season 1/Episode 4 - Kim Kelly Is My Friend-eng(1).srt"
+    },
+    "expected_result": {
+      "title": "Freaks And Geeks",
+      "season": 1,
+      "episode": 4,
+      "episode_title": "Kim Kelly Is My Friend",
+      "subtitle_language": "English"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Episode 4 Kim Kelly Is My Friend eng(1)",
+          "guessit": "Freaks And Geeks",
+          "expected": "Freaks And Geeks"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 4,
+          "expected": 4
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Kim Kelly Is My Friend",
+          "expected": "Kim Kelly Is My Friend"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Freaks And Geeks",
+        "season": 1,
+        "episode": 4,
+        "episode_title": "Kim Kelly Is My Friend"
+      }
+    }
+  },
+  {
+    "filename": "/mnt/series/The Big Bang Theory/S01/The.Big.Bang.Theory.S01E01.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "The.Big.Bang.Theory",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/mnt/series/The Big Bang Theory/S01/The.Big.Bang.Theory.S01E01.mkv"
+    },
+    "guessit_result": {
+      "title": "The Big Bang Theory",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/mnt/series/The Big Bang Theory/S01/The.Big.Bang.Theory.S01E01.mkv"
+    },
+    "expected_result": {
+      "title": "The Big Bang Theory",
+      "season": 1,
+      "episode": 1
+    },
+    "comparison": {
+      "agreement": {
+        "season": 1,
+        "episode": 1
+      },
+      "differences": {
+        "title": {
+          "custom": "The.Big.Bang.Theory",
+          "guessit": "The Big Bang Theory",
+          "expected": "The Big Bang Theory"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Big Bang Theory"
+      }
+    }
+  },
+  {
+    "filename": "/media/Parks_and_Recreation-s03-e01.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Parks and Recreation s03 e01",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-e01.mkv"
+    },
+    "guessit_result": {
+      "title": "Parks and Recreation",
+      "year": null,
+      "season": 3,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-e01.mkv"
+    },
+    "expected_result": {
+      "title": "Parks and Recreation",
+      "season": 3,
+      "episode": 1
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Parks and Recreation s03 e01",
+          "guessit": "Parks and Recreation",
+          "expected": "Parks and Recreation"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Parks and Recreation",
+        "season": 3,
+        "episode": 1
+      }
+    }
+  },
+  {
+    "filename": "/media/Parks_and_Recreation-s03-e02-Flu_Season.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Parks and Recreation s03 e02 Flu Season",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-e02-Flu_Season.mkv"
+    },
+    "guessit_result": {
+      "title": "Parks and Recreation",
+      "year": null,
+      "season": 3,
+      "episode": 2,
+      "episode_title": "Flu Season",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-e02-Flu_Season.mkv"
+    },
+    "expected_result": {
+      "title": "Parks and Recreation",
+      "season": 3,
+      "episode_title": "Flu Season",
+      "episode": 2
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Parks and Recreation s03 e02 Flu Season",
+          "guessit": "Parks and Recreation",
+          "expected": "Parks and Recreation"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 2,
+          "expected": 2
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Flu Season",
+          "expected": "Flu Season"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Parks and Recreation",
+        "season": 3,
+        "episode": 2,
+        "episode_title": "Flu Season"
+      }
+    }
+  },
+  {
+    "filename": "/media/Parks_and_Recreation-s03-x01.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Parks and Recreation s03 x01",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-x01.mkv"
+    },
+    "guessit_result": {
+      "title": "Parks and Recreation",
+      "year": null,
+      "season": 3,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-x01.mkv"
+    },
+    "expected_result": {
+      "title": "Parks and Recreation",
+      "season": 3,
+      "episode": 1
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Parks and Recreation s03 x01",
+          "guessit": "Parks and Recreation",
+          "expected": "Parks and Recreation"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Parks and Recreation",
+        "season": 3,
+        "episode": 1
+      }
+    }
+  },
+  {
+    "filename": "/media/Parks_and_Recreation-s03-x02-Gag_Reel.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Parks and Recreation s03 x02 Gag Reel",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-x02-Gag_Reel.mkv"
+    },
+    "guessit_result": {
+      "title": "Parks and Recreation",
+      "year": null,
+      "season": 3,
+      "episode": 2,
+      "episode_title": "Gag Reel",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Parks_and_Recreation-s03-x02-Gag_Reel.mkv"
+    },
+    "expected_result": {
+      "title": "Parks and Recreation",
+      "season": 3,
+      "episode": 2,
+      "episode_title": "Gag Reel"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Parks and Recreation s03 x02 Gag Reel",
+          "guessit": "Parks and Recreation",
+          "expected": "Parks and Recreation"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 2,
+          "expected": 2
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Gag Reel",
+          "expected": "Gag Reel"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Parks and Recreation",
+        "season": 3,
+        "episode": 2,
+        "episode_title": "Gag Reel"
+      }
+    }
+  },
+  {
+    "filename": "/media/Band_of_Brothers-e01-Currahee.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Band of Brothers e01 Currahee",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Band_of_Brothers-e01-Currahee.mkv"
+    },
+    "guessit_result": {
+      "title": "Band of Brothers",
+      "year": null,
+      "season": null,
+      "episode": 1,
+      "episode_title": "Currahee",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Band_of_Brothers-e01-Currahee.mkv"
+    },
+    "expected_result": {
+      "title": "Band of Brothers",
+      "episode": 1,
+      "episode_title": "Currahee"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Band of Brothers e01 Currahee",
+          "guessit": "Band of Brothers",
+          "expected": "Band of Brothers"
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Currahee",
+          "expected": "Currahee"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Band of Brothers",
+        "episode": 1,
+        "episode_title": "Currahee"
+      }
+    }
+  },
+  {
+    "filename": "/media/Band_of_Brothers-x02-We_Stand_Alone_Together.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Band of Brothers x02 We Stand Alone Together",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Band_of_Brothers-x02-We_Stand_Alone_Together.mkv"
+    },
+    "guessit_result": {
+      "title": "Band of Brothers",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/Band_of_Brothers-x02-We_Stand_Alone_Together.mkv"
+    },
+    "expected_result": {
+      "title": "Band of Brothers",
+      "bonus": 2,
+      "bonus_title": "We Stand Alone Together"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Band of Brothers x02 We Stand Alone Together",
+          "guessit": "Band of Brothers",
+          "expected": "Band of Brothers"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Band of Brothers"
+      }
+    }
+  },
+  {
+    "filename": "/TV Shows/Mad.M-5x9.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Mad.M 5x9",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/TV Shows/Mad.M-5x9.mkv"
+    },
+    "guessit_result": {
+      "title": "Mad M",
+      "year": null,
+      "season": 5,
+      "episode": 9,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/TV Shows/Mad.M-5x9.mkv"
+    },
+    "expected_result": {
+      "title": "Mad M",
+      "season": 5,
+      "episode": 9
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Mad.M 5x9",
+          "guessit": "Mad M",
+          "expected": "Mad M"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 5,
+          "expected": 5
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 9,
+          "expected": 9
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Mad M",
+        "season": 5,
+        "episode": 9
+      }
+    }
+  },
+  {
+    "filename": "/TV Shows/new.girl.117.hdtv-lol.mp4",
+    "type": "episode",
+    "custom_result": {
+      "title": "new girl 117",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": "HDTV",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/TV Shows/new.girl.117.hdtv-lol.mp4"
+    },
+    "guessit_result": {
+      "title": "new girl",
+      "year": null,
+      "season": 1,
+      "episode": 17,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/TV Shows/new.girl.117.hdtv-lol.mp4"
+    },
+    "expected_result": {
+      "title": "new girl",
+      "season": 1,
+      "episode": 17,
+      "source": "HDTV",
+      "release_group": "lol"
+    },
+    "comparison": {
+      "agreement": {
+        "source": "HDTV"
+      },
+      "differences": {
+        "title": {
+          "custom": "new girl 117",
+          "guessit": "new girl",
+          "expected": "new girl"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 1,
+          "expected": 1
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 17,
+          "expected": 17
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "new girl",
+        "season": 1,
+        "episode": 17
+      }
+    }
+  },
+  {
+    "filename": "Kaamelott - 5x44x45x46x47x48x49x50.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Kaamelott",
+      "year": null,
+      "season": 5,
+      "episode": 44,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Kaamelott - 5x44x45x46x47x48x49x50.avi"
+    },
+    "guessit_result": {
+      "title": "Kaamelott",
+      "year": null,
+      "season": 5,
+      "episode": [
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Kaamelott - 5x44x45x46x47x48x49x50.avi"
+    },
+    "expected_result": {
+      "title": "Kaamelott",
+      "season": 5,
+      "episode": [
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ]
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Kaamelott",
+        "season": 5
+      },
+      "differences": {
+        "episode": {
+          "custom": 44,
+          "guessit": [
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50
+          ],
+          "expected": [
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode": [
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
+        ]
+      }
+    }
+  },
+  {
+    "filename": "Example S01E01-02.avi",
+    "error": "argument of type 'NoneType' is not iterable",
+    "type": "episode",
+    "failure_score": 100.0
+  },
+  {
+    "filename": "Example S01E01E02.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Example",
+      "year": null,
+      "season": 1,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Example S01E01E02.avi"
+    },
+    "guessit_result": {
+      "title": "Example",
+      "year": null,
+      "season": 1,
+      "episode": [
+        1,
+        2
+      ],
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Example S01E01E02.avi"
+    },
+    "expected_result": {
+      "title": "Example",
+      "season": 1,
+      "episode": [
+        1,
+        2
+      ]
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Example",
+        "season": 1
+      },
+      "differences": {
+        "episode": {
+          "custom": 1,
+          "guessit": [
+            1,
+            2
+          ],
+          "expected": [
+            1,
+            2
+          ]
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  {
+    "filename": "Series/Baccano!/Baccano!_-_T1_-_Trailer_-_[Ayu](dae8173e).mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Baccano! T1 Trailer (dae8173e)",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "movie",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Baccano!/Baccano!_-_T1_-_Trailer_-_[Ayu](dae8173e).mkv"
+    },
+    "guessit_result": {
+      "title": "Baccano!",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": "T1",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Baccano!/Baccano!_-_T1_-_Trailer_-_[Ayu](dae8173e).mkv"
+    },
+    "expected_result": {
+      "title": "Baccano!",
+      "other": "Trailer",
+      "release_group": "Ayu",
+      "episode_title": "T1",
+      "crc32": "dae8173e"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Baccano! T1 Trailer (dae8173e)",
+          "guessit": "Baccano!",
+          "expected": "Baccano!"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "T1",
+          "expected": "T1"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Baccano!",
+        "episode_title": "T1"
+      }
+    }
+  },
+  {
+    "filename": "Series/Doctor Who (2005)/Season 06/Doctor Who (2005) - S06E01 - The Impossible Astronaut (1).avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Doctor Who",
+      "year": null,
+      "season": 6,
+      "episode": 1,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Doctor Who (2005)/Season 06/Doctor Who (2005) - S06E01 - The Impossible Astronaut (1).avi"
+    },
+    "guessit_result": {
+      "title": "Doctor Who",
+      "year": 2005,
+      "season": 6,
+      "episode": 1,
+      "episode_title": "The Impossible Astronaut",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Series/Doctor Who (2005)/Season 06/Doctor Who (2005) - S06E01 - The Impossible Astronaut (1).avi"
+    },
+    "expected_result": {
+      "title": "Doctor Who",
+      "year": 2005,
+      "season": 6,
+      "episode": 1,
+      "episode_title": "The Impossible Astronaut"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Doctor Who",
+        "season": 6,
+        "episode": 1
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 2005,
+          "expected": 2005
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "The Impossible Astronaut",
+          "expected": "The Impossible Astronaut"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 2005,
+        "episode_title": "The Impossible Astronaut"
+      }
+    }
+  },
+  {
+    "filename": "The Sopranos - [05x07] - In Camelot.mp4",
+    "type": "episode",
+    "custom_result": {
+      "title": "The Sopranos [05x07] In Camelot",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "CAM",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The Sopranos - [05x07] - In Camelot.mp4"
+    },
+    "guessit_result": {
+      "title": "The Sopranos",
+      "year": null,
+      "season": 5,
+      "episode": 7,
+      "episode_title": "In Camelot",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The Sopranos - [05x07] - In Camelot.mp4"
+    },
+    "expected_result": {
+      "title": "The Sopranos",
+      "season": 5,
+      "episode": 7,
+      "episode_title": "In Camelot"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "The Sopranos [05x07] In Camelot",
+          "guessit": "The Sopranos",
+          "expected": "The Sopranos"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 5,
+          "expected": 5
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 7,
+          "expected": 7
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "In Camelot",
+          "expected": "In Camelot"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Sopranos",
+        "season": 5,
+        "episode": 7,
+        "episode_title": "In Camelot"
+      }
+    }
+  },
+  {
+    "filename": "The.Office.(US).1x03.Health.Care.HDTV.XviD-LOL.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "The.Office.(US)",
+      "year": null,
+      "season": 1,
+      "episode": 3,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Office.(US).1x03.Health.Care.HDTV.XviD-LOL.avi"
+    },
+    "guessit_result": {
+      "title": "The Office",
+      "year": null,
+      "season": 1,
+      "episode": 3,
+      "episode_title": "Health Care",
+      "media_type": "episode",
+      "quality": null,
+      "source": "HDTV",
+      "codec": "Xvid",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Office.(US).1x03.Health.Care.HDTV.XviD-LOL.avi"
+    },
+    "expected_result": {
+      "title": "The Office",
+      "country": "US",
+      "season": 1,
+      "episode": 3,
+      "episode_title": "Health Care",
+      "source": "HDTV",
+      "video_codec": "Xvid",
+      "release_group": "LOL"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 1,
+        "episode": 3,
+        "source": "HDTV",
+        "codec": "Xvid"
+      },
+      "differences": {
+        "title": {
+          "custom": "The.Office.(US)",
+          "guessit": "The Office",
+          "expected": "The Office"
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "Health Care",
+          "expected": "Health Care"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Office",
+        "episode_title": "Health Care"
+      }
+    }
+  },
+  {
+    "filename": "/Volumes/data-1/Series/Futurama/Season 3/Futurama_-_S03_DVD_Bonus_-_Deleted_Scenes_Part_3.ogm",
+    "type": "episode",
+    "custom_result": {
+      "title": "Futurama S03 DVD Bonus Deleted Scenes Part 3",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/Volumes/data-1/Series/Futurama/Season 3/Futurama_-_S03_DVD_Bonus_-_Deleted_Scenes_Part_3.ogm"
+    },
+    "guessit_result": {
+      "title": "Futurama",
+      "year": null,
+      "season": 3,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": "DVD",
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": 3,
+      "confidence": 0.0,
+      "original_filename": "/Volumes/data-1/Series/Futurama/Season 3/Futurama_-_S03_DVD_Bonus_-_Deleted_Scenes_Part_3.ogm"
+    },
+    "expected_result": {
+      "title": "Futurama",
+      "season": 3,
+      "part": 3,
+      "source": "DVD",
+      "other": "Bonus"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "Futurama S03 DVD Bonus Deleted Scenes Part 3",
+          "guessit": "Futurama",
+          "expected": "Futurama"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        },
+        "source": {
+          "custom": null,
+          "guessit": "DVD",
+          "expected": "DVD"
+        },
+        "part": {
+          "custom": null,
+          "guessit": 3,
+          "expected": 3
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Futurama",
+        "season": 3,
+        "source": "DVD",
+        "part": 3
+      }
+    }
+  },
+  {
+    "filename": "Ben.and.Kate.S01E02.720p.HDTV.X264-DIMENSION.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Ben.and.Kate",
+      "year": null,
+      "season": 1,
+      "episode": 2,
+      "episode_title": "720p",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Ben.and.Kate.S01E02.720p.HDTV.X264-DIMENSION.mkv"
+    },
+    "guessit_result": {
+      "title": "Ben and Kate",
+      "year": null,
+      "season": 1,
+      "episode": 2,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Ben.and.Kate.S01E02.720p.HDTV.X264-DIMENSION.mkv"
+    },
+    "expected_result": {
+      "title": "Ben and Kate",
+      "season": 1,
+      "episode": 2,
+      "screen_size": "720p",
+      "source": "HDTV",
+      "video_codec": "H.264",
+      "release_group": "DIMENSION"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 1,
+        "episode": 2,
+        "quality": "720p",
+        "source": "HDTV",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "Ben.and.Kate",
+          "guessit": "Ben and Kate",
+          "expected": "Ben and Kate"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Ben and Kate"
+      }
+    }
+  },
+  {
+    "filename": "/volume1/TV Series/Drawn Together/Season 1/Drawn Together 1x04 Requiem for a Reality Show.avi",
+    "type": "episode",
+    "custom_result": {
+      "title": "Drawn Together",
+      "year": null,
+      "season": 1,
+      "episode": 4,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/volume1/TV Series/Drawn Together/Season 1/Drawn Together 1x04 Requiem for a Reality Show.avi"
+    },
+    "guessit_result": {
+      "title": "Drawn Together",
+      "year": null,
+      "season": 1,
+      "episode": 4,
+      "episode_title": "Requiem for a Reality Show",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/volume1/TV Series/Drawn Together/Season 1/Drawn Together 1x04 Requiem for a Reality Show.avi"
+    },
+    "expected_result": {
+      "title": "Drawn Together",
+      "season": 1,
+      "episode": 4,
+      "episode_title": "Requiem for a Reality Show"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Drawn Together",
+        "season": 1,
+        "episode": 4
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "Requiem for a Reality Show",
+          "expected": "Requiem for a Reality Show"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "Requiem for a Reality Show"
+      }
+    }
+  },
+  {
+    "filename": "Sons.of.Anarchy.S05E06.720p.WEB.DL.DD5.1.H.264-CtrlHD.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Sons.of.Anarchy",
+      "year": null,
+      "season": 5,
+      "episode": 6,
+      "episode_title": "720p",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": null,
+      "codec": "H.264",
+      "audio": "Dolby Digital 5.1",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Sons.of.Anarchy.S05E06.720p.WEB.DL.DD5.1.H.264-CtrlHD.mkv"
+    },
+    "guessit_result": {
+      "title": "Sons of Anarchy",
+      "year": null,
+      "season": 5,
+      "episode": 6,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "Web",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Sons.of.Anarchy.S05E06.720p.WEB.DL.DD5.1.H.264-CtrlHD.mkv"
+    },
+    "expected_result": {
+      "title": "Sons of Anarchy",
+      "season": 5,
+      "episode": 6,
+      "screen_size": "720p",
+      "source": "Web",
+      "audio_channels": "5.1",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "H.264",
+      "release_group": "CtrlHD"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 5,
+        "episode": 6,
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "Sons.of.Anarchy",
+          "guessit": "Sons of Anarchy",
+          "expected": "Sons of Anarchy"
+        },
+        "source": {
+          "custom": null,
+          "guessit": "Web",
+          "expected": "Web"
+        },
+        "audio": {
+          "custom": "Dolby Digital 5.1",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Sons of Anarchy",
+        "source": "Web",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "/media/bdc64bfe-e36f-4af8-b550-e6fd2dfaa507/TV_Shows/Doctor Who (2005)/Saison 6/Doctor Who (2005) - S06E13 - The Wedding of River Song.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Doctor Who",
+      "year": null,
+      "season": 6,
+      "episode": 13,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/bdc64bfe-e36f-4af8-b550-e6fd2dfaa507/TV_Shows/Doctor Who (2005)/Saison 6/Doctor Who (2005) - S06E13 - The Wedding of River Song.mkv"
+    },
+    "guessit_result": {
+      "title": "Doctor Who",
+      "year": 2005,
+      "season": 6,
+      "episode": 13,
+      "episode_title": "The Wedding of River Song",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/media/bdc64bfe-e36f-4af8-b550-e6fd2dfaa507/TV_Shows/Doctor Who (2005)/Saison 6/Doctor Who (2005) - S06E13 - The Wedding of River Song.mkv"
+    },
+    "expected_result": {
+      "title": "Doctor Who",
+      "season": 6,
+      "episode": 13,
+      "year": 2005,
+      "episode_title": "The Wedding of River Song",
+      "uuid": "bdc64bfe-e36f-4af8-b550-e6fd2dfaa507"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Doctor Who",
+        "season": 6,
+        "episode": 13
+      },
+      "differences": {
+        "year": {
+          "custom": null,
+          "guessit": 2005,
+          "expected": 2005
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "The Wedding of River Song",
+          "expected": "The Wedding of River Song"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "year": 2005,
+        "episode_title": "The Wedding of River Song"
+      }
+    }
+  },
+  {
+    "filename": "/mnt/videos/tvshows/Doctor Who/Season 06/E13 - The Wedding of River Song.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "E13 The Wedding of River Song",
+      "year": null,
+      "season": null,
+      "episode": null,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/mnt/videos/tvshows/Doctor Who/Season 06/E13 - The Wedding of River Song.mkv"
+    },
+    "guessit_result": {
+      "title": "Doctor Who",
+      "year": null,
+      "season": 6,
+      "episode": 13,
+      "episode_title": "The Wedding of River Song",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/mnt/videos/tvshows/Doctor Who/Season 06/E13 - The Wedding of River Song.mkv"
+    },
+    "expected_result": {
+      "title": "Doctor Who",
+      "season": 6,
+      "episode": 13,
+      "episode_title": "The Wedding of River Song"
+    },
+    "comparison": {
+      "agreement": {},
+      "differences": {
+        "title": {
+          "custom": "E13 The Wedding of River Song",
+          "guessit": "Doctor Who",
+          "expected": "Doctor Who"
+        },
+        "season": {
+          "custom": null,
+          "guessit": 6,
+          "expected": 6
+        },
+        "episode": {
+          "custom": null,
+          "guessit": 13,
+          "expected": 13
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "The Wedding of River Song",
+          "expected": "The Wedding of River Song"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "Doctor Who",
+        "season": 6,
+        "episode": 13,
+        "episode_title": "The Wedding of River Song"
+      }
+    }
+  },
+  {
+    "filename": "The.Simpsons.S24E03.Adventures.in.Baby-Getting.720p.WEB-DL.DD5.1.H.264-CtrlHD.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "The.Simpsons",
+      "year": null,
+      "season": 24,
+      "episode": 3,
+      "episode_title": "Adventures.in.Baby-Getting",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "WEB-DL",
+      "codec": "H.264",
+      "audio": "Dolby Digital 5.1",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Simpsons.S24E03.Adventures.in.Baby-Getting.720p.WEB-DL.DD5.1.H.264-CtrlHD.mkv"
+    },
+    "guessit_result": {
+      "title": "The Simpsons",
+      "year": null,
+      "season": 24,
+      "episode": 3,
+      "episode_title": "Adventures in Baby-Getting",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "Web",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "The.Simpsons.S24E03.Adventures.in.Baby-Getting.720p.WEB-DL.DD5.1.H.264-CtrlHD.mkv"
+    },
+    "expected_result": {
+      "title": "The Simpsons",
+      "season": 24,
+      "episode": 3,
+      "episode_title": "Adventures in Baby-Getting",
+      "screen_size": "720p",
+      "source": "Web",
+      "audio_channels": "5.1",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "H.264",
+      "release_group": "CtrlHD"
+    },
+    "comparison": {
+      "agreement": {
+        "season": 24,
+        "episode": 3,
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "The.Simpsons",
+          "guessit": "The Simpsons",
+          "expected": "The Simpsons"
+        },
+        "episode_title": {
+          "custom": "Adventures.in.Baby-Getting",
+          "guessit": "Adventures in Baby-Getting",
+          "expected": "Adventures in Baby-Getting"
+        },
+        "source": {
+          "custom": "WEB-DL",
+          "guessit": "Web",
+          "expected": "Web"
+        },
+        "audio": {
+          "custom": "Dolby Digital 5.1",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "The Simpsons",
+        "episode_title": "Adventures in Baby-Getting",
+        "source": "Web",
+        "audio": "Dolby Digital"
+      }
+    }
+  },
+  {
+    "filename": "/home/disaster/Videos/TV/Merlin/merlin_2008.5x02.arthurs_bane_part_two.repack.720p_hdtv_x264-fov.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "merlin 2008",
+      "year": null,
+      "season": 5,
+      "episode": 2,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "/home/disaster/Videos/TV/Merlin/merlin_2008.5x02.arthurs_bane_part_two.repack.720p_hdtv_x264-fov.mkv"
+    },
+    "guessit_result": {
+      "title": "merlin",
+      "year": 2008,
+      "season": 5,
+      "episode": 2,
+      "episode_title": "arthurs bane",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "HDTV",
+      "codec": "H.264",
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": 2,
+      "confidence": 0.0,
+      "original_filename": "/home/disaster/Videos/TV/Merlin/merlin_2008.5x02.arthurs_bane_part_two.repack.720p_hdtv_x264-fov.mkv"
+    },
+    "expected_result": {
+      "title": "merlin",
+      "season": 5,
+      "episode": 2,
+      "part": 2,
+      "episode_title": "arthurs bane",
+      "screen_size": "720p",
+      "source": "HDTV",
+      "video_codec": "H.264",
+      "release_group": "fov",
+      "year": 2008,
+      "other": "Proper",
+      "proper_count": 1
+    },
+    "comparison": {
+      "agreement": {
+        "season": 5,
+        "episode": 2,
+        "quality": "720p",
+        "source": "HDTV",
+        "codec": "H.264"
+      },
+      "differences": {
+        "title": {
+          "custom": "merlin 2008",
+          "guessit": "merlin",
+          "expected": "merlin"
+        },
+        "year": {
+          "custom": null,
+          "guessit": 2008,
+          "expected": 2008
+        },
+        "episode_title": {
+          "custom": null,
+          "guessit": "arthurs bane",
+          "expected": "arthurs bane"
+        },
+        "part": {
+          "custom": null,
+          "guessit": 2,
+          "expected": 2
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "title": "merlin",
+        "year": 2008,
+        "episode_title": "arthurs bane",
+        "part": 2
+      }
+    }
+  },
+  {
+    "filename": "Da Vinci's Demons - 1x04 - The Magician.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "Da Vinci's Demons",
+      "year": null,
+      "season": 1,
+      "episode": 4,
+      "episode_title": null,
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Da Vinci's Demons - 1x04 - The Magician.mkv"
+    },
+    "guessit_result": {
+      "title": "Da Vinci's Demons",
+      "year": null,
+      "season": 1,
+      "episode": 4,
+      "episode_title": "The Magician",
+      "media_type": "episode",
+      "quality": null,
+      "source": null,
+      "codec": null,
+      "audio": null,
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "Da Vinci's Demons - 1x04 - The Magician.mkv"
+    },
+    "expected_result": {
+      "title": "Da Vinci's Demons",
+      "season": 1,
+      "episode": 4,
+      "episode_title": "The Magician"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "Da Vinci's Demons",
+        "season": 1,
+        "episode": 4
+      },
+      "differences": {
+        "episode_title": {
+          "custom": null,
+          "guessit": "The Magician",
+          "expected": "The Magician"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "episode_title": "The Magician"
+      }
+    }
+  },
+  {
+    "filename": "CSI.S013E18.Sheltered.720p.WEB-DL.DD5.1.H.264.mkv",
+    "type": "episode",
+    "custom_result": {
+      "title": "CSI",
+      "year": null,
+      "season": 13,
+      "episode": 18,
+      "episode_title": "Sheltered",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "WEB-DL",
+      "codec": "H.264",
+      "audio": "Dolby Digital 5.1",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "CSI.S013E18.Sheltered.720p.WEB-DL.DD5.1.H.264.mkv"
+    },
+    "guessit_result": {
+      "title": "CSI",
+      "year": null,
+      "season": 13,
+      "episode": 18,
+      "episode_title": "Sheltered",
+      "media_type": "episode",
+      "quality": "720p",
+      "source": "Web",
+      "codec": "H.264",
+      "audio": "Dolby Digital",
+      "language": null,
+      "edition": null,
+      "part": null,
+      "confidence": 0.0,
+      "original_filename": "CSI.S013E18.Sheltered.720p.WEB-DL.DD5.1.H.264.mkv"
+    },
+    "expected_result": {
+      "title": "CSI",
+      "season": 13,
+      "episode": 18,
+      "episode_title": "Sheltered",
+      "screen_size": "720p",
+      "source": "Web",
+      "audio_channels": "5.1",
+      "audio_codec": "Dolby Digital",
+      "video_codec": "H.264"
+    },
+    "comparison": {
+      "agreement": {
+        "title": "CSI",
+        "season": 13,
+        "episode": 18,
+        "episode_title": "Sheltered",
+        "quality": "720p",
+        "codec": "H.264"
+      },
+      "differences": {
+        "source": {
+          "custom": "WEB-DL",
+          "guessit": "Web",
+          "expected": "Web"
+        },
+        "audio": {
+          "custom": "Dolby Digital 5.1",
+          "guessit": "Dolby Digital",
+          "expected": "Dolby Digital"
+        }
+      },
+      "confidence_scores": {},
+      "recommended": {
+        "source": "Web",
+        "audio": "Dolby Digital"
+      }
+    }
+  }
+]

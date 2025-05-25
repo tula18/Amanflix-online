@@ -3,6 +3,7 @@ import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
+import ReactNetflixPlayer from '../../Components/NetflixPlayer/index.tsx';
 
 const WatchPage = () => {
     const { watch_id } = useParams();
@@ -23,6 +24,8 @@ const WatchPage = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [lastSavedTime, setLastSavedTime] = useState(0);
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
+    const [useOldPlayer, setUseOldPlayer] = useState(false)
+    const [disablePreview, setDisablePreview] = useState(true);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {
@@ -193,18 +196,30 @@ const WatchPage = () => {
     };
 
     return (
-        <div className="watchPageContainer">
-            <video
-                ref={videoRef}
-                src={`${API_URL}/api/stream/${watch_id}`}
-                controls={true}
-                onError={handleError}
-                onTimeUpdate={handleProgress}
-                onLoadedMetadata={handleMetadataLoaded}
-                autoPlay
-                width="100%"
-                height="100%"
-            />
+        <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
+            {useOldPlayer ? (
+                <video
+                    ref={videoRef}
+                    src={`${API_URL}/api/stream/${watch_id}`}
+                    controls={true}
+                    onError={handleError}
+                    onTimeUpdate={handleProgress}
+                    onLoadedMetadata={handleMetadataLoaded}
+                    autoPlay
+                    width="100%"
+                    height="100%"
+                />
+            ) : (
+                <ReactNetflixPlayer 
+                    src={`${API_URL}/api/stream/${watch_id}`}
+                    onErrorVideo={handleError}
+                    onTimeUpdate={handleProgress}
+                    autoPlay
+                    backButton={() => navigate(-1)}
+                    disablePreview={disablePreview}
+                />
+            )}
+            
         </div>
     );
 };

@@ -1,0 +1,622 @@
+accuracy: 98.48484848484848
+correct: 195
+errors:
+- error: argument of type 'NoneType' is not iterable
+  filename: The Godfather Part 3.mkv
+  type: movie
+- actual: !!python/object/apply:rebulk.match.MatchesDict
+    dictitems:
+      container: mkv
+      other: Rip
+      screen_size: 1080p
+      source: HDTV
+      title: Lindon
+      type: movie
+    state:
+      matches: !!python/object/apply:collections.defaultdict
+        args:
+        - &id016 !!python/name:builtins.list ''
+        dictitems:
+          container:
+          - !!python/object:rebulk.match.Match
+            _children: !!python/object:rebulk.match.Matches
+              _BaseMatches__end_dict: null
+              _BaseMatches__index_dict: null
+              _BaseMatches__name_dict: null
+              _BaseMatches__start_dict: null
+              _BaseMatches__tag_dict: null
+              _delegate: []
+              _max_end: 0
+              input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+              markers: !!python/object:rebulk.match.Markers
+                _BaseMatches__end_dict: null
+                _BaseMatches__index_dict: null
+                _BaseMatches__name_dict: null
+                _BaseMatches__start_dict: null
+                _BaseMatches__tag_dict: null
+                _delegate: []
+                _max_end: 0
+                input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            _raw_end: null
+            _raw_start: 27
+            _value: null
+            conflict_solver: &id003 !!python/name:guessit.rules.properties.container.%3Clambda%3E ''
+            defined_at: null
+            end: 30
+            formatter: &id001 !!python/name:guessit.rules.properties.container.%3Clambda%3E ''
+            input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            marker: null
+            match_index: 0
+            name: container
+            parent: null
+            pattern: !!python/object:rebulk.pattern.StringPattern
+              _default_formatter: *id001
+              _default_validator: &id004 !!python/object/apply:functools.partial
+                args:
+                - &id002 !!python/name:rebulk.validators.chars_surround ''
+                state: !!python/tuple
+                - *id002
+                - !!python/tuple
+                  - ' [](){}+*|=-_~#/\\.,;:'
+                - {}
+                - null
+              _default_value: null
+              _kwargs:
+                conflict_solver: *id003
+                formatter: *id001
+                ignore_case: true
+                name: container
+                tags: &id005
+                - video
+                validator: *id004
+              _log_level: null
+              _match_kwargs:
+                conflict_solver: *id003
+                ignore_case: true
+                name: container
+                tags: *id005
+                validator: *id004
+              _patterns: !!python/tuple
+              - 3g2
+              - 3gp
+              - 3gp2
+              - asf
+              - avi
+              - divx
+              - flv
+              - iso
+              - m4v
+              - mk2
+              - mk3d
+              - mka
+              - mkv
+              - mov
+              - mp4
+              - mp4a
+              - mpeg
+              - mpg
+              - ogg
+              - ogm
+              - ogv
+              - qt
+              - ra
+              - ram
+              - rm
+              - ts
+              - m2ts
+              - vob
+              - wav
+              - webm
+              - wma
+              - wmv
+              _properties: null
+              children: false
+              defined_at: null
+              disabled: &id012 !!python/name:rebulk.pattern.%3Clambda%3E ''
+              every: false
+              format_all: false
+              formatters:
+                null: *id001
+              ignore_names: []
+              marker: false
+              name: container
+              post_match_processor: null
+              post_processor: null
+              pre_match_processor: null
+              private: false
+              private_children: false
+              private_names: []
+              private_parent: false
+              tags: *id005
+              validate_all: false
+              validators:
+                null: *id004
+              values:
+                null: null
+            private: null
+            start: 26
+            tags: *id005
+          other:
+          - &id014 !!python/object:rebulk.match.Match
+            _children: null
+            _raw_end: 44
+            _raw_start: null
+            _value: Rip
+            conflict_solver: &id006 !!python/name:guessit.rules.properties.source.demote_other ''
+            defined_at: null
+            end: 45
+            formatter: &id007 !!python/name:rebulk.formatters.default_formatter ''
+            input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            marker: null
+            match_index: 0
+            name: other
+            parent: &id008 !!python/object:rebulk.match.Match
+              _children: !!python/object:rebulk.match.Matches
+                _BaseMatches__end_dict: null
+                _BaseMatches__index_dict: null
+                _BaseMatches__name_dict: null
+                _BaseMatches__start_dict: null
+                _BaseMatches__tag_dict: null
+                _delegate:
+                - &id028 !!python/object:rebulk.match.Match
+                  _children: null
+                  _raw_end: null
+                  _raw_start: null
+                  _value: HDTV
+                  conflict_solver: *id006
+                  defined_at: null
+                  end: 39
+                  formatter: *id007
+                  input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+                  marker: null
+                  match_index: 0
+                  name: source
+                  parent: *id008
+                  pattern: &id015 !!python/object:rebulk.pattern.RePattern
+                    _children_match_kwargs:
+                      abbreviations: &id009
+                      - &id018 !!python/tuple
+                        - '-'
+                        - '[\ \[\]\(\)\{\}\+\*\|=\-_\~\#\.,;:]'
+                      children: true
+                      conflict_solver: *id006
+                      flags: !!python/object/apply:re.RegexFlag
+                      - 2
+                      private_parent: true
+                      tags: &id010
+                      - video-codec-prefix
+                      - streaming_service.suffix
+                      validate_all: true
+                      validator: &id011
+                        __parent__: !!python/name:guessit.rules.common.validators.composed ''
+                    _default_formatter: *id007
+                    _default_validator: !!python/name:rebulk.validators.allways_true ''
+                    _default_value: null
+                    _kwargs:
+                      abbreviations: *id009
+                      children: true
+                      conflict_solver: *id006
+                      flags: !!python/object/apply:re.RegexFlag
+                      - 2
+                      name: source
+                      private_parent: true
+                      tags: *id010
+                      validate_all: true
+                      validator: *id011
+                      value: &id013
+                        other: Rip
+                        source: HDTV
+                    _log_level: null
+                    _match_kwargs:
+                      abbreviations: *id009
+                      children: true
+                      conflict_solver: *id006
+                      flags: !!python/object/apply:re.RegexFlag
+                      - 2
+                      name: source
+                      private_parent: true
+                      tags: *id010
+                      validate_all: true
+                      validator: *id011
+                    _patterns:
+                    - !!python/object/apply:re._compile
+                      - (TV)[\ \[\]\(\)\{\}\+\*\|=\-_\~\#\.,;:]?(?P<other>Rip[\ \[\]\(\)\{\}\+\*\|=\-_\~\#\.,;:]?HD)
+                      - 34
+                    _properties: null
+                    abbreviations: *id009
+                    children: true
+                    defined_at: null
+                    disabled: *id012
+                    every: false
+                    format_all: false
+                    formatters:
+                      null: *id007
+                    ignore_names: []
+                    marker: false
+                    name: source
+                    post_match_processor: null
+                    post_processor: null
+                    pre_match_processor: null
+                    private: false
+                    private_children: false
+                    private_names: []
+                    private_parent: true
+                    repeated_captures: false
+                    tags: *id010
+                    validate_all: true
+                    validators: *id011
+                    values: *id013
+                  private: null
+                  start: 37
+                  tags: *id010
+                - *id014
+                _max_end: 44
+                input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+                markers: !!python/object:rebulk.match.Markers
+                  _BaseMatches__end_dict: null
+                  _BaseMatches__index_dict: null
+                  _BaseMatches__name_dict: null
+                  _BaseMatches__start_dict: null
+                  _BaseMatches__tag_dict: null
+                  _delegate: []
+                  _max_end: 0
+                  input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+              _raw_end: 44
+              _raw_start: null
+              _value: HDTV
+              conflict_solver: *id006
+              defined_at: null
+              end: 45
+              formatter: null
+              input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+              marker: null
+              match_index: 0
+              name: source
+              parent: null
+              pattern: *id015
+              private: true
+              start: 37
+              tags: *id010
+            pattern: *id015
+            private: null
+            start: 39
+            tags: *id010
+          screen_size:
+          - &id017 !!python/object:rebulk.match.Match
+            _children: !!python/object:rebulk.match.Matches
+              _BaseMatches__end_dict: null
+              _BaseMatches__index_dict: null
+              _BaseMatches__name_dict: !!python/object/apply:collections.defaultdict
+                args:
+                - *id016
+                dictitems:
+                  frame_rate: []
+                  height:
+                  - &id022 !!python/object:rebulk.match.Match
+                    _children: null
+                    _raw_end: null
+                    _raw_start: null
+                    _value: null
+                    conflict_solver: null
+                    defined_at: null
+                    end: 35
+                    formatter: null
+                    input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+                    marker: null
+                    match_index: 0
+                    name: height
+                    parent: *id017
+                    pattern: &id021 !!python/object:rebulk.pattern.RePattern
+                      _children_match_kwargs:
+                        abbreviations: &id019
+                        - *id018
+                        disabled: &id020 !!python/name:guessit.rules.properties.screen_size.%3Clambda%3E ''
+                        flags: !!python/object/apply:re.RegexFlag
+                        - 2
+                        validator: *id004
+                      _default_formatter: *id007
+                      _default_validator: *id004
+                      _default_value: null
+                      _kwargs:
+                        abbreviations: *id019
+                        disabled: *id020
+                        flags: !!python/object/apply:re.RegexFlag
+                        - 2
+                        name: screen_size
+                        validator: *id004
+                      _log_level: null
+                      _match_kwargs:
+                        abbreviations: *id019
+                        disabled: *id020
+                        flags: !!python/object/apply:re.RegexFlag
+                        - 2
+                        name: screen_size
+                        validator: *id004
+                      _patterns:
+                      - !!python/object/apply:re._compile
+                        - (?:(?P<width>\d{3,4})(?:x|\*))?(?P<height>368|576|720|1080|1440|900|4320|480|2160|360|540)(?P<scan_type>p)(?P<frame_rate>29\.970|23\.976|24(?:\.0{1,3})?|25(?:\.0{1,3})?|48(?:\.0{1,3})?|120(?:\.0{1,3})?|50(?:\.0{1,3})?|30(?:\.0{1,3})?|60(?:\.0{1,3})?)?
+                        - 34
+                      _properties: null
+                      abbreviations: *id019
+                      children: false
+                      defined_at: null
+                      disabled: *id020
+                      every: false
+                      format_all: false
+                      formatters:
+                        null: *id007
+                      ignore_names: []
+                      marker: false
+                      name: screen_size
+                      post_match_processor: null
+                      post_processor: null
+                      pre_match_processor: null
+                      private: false
+                      private_children: false
+                      private_names: []
+                      private_parent: false
+                      repeated_captures: false
+                      tags: []
+                      validate_all: false
+                      validators:
+                        null: *id004
+                      values:
+                        null: null
+                    private: null
+                    start: 31
+                    tags: []
+                  scan_type:
+                  - &id023 !!python/object:rebulk.match.Match
+                    _children: null
+                    _raw_end: null
+                    _raw_start: null
+                    _value: null
+                    conflict_solver: null
+                    defined_at: null
+                    end: 36
+                    formatter: null
+                    input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+                    marker: null
+                    match_index: 0
+                    name: scan_type
+                    parent: *id017
+                    pattern: *id021
+                    private: null
+                    start: 35
+                    tags: []
+              _BaseMatches__start_dict: null
+              _BaseMatches__tag_dict: null
+              _delegate:
+              - *id022
+              - *id023
+              _max_end: 36
+              input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+              markers: !!python/object:rebulk.match.Markers
+                _BaseMatches__end_dict: null
+                _BaseMatches__index_dict: null
+                _BaseMatches__name_dict: null
+                _BaseMatches__start_dict: null
+                _BaseMatches__tag_dict: null
+                _delegate: []
+                _max_end: 0
+                input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            _raw_end: null
+            _raw_start: null
+            _value: 1080p
+            conflict_solver: null
+            defined_at: null
+            end: 36
+            formatter: *id007
+            input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            marker: null
+            match_index: 0
+            name: screen_size
+            parent: null
+            pattern: *id021
+            private: null
+            start: 31
+            tags: []
+          - &id024 !!python/object:rebulk.match.Match
+            _children: !!python/object:rebulk.match.Matches
+              _BaseMatches__end_dict: null
+              _BaseMatches__index_dict: null
+              _BaseMatches__name_dict: !!python/object/apply:collections.defaultdict
+                args:
+                - *id016
+                dictitems:
+                  frame_rate: []
+                  height:
+                  - &id026 !!python/object:rebulk.match.Match
+                    _children: null
+                    _raw_end: null
+                    _raw_start: null
+                    _value: null
+                    conflict_solver: null
+                    defined_at: null
+                    end: 35
+                    formatter: null
+                    input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+                    marker: null
+                    match_index: 0
+                    name: height
+                    parent: *id024
+                    pattern: &id025 !!python/object:rebulk.pattern.RePattern
+                      _children_match_kwargs:
+                        abbreviations: *id019
+                        disabled: *id020
+                        flags: !!python/object/apply:re.RegexFlag
+                        - 2
+                        validator: *id004
+                      _default_formatter: *id007
+                      _default_validator: *id004
+                      _default_value: null
+                      _kwargs:
+                        abbreviations: *id019
+                        disabled: *id020
+                        flags: !!python/object/apply:re.RegexFlag
+                        - 2
+                        name: screen_size
+                        validator: *id004
+                      _log_level: null
+                      _match_kwargs:
+                        abbreviations: *id019
+                        disabled: *id020
+                        flags: !!python/object/apply:re.RegexFlag
+                        - 2
+                        name: screen_size
+                        validator: *id004
+                      _patterns:
+                      - !!python/object/apply:re._compile
+                        - (?:(?P<width>\d{3,4})(?:x|\*))?(?P<height>368|576|720|1080|1440|900|4320|480|2160|360|540)(?P<scan_type>p)?x?
+                        - 34
+                      _properties: null
+                      abbreviations: *id019
+                      children: false
+                      defined_at: null
+                      disabled: *id020
+                      every: false
+                      format_all: false
+                      formatters:
+                        null: *id007
+                      ignore_names: []
+                      marker: false
+                      name: screen_size
+                      post_match_processor: null
+                      post_processor: null
+                      pre_match_processor: null
+                      private: false
+                      private_children: false
+                      private_names: []
+                      private_parent: false
+                      repeated_captures: false
+                      tags: []
+                      validate_all: false
+                      validators:
+                        null: *id004
+                      values:
+                        null: null
+                    private: null
+                    start: 31
+                    tags: []
+                  scan_type:
+                  - &id027 !!python/object:rebulk.match.Match
+                    _children: null
+                    _raw_end: null
+                    _raw_start: null
+                    _value: null
+                    conflict_solver: null
+                    defined_at: null
+                    end: 36
+                    formatter: null
+                    input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+                    marker: null
+                    match_index: 0
+                    name: scan_type
+                    parent: *id024
+                    pattern: *id025
+                    private: null
+                    start: 35
+                    tags: []
+              _BaseMatches__start_dict: null
+              _BaseMatches__tag_dict: null
+              _delegate:
+              - *id026
+              - *id027
+              _max_end: 36
+              input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+              markers: !!python/object:rebulk.match.Markers
+                _BaseMatches__end_dict: null
+                _BaseMatches__index_dict: null
+                _BaseMatches__name_dict: null
+                _BaseMatches__start_dict: null
+                _BaseMatches__tag_dict: null
+                _delegate: []
+                _max_end: 0
+                input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            _raw_end: null
+            _raw_start: null
+            _value: 1080p
+            conflict_solver: null
+            defined_at: null
+            end: 36
+            formatter: *id007
+            input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            marker: null
+            match_index: 0
+            name: screen_size
+            parent: null
+            pattern: *id025
+            private: null
+            start: 31
+            tags: []
+          source:
+          - *id028
+          title:
+          - !!python/object:rebulk.match.Match
+            _children: null
+            _raw_end: 25
+            _raw_start: null
+            _value: null
+            conflict_solver: null
+            defined_at: null
+            end: 26
+            formatter: !!python/name:rebulk.formatters.formatters_chain ''
+            input_string: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+            marker: null
+            name: title
+            parent: null
+            pattern: null
+            private: null
+            start: 19
+            tags:
+            - title
+          type:
+          - !!python/object:rebulk.match.Match
+            _children: null
+            _raw_end: null
+            _raw_start: null
+            _value: movie
+            conflict_solver: null
+            defined_at: null
+            end: 45
+            formatter: null
+            input_string: null
+            marker: null
+            name: type
+            parent: null
+            pattern: null
+            private: null
+            start: 45
+            tags: []
+      values_list: !!python/object/apply:collections.defaultdict
+        args:
+        - *id016
+        dictitems:
+          container:
+          - mkv
+          other:
+          - Rip
+          screen_size:
+          - 1080p
+          source:
+          - HDTV
+          title:
+          - Lindon
+          type:
+          - movie
+  expected:
+    alternative_title:
+    - Timsit
+    - Lindon
+    container: mkv
+    options: -n
+    other: Rip
+    screen_size: 1080p
+    source: HDTV
+    title: Paparazzi
+  filename: Paparazzi - Timsit/Lindon (MKV 1080p tvripHD)
+  type: movie
+- error: argument of type 'NoneType' is not iterable
+  filename: Example S01E01-02.avi
+  type: episode
+total: 198
