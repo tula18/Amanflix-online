@@ -503,6 +503,7 @@ export const StandByInfo = styled.div<IStandByInfoProps>`
   padding: 0 50px;
   transition: all 0.5s ease-out;
   opacity: ${props => (props.show ? 1 : 0)};
+  z-index: 1000;
 
   section {
     margin: auto 0;

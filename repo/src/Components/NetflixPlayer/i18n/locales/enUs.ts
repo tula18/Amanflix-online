@@ -8,7 +8,12 @@ const enUs = {
       nextEpisode: 'Next Episode',
       playlist: 'Playlist',
       playError: 'Something went wrong playing this video',
+      clickToPlay: "Click to Play",
+      readyToWatch: "Ready to Watch", 
+      autoplayBlocked: "Your browser prevented autoplay. Click to start watching.",
+      clickToStart: "Click the play button to start watching.",
+      clickAnywhere: "Click anywhere to start"
     },
   };
   
-  export default enUs;    
+  export default enUs;

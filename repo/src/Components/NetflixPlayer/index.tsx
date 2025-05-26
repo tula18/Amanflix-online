@@ -139,7 +139,7 @@ export default function ReactNetflixPlayer({
 
   playbackRateOptions = ['0.25', '0.5', '0.75', 'Normal', '1.25', '1.5', '2'],
   playbackRateStart = 1,
-  disablePreview = false, // Add the new prop with default value
+  disablePreview = false,
 }: IProps) {
   // References
   const videoComponent = useRef<null | HTMLVideoElement>(null);
@@ -154,14 +154,14 @@ export default function ReactNetflixPlayer({
 
   // States
   const [videoReady, setVideoReady] = useState(false);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false); // Start as false instead of true
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [end, setEnd] = useState(false);
   const [controlBackEnd, setControlBackEnd] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [volume, setVolume] = useState(100);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(false); // Start unmuted
   const [error, setError] = useState(false);
   const [waitingBuffer, setWaitingBuffer] = useState(false);
   const [showControls, setShowControls] = useState(false);
@@ -178,6 +178,10 @@ export default function ReactNetflixPlayer({
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Add the missing autoplay state variables
+  const [requiresInteraction, setRequiresInteraction] = useState(autoPlay); // Set to true if autoPlay is requested
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   const { t } = useTranslation();
 
@@ -270,16 +274,52 @@ export default function ReactNetflixPlayer({
 
   const play = () => {
     if (videoComponent.current) {
-      setPlaying(!playing);
-
-      if (videoComponent.current.paused) {
-        videoComponent.current.play();
-        return;
+      const wasPlaying = !videoComponent.current.paused;
+      
+      if (wasPlaying) {
+        videoComponent.current.pause();
+        setPlaying(false);
+      } else {
+        // Attempt to play
+        const playPromise = videoComponent.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setPlaying(true);
+              setRequiresInteraction(false);
+              setHasUserInteracted(true);
+            })
+            .catch((error) => {
+              console.log("Autoplay prevented:", error);
+              if (error.name === 'NotAllowedError') {
+                // Show play button overlay for user interaction
+                setRequiresInteraction(true);
+                setPlaying(false);
+              }
+            });
+        }
       }
-
-      videoComponent.current.pause();
     }
   };
+
+  const forcePlay = () => {
+    if (videoComponent.current) {
+      const playPromise = videoComponent.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setPlaying(true);
+            setRequiresInteraction(false);
+            setHasUserInteracted(true);
+          })
+          .catch((error) => {
+            console.error("Play failed:", error);
+          });
+    }
+  }
+};
 
   const onEndedFunction = () => {
     if (videoComponent.current) {
@@ -315,7 +355,7 @@ export default function ReactNetflixPlayer({
       }
 
       videoComponent.current.currentTime += seconds;
-      setProgress(videoComponent.current.currentTime + seconds);
+      setProgress(videoComponent.current.currentTime); // Remove the + seconds here
     }
   };
 
@@ -330,7 +370,7 @@ export default function ReactNetflixPlayer({
       }
 
       videoComponent.current.currentTime -= seconds;
-      setProgress(videoComponent.current.currentTime - seconds);
+      setProgress(videoComponent.current.currentTime); // Remove the - seconds here
     }
   };
 
@@ -342,7 +382,6 @@ export default function ReactNetflixPlayer({
 
         if (!started) {
           setStarted(true);
-          setPlaying(false);
 
           // Ensure video starts at the correct position
           if (startPosition > 0) {
@@ -350,9 +389,31 @@ export default function ReactNetflixPlayer({
             setProgress(startPosition);
           }
 
+          // Don't auto-mute - let the overlay handle user interaction
+          videoComponent.current.muted = muted;
+
           if (autoPlay) {
-            videoComponent.current.play();
-            setPlaying(!videoComponent.current.paused);
+            // Try autoplay without muting first
+            const playPromise = videoComponent.current.play();
+            
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  setPlaying(true);
+                  setRequiresInteraction(false);
+                  setHasUserInteracted(true);
+                })
+                .catch((error) => {
+                  console.log("Autoplay prevented:", error);
+                  // Show overlay for user interaction instead of muting
+                  setRequiresInteraction(true);
+                  setPlaying(false);
+                });
+            }
+          } else {
+            // If autoPlay is false, show the overlay immediately
+            setRequiresInteraction(true);
+            setPlaying(false);
           }
         }
 
@@ -361,6 +422,7 @@ export default function ReactNetflixPlayer({
         }
       } catch (err) {
         setPlaying(false);
+        setRequiresInteraction(true);
       }
     }
   };
@@ -372,102 +434,145 @@ export default function ReactNetflixPlayer({
     setError(t('playError', { lng: playerLanguage }));
   };
 
-  const setMutedAction = (value: boolean) => {
-    if (videoComponent.current) {
-      setMuted(value);
-      setShowControlVolume(false);
-      videoComponent.current.muted = value;
-    }
-  };
+  // Add state for volume overlay
+  const [showVolumeOverlay, setShowVolumeOverlay] = useState(false);
+  const volumeOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const setVolumeAction = (value: number) => {
     if (videoComponent.current) {
       setVolume(value);
       videoComponent.current.volume = value / 100;
-    }
-  };
-
-  const exitFullScreen = () => {
-    if (document.fullscreenElement) {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
+      
+      // Show volume overlay
+      setShowVolumeOverlay(true);
+      
+      // Clear existing timeout
+      if (volumeOverlayTimeoutRef.current) {
+        clearTimeout(volumeOverlayTimeoutRef.current);
       }
-
-      setFullScreen(false);
+      
+      // Hide overlay after 2 seconds
+      volumeOverlayTimeoutRef.current = setTimeout(() => {
+        setShowVolumeOverlay(false);
+      }, 2000);
     }
   };
 
-  const enterFullScreen = () => {
-    if (playerElement.current) {
-      setShowInfo(true);
-      if (playerElement.current.requestFullscreen) {
-        playerElement.current.requestFullscreen();
-        setFullScreen(true);
+  const setMutedAction = (value: boolean) => {
+    if (videoComponent.current) {
+      setMuted(value);
+      setShowControlVolume(false);
+      videoComponent.current.muted = value;
+      
+      // Show volume overlay for mute/unmute
+      setShowVolumeOverlay(true);
+      
+      // Clear existing timeout
+      if (volumeOverlayTimeoutRef.current) {
+        clearTimeout(volumeOverlayTimeoutRef.current);
       }
+      
+      // Hide overlay after 2 seconds
+      volumeOverlayTimeoutRef.current = setTimeout(() => {
+        setShowVolumeOverlay(false);
+      }, 2000);
     }
   };
 
-  const chooseFullScreen = () => {
-    if (playerElement.current) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-        return;
-      }
+  // Add this function to render the volume overlay
+  function renderVolumeOverlay() {
+    if (!showVolumeOverlay) return null;
 
-      setShowInfo(true);
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: '30px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          zIndex: 2000,
+          fontSize: '14px',
+          fontWeight: '500',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          animation: 'fadeInOut 2s ease-in-out',
+          minWidth: '120px',
+          justifyContent: 'center'
+        }}
+      >
+        <style>
+          {`
+            @keyframes fadeInOut {
+              0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+              10%, 90% { opacity: 1; transform: translateX(-50%) translateY(0); }
+              100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            }
+          `}
+        </style>
+        
+        {/* Volume icon */}
+        <div style={{ fontSize: '16px', color: primaryColor }}>
+          {muted ? (
+            <FaVolumeMute />
+          ) : volume >= 60 ? (
+            <FaVolumeUp />
+          ) : volume >= 10 ? (
+            <FaVolumeDown />
+          ) : volume > 0 ? (
+            <FaVolumeOff />
+          ) : (
+            <FaVolumeMute />
+          )}
+        </div>
+        
+        {/* Volume text */}
+        <span>
+          {muted ? 'Muted' : `${Math.round(volume)}%`}
+        </span>
+        
+        {/* Volume bar */}
+        {!muted && (
+          <div
+            style={{
+              width: '60px',
+              height: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: '2px',
+              overflow: 'hidden'
+            }}
+          >
+            <div
+              style={{
+                width: `${volume}%`,
+                height: '100%',
+                backgroundColor: primaryColor,
+                borderRadius: '2px',
+                transition: 'width 0.2s ease'
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
 
-      if (playerElement.current.requestFullscreen) {
-        playerElement.current.requestFullscreen();
-      }
-      setFullScreen(true);
-    }
-  };
-
-  const setStateFullScreen = () => {
-    if (!document.fullscreenElement) {
-      setFullScreen(false);
-      return;
-    }
-
-    setFullScreen(true);
-  };
-
-  const controlScreenTimeOut = () => {
-    if (!autoControlCloseEnabled) {
-      setShowInfo(true);
-      return;
-    }
-
-    setShowControls(false);
-    if (!playing) {
-      setShowInfo(true);
-    }
-  };
-
-  const hoverScreen = () => {
-    setShowControls(true);
-    setShowInfo(false);
-
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    timerRef.current = setTimeout(controlScreenTimeOut, 3000);
-  };
-
-  const getKeyboardInteraction = (e: KeyboardEvent) => {
-    if (e.keyCode === 32 && videoComponent.current) {
-      if (videoComponent.current.paused) {
-        videoComponent.current.play();
-        setPlaying(true);
-        hoverScreen();
-      } else {
-        videoComponent.current.pause();
-        setPlaying(false);
-        hoverScreen();
-      }
-    }
-  };
+  // Clean up volume overlay timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerBuffer.current) clearTimeout(timerBuffer.current);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (volumeOverlayTimeoutRef.current) clearTimeout(volumeOverlayTimeoutRef.current);
+    };
+  }, []);
 
   const scrollToSelected = () => {
     const element = playlistRef.current;
@@ -647,12 +752,6 @@ export default function ReactNetflixPlayer({
   }, [src, startPosition]); // Add startPosition as dependency
 
   useEffect(() => {
-    document.addEventListener('keydown', getKeyboardInteraction, false);
-    playerElement.current &&
-      playerElement.current.addEventListener('fullscreenchange', setStateFullScreen, false);
-  }, []);
-
-  useEffect(() => {
     setStateFullScreen();
   }, [document.fullscreenElement]);
 
@@ -660,9 +759,6 @@ export default function ReactNetflixPlayer({
     // Only trigger play/pause if we're not clicking on controls
     const target = e.target as HTMLElement;
 
-    console.log(target);
-    
-    
     // Check if the click is on the video area (not on controls)
     if (target.tagName === 'VIDEO' || 
         target === playerElement.current ||
@@ -671,12 +767,336 @@ export default function ReactNetflixPlayer({
          !target.closest('button') && 
          !target.closest('[class*="Item"]') && 
          !target.closest('.progress-bar'))) {
-      console.log('Container clicked - triggering play/pause');
       e.preventDefault();
       e.stopPropagation();
-      play();
+      
+      // If requires interaction, force play on first click
+      if (requiresInteraction) {
+        forcePlay();
+      } else {
+        play();
+      }
     }
   };
+
+  const controlScreenTimeOut = () => {
+    if (!autoControlCloseEnabled) {
+      setShowInfo(true);
+      return;
+    }
+
+    setShowControls(false);
+    if (!playing) {
+      setShowInfo(true);
+    }
+  };
+
+  const hoverScreen = () => {
+    setShowControls(true);
+    setShowInfo(false);
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
+    timerRef.current = setTimeout(controlScreenTimeOut, 3000);
+  };
+
+  const setStateFullScreen = () => {
+    setFullScreen(!!document.fullscreenElement);
+  };
+
+  const enterFullScreen = () => {
+    if (playerElement.current && playerElement.current.requestFullscreen) {
+      playerElement.current.requestFullscreen();
+    }
+  };
+
+  const exitFullScreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  };
+
+  const chooseFullScreen = () => {
+    if (fullScreen) {
+      exitFullScreen();
+    } else {
+      enterFullScreen();
+    }
+  };
+
+  // Consolidated keyboard handling in useEffect with proper dependency management
+  useEffect(() => {
+    const keyHandler = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement as HTMLElement;
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' || 
+        activeElement.contentEditable === 'true'
+      );
+
+      if (isInputFocused) return; // Don't handle any keys when input is focused
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          // Use current state values directly from refs or DOM
+          if (videoComponent.current) {
+            if (videoComponent.current.paused) {
+              if (requiresInteraction) {
+                forcePlay();
+              } else {
+                videoComponent.current.play();
+                setPlaying(true);
+              }
+            } else {
+              videoComponent.current.pause();
+              setPlaying(false);
+            }
+            hoverScreen();
+          }
+          break;
+          
+        case 'ArrowLeft':
+          e.preventDefault();
+          previousSeconds(5);
+          hoverScreen();
+          break;
+          
+        case 'ArrowRight':
+          e.preventDefault();
+          nextSeconds(5);
+          hoverScreen();
+          break;
+          
+        case 'ArrowUp':
+          e.preventDefault();
+          if (videoComponent.current) {
+            const currentVolume = Math.round(videoComponent.current.volume * 100);
+            const newVolume = Math.min(100, currentVolume + 5);
+            setVolumeAction(newVolume);
+          }
+          hoverScreen();
+          break;
+          
+        case 'ArrowDown':
+          e.preventDefault();
+          if (videoComponent.current) {
+            const currentVolume = Math.round(videoComponent.current.volume * 100);
+            const newVolume = Math.max(0, currentVolume - 5);
+            setVolumeAction(newVolume);
+          }
+          hoverScreen();
+          break;
+          
+        case 'KeyM':
+          e.preventDefault();
+          if (videoComponent.current) {
+            const currentMuted = videoComponent.current.muted;
+            setMutedAction(!currentMuted);
+          }
+          hoverScreen();
+          break;
+          
+        case 'KeyF':
+          e.preventDefault();
+          chooseFullScreen();
+          break;
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      setStateFullScreen();
+    };
+
+    // Add event listeners
+    document.addEventListener('keydown', keyHandler, false);
+    document.addEventListener('fullscreenchange', handleFullscreenChange, false);
+    
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', keyHandler, false);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange, false);
+    };
+  }, []); // Remove all dependencies to prevent constant re-creation
+
+  // Simple autoplay overlay matching the pause overlay design
+  function renderAutoplayOverlay() {
+    if (!requiresInteraction) return null;
+
+    return (
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '0 50px',
+          zIndex: 1000,
+          cursor: 'pointer',
+          transition: 'all 0.5s ease-out',
+          opacity: 1
+        }}
+        onClick={forcePlay}
+      >
+        {/* Header section - similar to pause overlay with text only */}
+        {(title || titleMedia || subTitle) && (
+          <section style={{
+            margin: 'auto 0',
+            paddingTop: '100px',
+            paddingLeft: '100px',
+            color: '#ffffff'
+          }}>
+            <h3 style={{
+              color: primaryColor,
+              fontSize: '1.1em',
+              marginBottom: '5px',
+              fontWeight: 'normal'
+            }}>
+              {autoPlay ? 
+                (t('autoplayBlocked', { lng: playerLanguage }) || 'Autoplay was blocked') :
+                (t('youAreWatching', { lng: playerLanguage }) || 'You are watching')
+              }
+            </h3>
+            
+            <h1 style={{
+              color: '#ffffff',
+              fontWeight: 'bold',
+              fontSize: '3em',
+              margin: '10px 0',
+              lineHeight: '1.1'
+            }}>
+              {title || titleMedia}
+            </h1>
+            
+            {subTitle && (
+              <h2 style={{
+                color: secondaryColor,
+                fontSize: '20px',
+                fontWeight: 'normal',
+                marginTop: '-5px',
+                opacity: '0.9'
+              }}>
+                {subTitle}
+              </h2>
+            )}
+          </section>
+        )}
+
+        {/* Centered play button overlay */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 1001,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }}>
+          <div
+            style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              backgroundColor: primaryColor,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: `0 4px 20px ${primaryColor}66`, // Use primaryColor here too
+              marginBottom: '20px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+              e.currentTarget.style.boxShadow = `0 6px 25px ${primaryColor}99`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = `0 4px 20px ${primaryColor}66`;
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              forcePlay();
+            }}
+          >
+            <FaPlay style={{ 
+              fontSize: '45px', 
+              marginLeft: '8px', 
+              color: 'white' 
+            }} />
+          </div>
+          
+          {/* Click to Play text under the button */}
+          <div style={{
+            color: '#ffffff',
+            fontSize: '1.2em',
+            textAlign: 'center',
+            fontWeight: '500'
+          }}>
+            {autoPlay ? 
+              (t('clickToPlay', { lng: playerLanguage }) || 'Click to Play') :
+              (t('clickToStart', { lng: playerLanguage }) || 'Click to Start')
+            }
+          </div>
+        </div>
+
+        {/* Simple centered version when no title/subtitle */}
+        {!(title || titleMedia || subTitle) && (
+          <section style={{
+            margin: 'auto',
+            textAlign: 'center',
+            color: '#ffffff'
+          }}>
+            <h1 style={{
+              fontSize: '2.5em',
+              marginBottom: '20px',
+              fontWeight: 'bold'
+            }}>
+              {autoPlay ? 
+                (t('clickToPlay', { lng: playerLanguage }) || 'Click to Play') :
+                (t('readyToWatch', { lng: playerLanguage }) || 'Ready to Watch')
+              }
+            </h1>
+
+            <p style={{
+              fontSize: '1.2em',
+              opacity: '0.8',
+              margin: '0'
+            }}>
+              {autoPlay ? 
+                (t('autoplayBlocked', { lng: playerLanguage }) || 'Your browser prevented autoplay') :
+                (t('clickToStart', { lng: playerLanguage }) || 'Click anywhere to start watching')
+              }
+            </p>
+          </section>
+        )}
+
+        {/* Footer section - matching pause overlay */}
+        <footer style={{
+          marginTop: 'auto',
+          marginBottom: '50px',
+          marginLeft: 'auto',
+          textTransform: 'uppercase',
+          color: secondaryColor,
+          fontSize: '0.9em',
+          opacity: '0.7'
+        }}>
+          {autoPlay ? 
+            (t('autoplayPrevented', { lng: playerLanguage }) || 'Autoplay prevented') :
+            (t('clickToPlay', { lng: playerLanguage }) || 'Click to play')
+          }
+        </footer>
+      </div>
+    );
+  }
 
   function renderLoading() {
     return (
@@ -757,6 +1177,19 @@ export default function ReactNetflixPlayer({
     );
   }
 
+  // Add refs for immediate state access if needed
+  const playingRef = useRef(playing);
+  const requiresInteractionRef = useRef(requiresInteraction);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
+  useEffect(() => {
+    requiresInteractionRef.current = requiresInteraction;
+  }, [requiresInteraction]);
+
   return (
     <Container
       onMouseMove={hoverScreen}
@@ -773,6 +1206,12 @@ export default function ReactNetflixPlayer({
 
       {renderCloseVideo()}
 
+      {/* Render autoplay overlay if interaction is required */}
+      {renderAutoplayOverlay()}
+
+      {/* Render volume overlay */}
+      {renderVolumeOverlay()}
+
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={videoComponent}
@@ -782,6 +1221,7 @@ export default function ReactNetflixPlayer({
         onTimeUpdate={timeUpdate}
         onError={errorVideo}
         onEnded={onEndedFunction}
+        muted={muted} // Use the state variable - no longer hardcoded as true
         style={{ 
           cursor: 'pointer',
           position: 'absolute',

@@ -217,6 +217,9 @@ const WatchPage = () => {
                     autoPlay
                     backButton={() => navigate(-1)}
                     disablePreview={disablePreview}
+                    primaryColor='#e50914'
+                    title="Title"
+                    subTitle="SubTitlt"
                 />
             )}
             
