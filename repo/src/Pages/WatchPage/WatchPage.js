@@ -25,7 +25,7 @@ const WatchPage = () => {
     const [lastSavedTime, setLastSavedTime] = useState(0);
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
-    const [disablePreview, setDisablePreview] = useState(true);
+    const [disablePreview, setDisablePreview] = useState(false);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {

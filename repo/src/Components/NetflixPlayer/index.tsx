@@ -1111,23 +1111,26 @@ export default function ReactNetflixPlayer({
   }
 
   function renderInfoVideo() {
-    return (
-      <StandByInfo
-        primaryColor={primaryColor}
-        secondaryColor={secondaryColor}
-        show={showInfo === true && videoReady === true && playing === false}
-      >
-        {(title || subTitle) && (
-          <section className="center">
-            <h3 className="text">{t('youAreWatching', { lng: playerLanguage })}</h3>
-            <h1 className="title">{title}</h1>
-            <h2 className="sub-title">{subTitle}</h2>
-          </section>
-        )}
-        <footer>{t('paused', { lng: playerLanguage })}</footer>
-      </StandByInfo>
-    );
-  }
+  // Only render when overlayEnabled is true
+  if (!overlayEnabled) return null;
+  
+  return (
+    <StandByInfo
+      primaryColor={primaryColor}
+      secondaryColor={secondaryColor}
+      show={showInfo === true && videoReady === true && playing === false}
+    >
+      {(title || subTitle) && (
+        <section className="center">
+          <h3 className="text">{t('youAreWatching', { lng: playerLanguage })}</h3>
+          <h1 className="title">{title}</h1>
+          <h2 className="sub-title">{subTitle}</h2>
+        </section>
+      )}
+      <footer>{t('paused', { lng: playerLanguage })}</footer>
+    </StandByInfo>
+  );
+}
 
   function renderCloseVideo() {
     return (
@@ -1202,7 +1205,7 @@ export default function ReactNetflixPlayer({
     >
       {(videoReady === false || (waitingBuffer === true && playing === true)) && !error && !end && renderLoading()}
 
-      {!!overlayEnabled && renderInfoVideo()}
+      {renderInfoVideo()}
 
       {renderCloseVideo()}
 

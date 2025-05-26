@@ -147,6 +147,7 @@ export const Controls = styled.div<IControlsProps>`
   .line-reproduction {
     display: flex;
     margin-bottom: 10px;
+    align-items: center;
 
     input {
       margin: auto;
@@ -154,7 +155,8 @@ export const Controls = styled.div<IControlsProps>`
 
     span {
       font-size: 14px;
-      margin-left: 5px;
+      margin-left: 10px;
+      margin-right: 10px
     }
   }
 
@@ -503,7 +505,8 @@ export const StandByInfo = styled.div<IStandByInfoProps>`
   padding: 0 50px;
   transition: all 0.5s ease-out;
   opacity: ${props => (props.show ? 1 : 0)};
-  z-index: 1000;
+  pointer-events: ${props => (props.show ? 'auto' : 'none')}; /* Add this line */
+  z-index: ${props => (props.show ? 1000 : -1)}; /* Move z-index when hidden */
 
   section {
     margin: auto 0;
