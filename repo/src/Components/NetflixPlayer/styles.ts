@@ -81,7 +81,7 @@ export interface IControlsProps {
 
 export const Controls = styled.div<IControlsProps>`
   opacity: ${props => (props.show ? 1 : 0)};
-  transform: ${props => (props.show ? 'scale(1)' : 'scale(1.2)')};
+  transform: ${props => (props.show ? 'scale(1)' : 'scale(1.05)')};
 
   position: absolute;
   top: 0;
@@ -91,7 +91,11 @@ export const Controls = styled.div<IControlsProps>`
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  transition: all 0.2s ease-out;
+  transition: opacity 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: opacity, transform;
+  transform-origin: center;
+  backface-visibility: hidden;
+  pointer-events: ${props => (props.show ? 'auto' : 'none')};
 
   padding: 10px;
   color: #fff;
@@ -111,31 +115,29 @@ export const Controls = styled.div<IControlsProps>`
     margin-bottom: auto;
     margin-top: 30px;
     margin-left: 50px;
-    display: flex;
-
-    div {
-      display: flex;
-      font-size: 20px;
-      align-items: center;
-      opacity: 0.3;
-      transition: all 0.2s ease-out;
-      overflow: hidden;
-
-      span {
-        margin-left: -100%;
-        opacity: 0;
-        transition: all ease-out 0.2s;
-      }
-
-      &:hover {
-        opacity: 1;
-        transform: translateX(-10px);
+    display: flex;      div {
+        display: flex;
+        font-size: 20px;
+        align-items: center;
+        opacity: 0.3;
+        transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        overflow: hidden;
 
         span {
-          margin-left: 0;
-          opacity: 1;
+          margin-left: -100%;
+          opacity: 0;
+          transition: all cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
         }
-      }
+
+        &:hover {
+          opacity: 1;
+          transform: translateX(-10px);
+
+          span {
+            margin-left: 0;
+            opacity: 1;
+          }
+        }
 
       svg {
         font-size: 35px;
@@ -197,13 +199,15 @@ export const Controls = styled.div<IControlsProps>`
 
     svg {
       cursor: pointer;
-      opacity: 0.2;
+      opacity: 0.7;
       font-size: 25px;
-      transition: all 0.2s ease-out;
+      transition: opacity 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: opacity, transform;
+      transform: translateZ(0);
 
       &:hover {
         opacity: 1;
-        transform: scale(1.2);
+        transform: translateZ(0) scale(1.15);
       }
     }
   }
@@ -213,7 +217,7 @@ export const Controls = styled.div<IControlsProps>`
     margin-bottom: 15px;
     appearance: none;
     height: 3px;
-    transition: height 0.2s ease-out;
+    transition: height 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     border-radius: 5px;
     background: linear-gradient(
       93deg,
@@ -281,7 +285,9 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
   height: 5px;
   background: rgba(255, 255, 255, 0.3);
   border-radius: 3px;
-  overflow: visible; /* Change from hidden to visible to show the thumb */
+  overflow: visible;
+  will-change: transform; /* Optimize for hover transformations */
+  transform: translateZ(0); /* Force hardware acceleration */
 
   .buffered-bar {
     position: absolute;
@@ -290,8 +296,10 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
     height: 100%;
     background: rgba(255, 255, 255, 0.5);
     width: ${props => props.bufferedProgress}%;
-    transition: width 0.1s ease;
+    transition: width 0.2s ease;
     border-radius: 3px;
+    will-change: width;
+    transform: translateZ(0);
   }
 
   .played-bar {
@@ -304,6 +312,8 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
     transition: width 0.1s ease;
     z-index: 1;
     border-radius: 3px;
+    will-change: width;
+    transform: translateZ(0);
   }
 
   .progress-bar {
@@ -316,7 +326,9 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
     -webkit-appearance: none;
     appearance: none;
     cursor: pointer;
-    z-index: 3; /* Increase z-index to ensure thumb is on top */
+    z-index: 3;
+    will-change: transform;
+    transform: translateZ(0);
 
     &:focus {
       outline: none !important;
@@ -329,10 +341,13 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
       border-radius: 50%;
       background: ${props => props.primaryColor};
       cursor: pointer;
-      border: 2px solid #fff; /* Add white border for better visibility */
+      border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       position: relative;
       z-index: 4;
+      will-change: transform, width, height;
+      transform: translateZ(0);
+      transition: transform 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
     &::-moz-range-thumb {
@@ -345,6 +360,9 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       position: relative;
       z-index: 4;
+      will-change: transform, width, height;
+      transform: translateZ(0);
+      transition: transform 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
     &::-ms-thumb {
@@ -360,17 +378,20 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
     &:hover {
       height: 7px;
       top: -1px;
+      transition: height 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       
       &::-webkit-slider-thumb {
         width: 20px;
         height: 20px;
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+        transform: translateZ(0) scale(1);
       }
 
       &::-moz-range-thumb {
         width: 20px;
         height: 20px;
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+        transform: translateZ(0) scale(1);
       }
 
       &::-ms-thumb {
@@ -382,10 +403,12 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
 
   &:hover {
     height: 7px;
+    transition: height 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     
     .buffered-bar,
     .played-bar {
       height: 7px;
+      transition: height 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
   }
 `;
@@ -578,16 +601,23 @@ export interface IVolumeControlProps {
 }
 
 export const VolumeControl = styled.div<IVolumeControlProps>`
+  transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+
   .volume-control {
     bottom: 70px;
     left: -50px;
     position: absolute;
     transform: rotate(-90deg);
+    transition: opacity 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: opacity, transform;
 
     .box {
       background: #222222;
       padding: 10px 18px;
       border-radius: 5px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .box-connector {
@@ -606,6 +636,7 @@ export const VolumeControl = styled.div<IVolumeControlProps>`
         #fff ${props => props.percentVolume}%
       );
       width: 70px;
+      transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
       &::-webkit-slider-thumb {
         -webkit-appearance: none;
@@ -615,6 +646,7 @@ export const VolumeControl = styled.div<IVolumeControlProps>`
         border-radius: 50%;
         background: ${props => props.primaryColor};
         cursor: pointer;
+        transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
 
       &::-moz-range-thumb {
@@ -625,6 +657,7 @@ export const VolumeControl = styled.div<IVolumeControlProps>`
         border-radius: 50%;
         background: ${props => props.primaryColor};
         cursor: pointer;
+        transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
     }
   }
@@ -639,72 +672,151 @@ const ItemControlBar = styled.div`
   width: 300px;
 
   .box-connector {
-    height: 20px;
+    height: 15px; /* Reduce from 20px to 15px */
     width: 100%;
   }
 `;
 
-export const IconPlayBackRate = styled.div`
+export interface IconPlayBackRateProps {
+  primaryColor: string;
+}
+
+export const IconPlayBackRate = styled.div<IconPlayBackRateProps>`
   cursor: pointer;
   font-weight: bold;
+  position: relative;
 
   small {
-    font-weight: lighter;
-    font-weight: 10px;
+    font-weight: 300;
+    font-size: 14px;
+    opacity: 0.8;
   }
 
-  span {
-    opacity: 0.2;
-    font-size: 25px;
-    transition: all 0.2s ease-out;
+  .playbackRate_span {
+    opacity: 0.7;
+    font-size: 24px;
+    transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin: -8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    color: #ffffff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 
     &:hover {
       opacity: 1;
-      transform: scale(1.2);
+      transform: scale(1.05);
+      background: rgba(255, 255, 255, 0.1);
+      border-color: ${props => props.primaryColor || '#03dffc'};
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      color: ${props => props.primaryColor || '#03dffc'};
+    }
+
+    &:active {
+      transform: scale(0.98);
     }
   }
 `;
 
-export const ItemPlaybackRate = styled(ItemControlBar)`
+export interface ItemPlaybackRateProps {
+  primaryColor: string;
+}
+
+/* Update the ItemPlaybackRate to be more specific and not affect other components: */
+export const ItemPlaybackRate = styled(ItemControlBar)<ItemPlaybackRateProps>`
   cursor: pointer;
   font-weight: bold;
-  max-width: 150px;
+  max-width: 180px;
+  z-index: 2000;
+
+  /* Ensure this styling only applies to playback rate items */
+  &.playback-rate-menu {
+    /* All the enhanced styling goes here */
+  }
 
   & > div:first-child {
-    background: #333;
+    background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
     display: flex;
     flex-direction: column;
-    border-radius: 5px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 2001;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
 
-    .title {
-      font-size: 18px;
-      font-weight: bold;
-      padding: 10px;
+    /* Only apply enhanced item styling to direct children */
+    > .title {
+      font-size: 16px;
+      font-weight: 600;
+      padding: 16px 18px 12px;
       margin: 0;
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 13px;
     }
 
-    .item {
-      background: #222;
+    > .item {
+      /* All item styling here - only affects direct children */
+      background: transparent;
       display: flex;
-      font-size: 14px;
-      padding: 10px;
+      font-size: 15px;
+      padding: 12px 18px;
       cursor: pointer;
-      transition: all 0.2s ease-out;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
       flex-direction: row;
       align-items: center;
+      position: relative;
+      color: #e0e0e0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+
+      &:last-child {
+        border-bottom: none;
+      }
 
       &:hover {
-        background: #333;
+        background: linear-gradient(135deg, ${props => props.primaryColor || '#03dffc'}20, ${props => props.primaryColor || '#03dffc'}10);
+        color: #ffffff;
+        transform: translateX(4px);
+        padding-left: 22px;
+        
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: linear-gradient(180deg, ${props => props.primaryColor || '#03dffc'}, ${props => props.primaryColor || '#03dffc'}80);
+          border-radius: 0 2px 2px 0;
+        }
       }
-    }
 
-    svg {
-      font-size: 14px !important;
-      margin-right: 5px;
+      /* Rest of item styling... */
     }
+  }
 
-    .bold {
-      font-weight: bold;
+  /* Animation only for this component */
+  animation: slideInUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 `;
@@ -821,10 +933,13 @@ export const PreviewImage = styled.div`
   flex-direction: column;
   background-color: rgba(0, 0, 0, 0.8);
   pointer-events: none;
-  padding: 8px;
+  padding: 8px !important; /* Add !important to override any conflicting styles */
   border-radius: 4px;
   border: 1px solid #333;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: none; /* Explicitly disable backdrop filter for preview */
+  transform: none; /* Disable any transform effects */
+  transition: none; /* Disable transitions for preview */
 
   img {
     width: 160px;
@@ -832,11 +947,13 @@ export const PreviewImage = styled.div`
     border-radius: 2px;
     border: 1px solid #555;
     object-fit: cover;
+    padding: 0; /* Ensure no padding on images */
   }
 
   .sprite-thumbnail {
     border-radius: 2px;
     border: 1px solid #555;
+    padding: 0; /* Ensure no padding on sprites */
   }
 
   .time-indicator {
@@ -844,10 +961,13 @@ export const PreviewImage = styled.div`
     font-size: 12px;
     text-align: center;
     margin-top: 4px;
-    padding: 2px 4px;
+    padding: 2px 4px !important; /* Keep original padding for time indicator */
     background: rgba(0, 0, 0, 0.7);
     border-radius: 2px;
     font-weight: 500;
+    backdrop-filter: none; /* Disable backdrop filter */
+    transform: none; /* Disable transform */
+    transition: none; /* Disable transitions */
   }
 
   .loading-fallback {
@@ -862,6 +982,7 @@ export const PreviewImage = styled.div`
     justify-content: center;
     color: rgba(255, 255, 255, 0.8);
     font-size: 11px;
+    padding: 0; /* Reset padding for loading fallback */
 
     .loading-spinner {
       display: flex;
@@ -892,6 +1013,7 @@ export const PreviewImage = styled.div`
     span {
       opacity: 0.7;
       font-size: 10px;
+      padding: 0; /* Reset padding for text */
     }
   }
 
@@ -942,6 +1064,47 @@ export const ItemListQuality = styled(ItemControlBar)`
       color: #f78b28;
       font-size: 2em;
       margin-left: auto;
+    }
+  }
+`;
+
+export const OperationOverlay = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 2000; // Ensure it's above other elements
+  font-size: 1.8em; // Larger font size for better visibility
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  animation: fadeInOutOverlay 1s ease-in-out;
+
+  svg {
+    font-size: 1.5em; // Icon size relative to text
+  }
+
+  @keyframes fadeInOutOverlay {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
+    }
+    20%, 80% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
     }
   }
 `;

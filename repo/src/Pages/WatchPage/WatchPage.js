@@ -25,7 +25,16 @@ const WatchPage = () => {
     const [lastSavedTime, setLastSavedTime] = useState(0);
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
-    const [disablePreview, setDisablePreview] = useState(false);
+    const [disablePreview, setDisablePreview] = useState(true);
+
+    // State for player props
+    const [mediaTitle, setMediaTitle] = useState('');
+    const [mediaSubTitle, setMediaSubTitle] = useState('');
+    const [mediaTitleMedia, setMediaTitleMedia] = useState('');
+    const [mediaExtraInfoMedia, setMediaExtraInfoMedia] = useState('');
+    const [mediaDataNext, setMediaDataNext] = useState(null);
+    const [mediaReproductionList, setMediaReproductionList] = useState([]);
+    const [isLoadingMediaData, setIsLoadingMediaData] = useState(true);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {
@@ -61,6 +70,121 @@ const WatchPage = () => {
             initialSeekPerformed.current = false;
         }
     }, [watch_id, navigate, location.search]);
+
+    // Fetch media details
+    useEffect(() => {
+        const fetchMediaData = async () => {
+            if (!contentId || !contentType) return;
+
+            setIsLoadingMediaData(true);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                ErrorHandler("token_not_found", navigate);
+                setIsLoadingMediaData(false);
+                return;
+            }
+
+            let contentDetailsUrl = '';
+            if (contentType === 'movie') {
+                contentDetailsUrl = `${API_URL}/api/movies/${contentId}`;
+            } else if (contentType === 'tv') {
+                contentDetailsUrl = `${API_URL}/api/shows/${contentId}`;
+            }
+
+            try {
+                const response = await fetch(contentDetailsUrl, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch media details');
+                }
+                const data = await response.json();
+                console.log('API Response Data:', data); // DEBUGGING
+
+                if (contentType === 'movie') {
+                    setMediaTitle(data.title || 'Movie');
+                    setMediaSubTitle(data.tagline || '');
+                    setMediaTitleMedia(data.title || 'Movie');
+                    // setMediaExtraInfoMedia(`Release Date: ${data.release_date}`);
+                    // For movies, dataNext and reproductionList might be empty or based on recommendations (future enhancement)
+                    setMediaDataNext(null); 
+                    setMediaReproductionList([]);
+                } else if (contentType === 'tv') {
+                    setMediaTitle(data.title || 'TV Show');
+                    console.log('TV Show Name:', data.title); // DEBUGGING
+                    
+                    // Find the current season and episode
+                    const currentSeason = data.seasons?.find(s => s.season_number === seasonNumber);
+                    const currentEpisode = currentSeason?.episodes?.find(ep => ep.episode_number === episodeNumber);
+                    console.log('Current Season:', currentSeason); // DEBUGGING
+                    console.log('Current Episode:', currentEpisode); // DEBUGGING
+
+                    if (currentEpisode) {
+                        setMediaSubTitle(`S${seasonNumber} E${episodeNumber}: ${currentEpisode.title}`);
+                        setMediaTitleMedia(`${data.title} - S${seasonNumber} E${episodeNumber}: ${currentEpisode.title}`);
+                    } else {
+                        setMediaSubTitle(`Season ${seasonNumber} Episode ${episodeNumber}`);
+                        setMediaTitleMedia(`${data.title} - Season ${seasonNumber} Episode ${episodeNumber}`);
+                    }
+                    // setMediaExtraInfoMedia(`First Aired: ${data.first_air_date}`);
+
+                    // Populate reproductionList (episodes of the current season)
+                    if (currentSeason && currentSeason.episodes) {
+                        const episodeList = currentSeason.episodes.map(ep => ({
+                            id: `t-${contentId}-${currentSeason.season_number}-${ep.episode_number}`,
+                            name: `E${ep.episode_number}: ${ep.title}`,
+                            playing: ep.episode_number === episodeNumber,
+                            percent: 50
+                            // percent: calculate from watch history if available (future enhancement)
+                        }));
+                        setMediaReproductionList(episodeList);
+                        console.log('Populated Reproduction List:', episodeList); // DEBUGGING
+                    } else {
+                        setMediaReproductionList([]);
+                        console.log('No current season or episodes for reproduction list.'); // DEBUGGING
+                    }
+
+                    // Populate dataNext (next episode)
+                    let nextEpisode;
+                    if (currentSeason && currentEpisode) {
+                        const currentEpisodeIndex = currentSeason.episodes.findIndex(ep => ep.episode_number === episodeNumber);
+                        if (currentEpisodeIndex !== -1 && currentEpisodeIndex < currentSeason.episodes.length - 1) {
+                            nextEpisode = currentSeason.episodes[currentEpisodeIndex + 1];
+                            setMediaDataNext({
+                                title: `Next: S${seasonNumber} E${nextEpisode.episode_number} - ${nextEpisode.title}`,
+                                description: nextEpisode.overview,
+                                // Add identifiers for the next episode
+                                nextSeasonNumber: seasonNumber,
+                                nextEpisodeNumber: nextEpisode.episode_number,
+                                nextContentId: contentId
+                            });
+                            console.log('Next Episode Data:', { 
+                                title: `Next: S${seasonNumber} E${nextEpisode.episode_number} - ${nextEpisode.title}`,
+                                nextSeasonNumber: seasonNumber,
+                                nextEpisodeNumber: nextEpisode.episode_number
+                            }); // DEBUGGING
+                        } else {
+                            // Potentially look for next season or mark as end of series
+                            setMediaDataNext(null); 
+                            console.log('No next episode in current season.'); // DEBUGGING
+                        }
+                    } else {
+                        setMediaDataNext(null);
+                        console.log('No current season or episode to determine next episode.'); // DEBUGGING
+                    }
+                }
+                setIsLoadingMediaData(false);
+            } catch (error) {
+                console.error('Failed to fetch media data:', error);
+                ErrorHandler("media_load_error", navigate);
+                setIsLoadingMediaData(false);
+            }
+        };
+
+        fetchMediaData();
+    }, [contentId, contentType, seasonNumber, episodeNumber, navigate]);
+
 
     // Handle initial video loading
     useEffect(() => {
@@ -156,14 +280,19 @@ const WatchPage = () => {
         } catch (error) {
             console.error('Failed to save watch history:', error);
         }
-    };
-
-    // Handle video progress and time updates
+    };    // Handle video progress and time updates with throttling
+    const lastProgressUpdate = useRef(0);
     const handleProgress = () => {
         if (videoRef.current) {
             const newTime = videoRef.current.currentTime;
-            setCurrentTime(newTime);
-            setProgress((newTime / videoRef.current.duration) * 100);
+            const now = Date.now();
+            
+            // Throttle progress updates to reduce state changes and re-renders
+            if (now - lastProgressUpdate.current > 250) { // Update max 4 times per second
+                lastProgressUpdate.current = now;
+                setCurrentTime(newTime);
+                setProgress((newTime / videoRef.current.duration) * 100);
+            }
             
             // Save progress if we've moved at least 5 seconds since last save
             if (Math.abs(newTime - lastSavedTime) > 5) {
@@ -195,6 +324,21 @@ const WatchPage = () => {
         console.error("Video playback error");
     };
 
+    const handleNextEpisode = () => {
+        if (mediaDataNext && mediaDataNext.nextContentId && mediaDataNext.nextSeasonNumber && mediaDataNext.nextEpisodeNumber) {
+            const { nextContentId, nextSeasonNumber, nextEpisodeNumber } = mediaDataNext;
+            const nextWatchId = `t-${nextContentId}-${nextSeasonNumber}-${nextEpisodeNumber}`;
+            console.log(`Navigating to next episode: /watch/${nextWatchId}`); // DEBUGGING
+            navigate(`/watch/${nextWatchId}`, { replace: true });
+        } else {
+            console.log("No next episode data available to navigate."); // DEBUGGING
+        }
+    };
+
+    if (isLoadingMediaData && !useOldPlayer) {
+        return <div className="watchPageLoading">Loading player data...</div>; // Or a proper loading spinner
+    }
+
     return (
         <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
             {useOldPlayer ? (
@@ -214,12 +358,19 @@ const WatchPage = () => {
                     src={`${API_URL}/api/stream/${watch_id}`}
                     onErrorVideo={handleError}
                     onTimeUpdate={handleProgress}
+                    onLoadedMetadata={handleMetadataLoaded}
                     autoPlay
                     backButton={() => navigate(-1)}
                     disablePreview={disablePreview}
                     primaryColor='#e50914'
-                    title="Title"
-                    subTitle="SubTitlt"
+                    title={mediaTitle}
+                    subTitle={mediaSubTitle}
+                    titleMedia={mediaTitleMedia}
+                    extraInfoMedia={mediaExtraInfoMedia}
+                    dataNext={mediaDataNext}
+                    reproductionList={mediaReproductionList}
+                    videoRef={videoRef}
+                    onNextClick={mediaDataNext ? handleNextEpisode : undefined} // Pass the handler
                 />
             )}
             
