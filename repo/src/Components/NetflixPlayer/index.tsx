@@ -1308,7 +1308,7 @@ export default function ReactNetflixPlayer({
           setPlaying(actuallyPlaying);
         }
       }
-    }, 2000); // Reduced frequency from 1s to 2s
+    }, 2000);
 
     return () => clearInterval(syncInterval);
   }, [playing, videoReady, requiresInteraction]);
@@ -1354,7 +1354,7 @@ export default function ReactNetflixPlayer({
         onLoadedMetadata={onLoadedMetadata}
         onError={errorVideo}
         onEnded={onEndedFunction}
-        muted={muted} // Use the state variable - no longer hardcoded as true
+        muted={muted}
         style={{ 
           cursor: 'pointer',
           position: 'absolute',
