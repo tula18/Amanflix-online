@@ -307,7 +307,7 @@ const WatchPage = () => {
             if (videoRef.current && videoRef.current.currentTime > 0) {
                 saveWatchHistory();
             }
-        }, 30000); // Save every 30 seconds
+        }, 10000); // Save every 30 seconds
         
         return () => {
             clearInterval(saveInterval);
