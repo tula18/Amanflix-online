@@ -16,8 +16,8 @@ import {
   FaClone,
   FaCompress,
   FaRedoAlt,
-  FaForward, // Added for seek forward
-  FaBackward, // Added for seek backward
+  FaForward,
+  FaBackward,
 } from 'react-icons/fa';
 import { FiCheck, FiX } from 'react-icons/fi';
 import {
@@ -36,7 +36,7 @@ import {
   ItemListQuality,
   PreviewImage,
   ProgressBarContainer,
-  OperationOverlay, // Added for operation overlay
+  OperationOverlay,
 } from './styles.ts';
 import translations from './i18n/index.ts';
 
@@ -107,9 +107,9 @@ export interface IProps {
   reproductionList?: IItemReproduction[];
   qualities?: IQualities[];
   onChangeQuality?: (quality: string | number) => void;
-  disablePreview?: boolean; // Add this new prop
-  disableBufferPreview?: boolean; // Add buffer preview disable option
-  videoRef?: React.MutableRefObject<HTMLVideoElement | null>; // Add this new prop
+  disablePreview?: boolean;
+  disableBufferPreview?: boolean;
+  videoRef?: React.MutableRefObject<HTMLVideoElement | null>;
 }
 
 export default function ReactNetflixPlayer({
@@ -143,7 +143,6 @@ export default function ReactNetflixPlayer({
   overlayEnabled = true,
   autoControlCloseEnabled = true,
 
-  // Styles
   primaryColor = '#03dffc',
   secondaryColor = '#ffffff',
   fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif",
@@ -152,10 +151,8 @@ export default function ReactNetflixPlayer({
   playbackRateStart = 1,
   disablePreview = false,
   disableBufferPreview = false,
-  videoRef, // Add this new prop
+  videoRef,
 }: IProps) {
-
-  // References
   const videoComponent = useRef<null | HTMLVideoElement>(null);
   const timerRef = useRef<null | NodeJS.Timeout>(null);
   const timerBuffer = useRef<null | NodeJS.Timeout>(null);
@@ -165,17 +162,17 @@ export default function ReactNetflixPlayer({
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameCache = useRef<Map<number, string>>(new Map());
+  const maxCacheSize = 50;
 
-  // States
   const [videoReady, setVideoReady] = useState(false);
-  const [playing, setPlaying] = useState(false); // Start as false instead of true
+  const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [end, setEnd] = useState(false);
   const [controlBackEnd, setControlBackEnd] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [volume, setVolume] = useState(100);
-  const [muted, setMuted] = useState(false); // Start unmuted
+  const [muted, setMuted] = useState(false);
   const [error, setError] = useState<boolean | string>(false);
   const [waitingBuffer, setWaitingBuffer] = useState(false);
   const [showControls, setShowControls] = useState(false);
@@ -199,46 +196,42 @@ export default function ReactNetflixPlayer({
   const [operation, setOperation] = useState<{ icon: JSX.Element; text: string } | null>(null);
   const operationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [requiresInteraction, setRequiresInteraction] = useState(autoPlay); // Set to true if autoPlay is requested
+  const [requiresInteraction, setRequiresInteraction] = useState(autoPlay);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   const { t } = useTranslation();
 
-  const secondsToHms = useCallback((d: number) => {
-    d = Number(d);
+  const secondsToHms = useCallback((totalSeconds: number) => {
+    const d = Math.max(0, Math.floor(Number(totalSeconds) || 0));
     const h = Math.floor(d / 3600);
     const m = Math.floor((d % 3600) / 60);
-    let s = Math.floor((d % 3600) % 60);
-    let seconds = s.toString();
+    const s = d % 60;
 
-    if (s < 10) {
-      seconds = `0${s}`;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+
+    if (h > 0) {
+      return `${h}:${pad(m)}:${pad(s)}`;
     }
-
-    if (h) {
-      return `${h}:${m < 10 ? '0' : ''}${m}:${seconds}`;
-    }
-
-    return `${m}:${seconds}`;
+    return `${m}:${pad(s)}`;
   }, []);
-
-  
 
   const timeUpdateRef = useRef<number>(0);
   const bufferedUpdateRef = useRef<number>(0);
-  const lastProgressState = useRef<{playing: boolean, buffered: number, progress: number}>({playing: false, buffered: 0, progress: 0});
+  const lastProgressState = useRef<{playing: boolean, buffered: number, progress: number}>({
+    playing: false, 
+    buffered: 0, 
+    progress: 0
+  });
   
   const timeUpdate = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
     const target = e.target as HTMLVideoElement;
     const currentTime = target.currentTime;
     const duration = target.duration;
 
-    // More aggressive throttling - update only 3 times per second for better performance
     const now = Date.now();
-    if (now - timeUpdateRef.current < 333) return;
+    if (now - timeUpdateRef.current < 111) return;
     timeUpdateRef.current = now;
 
-    // Only update progress if change is significant (>1 second)
     if (Math.abs(currentTime - lastProgressState.current.progress) > 1) {
       lastProgressState.current.progress = currentTime;
       setProgress(currentTime);
@@ -247,13 +240,10 @@ export default function ReactNetflixPlayer({
     const videoElement = e.currentTarget;
     const isPlaying = !videoElement.paused;
     
-    // Only update playing state if it actually changed
     if (lastProgressState.current.playing !== isPlaying) {
       lastProgressState.current.playing = isPlaying;
       setPlaying(isPlaying);
     }
-    
-    // Calculate buffered progress much less frequently (every 10 seconds) - only if buffer preview is enabled
     if (!disableBufferPreview && now - bufferedUpdateRef.current > 10000) {
       bufferedUpdateRef.current = now;
       if (target.buffered.length > 0) {
@@ -266,18 +256,15 @@ export default function ReactNetflixPlayer({
       }
     }
 
-    // Clear buffer waiting state immediately if we get progress
     if (waitingBuffer) {
       setWaitingBuffer(false);
     }
 
-    // Reset buffer timeout less aggressively
     if (timerBuffer.current) {
       clearTimeout(timerBuffer.current);
     }
     timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 8000);
 
-    // Call external onTimeUpdate much less frequently (every 2 seconds)
     if (onTimeUpdate && now - timeUpdateRef.current > 2000) {
       onTimeUpdate(e);
     }
@@ -302,38 +289,34 @@ export default function ReactNetflixPlayer({
     }
     operationTimeoutRef.current = setTimeout(() => {
       setOperation(null);
-    }, 1000); // Display for 1 second
+    }, 1000);
   };
 
   const play = () => {
-    if (videoComponent.current) {
-      const wasPlaying = !videoComponent.current.paused;
-      
-      if (wasPlaying) {
-        videoComponent.current.pause();
-        // setPlaying(false); // Managed by event listener
-        showOperationOverlay(<FaPause />, 'Pause');
-      } else {
-        // Attempt to play
-        const playPromise = videoComponent.current.play();
-        
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              // setPlaying(true); // Managed by event listener
-              setRequiresInteraction(false);
-              setHasUserInteracted(true);
-              showOperationOverlay(<FaPlay />, 'Play');
-            })
-            .catch((error) => {
-              console.log("Autoplay prevented:", error);
-              if (error.name === 'NotAllowedError') {
-                setRequiresInteraction(true);
-                setPlaying(false);
-              }
-            });
-        }
-      }
+    const video = videoComponent.current;
+    if (!video) return;
+
+    if (!video.paused) {
+      video.pause();
+      showOperationOverlay(<FaPause />, 'Pause');
+      return;
+    }
+
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setRequiresInteraction(false);
+          setHasUserInteracted(true);
+          showOperationOverlay(<FaPlay />, 'Play');
+        })
+        .catch((error) => {
+          console.log("Autoplay prevented:", error);
+          if (error.name === 'NotAllowedError') {
+            setRequiresInteraction(true);
+            setPlaying(false);
+          }
+        });
     }
   };
 
@@ -351,9 +334,9 @@ export default function ReactNetflixPlayer({
           .catch((error) => {
             console.error("Play failed:", error);
           });
+      }
     }
-  }
-};
+  };
 
   const onEndedFunction = () => {
     if (videoComponent.current) {
@@ -432,7 +415,6 @@ export default function ReactNetflixPlayer({
         video.addEventListener('play', handlePlay);
         video.addEventListener('pause', handlePause);
         
-        // Store cleanup function
         video.addEventListener('loadstart', () => {
           video.removeEventListener('play', handlePlay);
           video.removeEventListener('pause', handlePause);
@@ -441,13 +423,11 @@ export default function ReactNetflixPlayer({
         if (!started) {
           setStarted(true);
 
-          // Ensure video starts at the correct position
           if (startPosition > 0) {
             videoComponent.current.currentTime = startPosition;
             setProgress(startPosition);
           }
 
-          // Don't auto-mute - let the overlay handle user interaction
           videoComponent.current.muted = muted;
 
           if (autoPlay) {
@@ -514,7 +494,7 @@ export default function ReactNetflixPlayer({
       showOperationOverlay(
         value ? <FaVolumeMute /> : (volume >= 60 ? <FaVolumeUp /> : volume >= 10 ? <FaVolumeDown /> : <FaVolumeOff />),
         value ? 'Muted' : 'Unmuted'
-      )
+      );
       
       if (volumeOverlayTimeoutRef.current) {
         clearTimeout(volumeOverlayTimeoutRef.current);
@@ -580,15 +560,12 @@ export default function ReactNetflixPlayer({
           `}
         </style>
         
-        {/* Volume icon */}
         <div style={{ fontSize: '16px', color: primaryColor, alignItems: 'center', alignSelf: 'center' }}>
           {volumeIcon}
         </div>
         
-        {/* Volume text */}
         <span>{volumeText}</span>
         
-        {/* Volume bar */}
         {!isMuted && (
           <div
             style={{
@@ -614,25 +591,22 @@ export default function ReactNetflixPlayer({
     );
   }, [showVolumeOverlay, muted, volume, primaryColor]);
 
-  // Clean up volume overlay timeout on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (timerBuffer.current) clearTimeout(timerBuffer.current);
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
       if (volumeOverlayTimeoutRef.current) clearTimeout(volumeOverlayTimeoutRef.current);
-      if (operationTimeoutRef.current) clearTimeout(operationTimeoutRef.current); // Clear operation overlay timeout
+      if (operationTimeoutRef.current) clearTimeout(operationTimeoutRef.current);
     };
   }, []);
 
-  // Sync external videoRef with internal video component
   useEffect(() => {
     if (videoRef && videoComponent.current) {
       videoRef.current = videoComponent.current;
     }
   }, [videoRef]);
 
-  // Create a callback ref that syncs both internal and external refs
   const videoRefCallback = useCallback((element: HTMLVideoElement | null) => {
     videoComponent.current = element;
     if (videoRef) {
@@ -662,7 +636,6 @@ export default function ReactNetflixPlayer({
   const [loadingPreview, setLoadingPreview] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Optimized hover handling - different performance profiles for preview enabled vs disabled
   const handleProgressBarHover = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
     if (!duration) return;
 
@@ -675,30 +648,23 @@ export default function ReactNetflixPlayer({
 
     const now = Date.now();
     
-    // Different throttling based on whether preview is enabled
     if (disablePreview) {
-      // When preview is disabled, use requestAnimationFrame for ultra-smooth updates
       if (now - (handleProgressBarHover as any).lastUpdate < 16) return;
       (handleProgressBarHover as any).lastUpdate = now;
       
-      // Use requestAnimationFrame for smooth 60fps updates when preview is off
       requestAnimationFrame(() => {
         setHoverTime(time);
         setHoverPosition({ x: e.clientX, y: rect.top });
       });
     } else {
-      // When preview is enabled, use moderate throttling (50ms = 20fps)
       if (now - (handleProgressBarHover as any).lastUpdate < 50) return;
       (handleProgressBarHover as any).lastUpdate = now;
       
-      // Update hover states
       setHoverTime(time);
       setHoverPosition({ x: e.clientX, y: rect.top });
 
-      // Handle preview capture with throttling
       const roundedTime = Math.floor(time);
 
-      // Check cache first - instant if available
       const cachedFrame = frameCache.current.get(roundedTime);
       if (cachedFrame) {
         setPreviewImage(cachedFrame);
@@ -706,16 +672,13 @@ export default function ReactNetflixPlayer({
         return;
       }
 
-      // Clear previous timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
 
-      // Set loading state and debounce frame capture
       setPreviewImage(null);
       setLoadingPreview(true);
 
-      // Reduced debounce for better responsiveness (500ms instead of 800ms)
       hoverTimeoutRef.current = setTimeout(() => {
         if (!isCapturing) {
           captureFrameAtTime(time);
@@ -724,16 +687,12 @@ export default function ReactNetflixPlayer({
     }
   }, [duration, disablePreview, isCapturing]);
 
-  // Ultra-optimized frame capture with maximum performance focus
   const captureFrameAtTime = useCallback(
     (time: number) => {
-      // Early return if preview is disabled or already capturing
       if (disablePreview || !previewVideoRef.current || !previewCanvasRef.current || isCapturing) return;
 
-      // Round to nearest 5 seconds for better cache efficiency
       const roundedTime = Math.floor(time / 5) * 5;
       
-      // Check cache first
       const cachedFrame = frameCache.current.get(roundedTime);
       if (cachedFrame && hoverTime !== null) {
         setPreviewImage(cachedFrame);
@@ -741,7 +700,6 @@ export default function ReactNetflixPlayer({
         return;
       }
 
-      // Only proceed if we're still hovering and not too far from requested time
       if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 8) return;
 
       const video = previewVideoRef.current;
@@ -749,10 +707,8 @@ export default function ReactNetflixPlayer({
       
       setIsCapturing(true);
       
-      // Remove any existing event listener to prevent memory leaks
       video.removeEventListener('seeked', video.onseeked as any);
       
-      // Much shorter timeout for minimal UI blocking (300ms)
       const captureTimeout = setTimeout(() => {
         setIsCapturing(false);
         setLoadingPreview(false);
@@ -762,7 +718,6 @@ export default function ReactNetflixPlayer({
       const handleSeeked = () => {
         clearTimeout(captureTimeout);
         
-        // More lenient timing check for better performance
         if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 8) {
           setIsCapturing(false);
           setLoadingPreview(false);
@@ -770,19 +725,22 @@ export default function ReactNetflixPlayer({
         }
         
         const context = canvas.getContext('2d', {
-          alpha: false, // Disable alpha channel for better performance
-          willReadFrequently: false // We don't read pixels frequently
+          alpha: false,
+          willReadFrequently: false
         });
         
         if (context) {
           try {
-            // Use smaller canvas size for better performance (reduced from 160x90)
             context.drawImage(video, 0, 0, 120, 68);
-            // Use extremely low quality for maximum performance
-            const dataURL = canvas.toDataURL('image/jpeg', 0.1);
+            const dataURL = canvas.toDataURL('image/jpeg', 0.6);
+            
+            if (frameCache.current.size >= maxCacheSize) {
+              const firstKey = frameCache.current.keys().next().value;
+              frameCache.current.delete(firstKey);
+            }
+            
             frameCache.current.set(roundedTime, dataURL);
             
-            // More lenient timing check for preview setting
             if (Math.abs((hoverTime || 0) - roundedTime) < 8) {
               setPreviewImage(dataURL);
             }
@@ -798,19 +756,10 @@ export default function ReactNetflixPlayer({
 
       video.addEventListener('seeked', handleSeeked, { once: true });
       
-      // Use less frequent seeking for performance
       video.currentTime = time;
     },
     [hoverTime, isCapturing, disablePreview]
   );
-
-  // useEffect(() => {
-  //   // Don't pre-load frames if preview is disabled
-  //   if (disablePreview || !videoReady || !videoComponent.current) return;
-    
-  //   // Remove automatic frame pre-loading completely for better performance
-  //   // Only capture frames on-demand when hovering
-  // }, [videoReady, duration, disablePreview]);
 
   useEffect(() => {
     if (showReproductionList) {
@@ -820,13 +769,10 @@ export default function ReactNetflixPlayer({
 
   useEffect(() => {
     if (src && videoComponent.current) {
-      // Clear the cache when video source changes
       frameCache.current.clear();
       
-      // Set the video's initial position first
       videoComponent.current.currentTime = startPosition;
       
-      // Set progress to match the startPosition (not always 0)
       setProgress(startPosition);
       setDuration(0);
       setVideoReady(false);
@@ -836,22 +782,19 @@ export default function ReactNetflixPlayer({
       setPlaying(autoPlay);
       setBufferedProgress(0);
       
-      // Clear preview states
       setHoverTime(null);
       setPreviewImage(null);
       setHoverPosition(null);
     }
-  }, [src, startPosition]); // Add startPosition as dependency
+  }, [src, startPosition]);
 
   useEffect(() => {
     setStateFullScreen();
   }, [document.fullscreenElement]);
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only trigger play/pause if we're not clicking on controls
     const target = e.target as HTMLElement;
 
-    // Check if the click is on the video area (not on controls)
     if (target.tagName === 'VIDEO' || 
         target === playerElement.current ||
         (!target.closest('.controls') && 
@@ -862,7 +805,6 @@ export default function ReactNetflixPlayer({
       e.preventDefault();
       e.stopPropagation();
       
-      // If requires interaction, force play on first click
       if (requiresInteraction) {
         forcePlay();
       } else {
@@ -891,19 +833,16 @@ export default function ReactNetflixPlayer({
       clearTimeout(timerRef.current);
     }
 
-    // Reduced timeout from 3000ms to 2000ms for faster hiding
     timerRef.current = setTimeout(controlScreenTimeOut, 2000);
   }, [controlScreenTimeOut]);
 
-  // Optimized mouse move handler with immediate response
   const mouseMoveTimeoutRef = useRef<number>(0);
   const throttledHoverScreen = useCallback((e: React.MouseEvent) => {
-    // Immediate control show for better responsiveness
     setShowControls(true);
     setShowInfo(false);
     
     const now = Date.now();
-    if (now - mouseMoveTimeoutRef.current > 100) { // Increased from 50ms to 100ms for better performance
+    if (now - mouseMoveTimeoutRef.current > 150) {
       mouseMoveTimeoutRef.current = now;
       hoverScreen();
     }
@@ -933,7 +872,6 @@ export default function ReactNetflixPlayer({
     }
   };
 
-  // Consolidated keyboard handling in useEffect with proper dependency management
   useEffect(() => {
     const keyHandler = (e: KeyboardEvent) => {
       const activeElement = document.activeElement as HTMLElement;
@@ -943,16 +881,15 @@ export default function ReactNetflixPlayer({
         activeElement.contentEditable === 'true'
       );
 
-      if (isInputFocused) return; // Don't handle any keys when input is focused
+      if (isInputFocused) return;
 
       switch (e.code) {
         case 'Space':
           e.preventDefault();
-          // Use current state values directly from refs or DOM
           if (videoComponent.current) {
             if (videoComponent.current.paused) {
-              if (requiresInteractionRef.current) { // Use ref for current state
-                forcePlay(); // This will trigger play event and its overlay
+              if (requiresInteractionRef.current) {
+                forcePlay();
               } else {
                 play();
               }
@@ -1017,18 +954,15 @@ export default function ReactNetflixPlayer({
       setStateFullScreen();
     };
 
-    // Add event listeners with passive option for better performance
     document.addEventListener('keydown', keyHandler, { passive: false });
     document.addEventListener('fullscreenchange', handleFullscreenChange, { passive: true });
     
-    // Cleanup function
     return () => {
       document.removeEventListener('keydown', keyHandler);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, []); // Remove all dependencies to prevent constant re-creation
+  }, []);
 
-  // Simple autoplay overlay matching the pause overlay design
   function renderAutoplayOverlay() {
     if (!requiresInteraction) return null;
 
@@ -1052,7 +986,6 @@ export default function ReactNetflixPlayer({
         }}
         onClick={forcePlay}
       >
-        {/* Header section - similar to pause overlay with text only */}
         {(title || titleMedia || subTitle) && (
           <section style={{
             margin: 'auto 0',
@@ -1096,7 +1029,6 @@ export default function ReactNetflixPlayer({
           </section>
         )}
 
-        {/* Centered play button overlay */}
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -1118,7 +1050,7 @@ export default function ReactNetflixPlayer({
               alignItems: 'center',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
-              boxShadow: `0 4px 20px ${primaryColor}66`, // Use primaryColor here too
+              boxShadow: `0 4px 20px ${primaryColor}66`,
               marginBottom: '20px'
             }}
             onMouseEnter={(e) => {
@@ -1141,7 +1073,6 @@ export default function ReactNetflixPlayer({
             }} />
           </div>
           
-          {/* Click to Play text under the button */}
           <div style={{
             color: '#ffffff',
             fontSize: '1.2em',
@@ -1155,7 +1086,6 @@ export default function ReactNetflixPlayer({
           </div>
         </div>
 
-        {/* Simple centered version when no title/subtitle */}
         {!(title || titleMedia || subTitle) && (
           <section style={{
             margin: 'auto',
@@ -1186,7 +1116,6 @@ export default function ReactNetflixPlayer({
           </section>
         )}
 
-        {/* Footer section - matching pause overlay */}
         <footer style={{
           marginTop: 'auto',
           marginBottom: '50px',
@@ -1218,7 +1147,6 @@ export default function ReactNetflixPlayer({
   }
 
   function renderInfoVideo() {
-  // Only render when overlayEnabled is true
   if (!overlayEnabled) return null;
   
   return (
@@ -1287,11 +1215,9 @@ export default function ReactNetflixPlayer({
     );
   }
 
-  // Add refs for immediate state access if needed
   const playingRef = useRef(playing);
   const requiresInteractionRef = useRef(requiresInteraction);
 
-  // Keep refs in sync with state
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
@@ -1300,22 +1226,19 @@ export default function ReactNetflixPlayer({
     requiresInteractionRef.current = requiresInteraction;
   }, [requiresInteraction]);
 
-  // Sync playing state with actual video state periodically - optimized
   useEffect(() => {
     const syncInterval = setInterval(() => {
       if (videoComponent.current && videoReady && !requiresInteraction) {
         const actuallyPlaying = !videoComponent.current.paused;
-        // Only update if there's actually a difference and it's significant
-        if (Math.abs(Date.now() - timeUpdateRef.current) > 2000 && playing !== actuallyPlaying) {
+        if (Math.abs(Date.now() - timeUpdateRef.current) > 3000 && playing !== actuallyPlaying) {
           setPlaying(actuallyPlaying);
         }
       }
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(syncInterval);
   }, [playing, videoReady, requiresInteraction]);
 
-  // Reset buffered progress when buffer preview is disabled
   useEffect(() => {
     if (disableBufferPreview) {
       setBufferedProgress(0);
@@ -1338,13 +1261,10 @@ export default function ReactNetflixPlayer({
 
       {renderCloseVideo()}
 
-      {/* Render autoplay overlay if interaction is required */}
       {(videoReady === true) && renderAutoplayOverlay()}
 
-      {/* Render volume overlay */}
       {overlayEnabled && renderVolumeOverlay()}
 
-      {/* Operation Overlay */}
       {operation && (
         <OperationOverlay>
           {operation.icon}
@@ -1352,8 +1272,6 @@ export default function ReactNetflixPlayer({
         </OperationOverlay>
       )}
 
-      {/* Loading spinner */}
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={videoRefCallback}
         src={src}
@@ -1377,7 +1295,6 @@ export default function ReactNetflixPlayer({
         crossOrigin="anonymous"
       />
 
-      {/* Only render preview video and canvas if preview is enabled */}
       {!disablePreview && (
         <>
           <video
@@ -1399,7 +1316,6 @@ export default function ReactNetflixPlayer({
 
       <Controls
         $show={showControls === true && videoReady === true && error === false}
-        // show={true}
         $primaryColor={primaryColor}
         $progressVideo={(progress * 100) / duration}
       >
@@ -1412,7 +1328,6 @@ export default function ReactNetflixPlayer({
           </div>
         )}
 
-        {/* Show preview with image if enabled, or just time indicator if disabled */}
         {hoverPosition && hoverTime !== null && !showPlaybackRate && !showQuality && !showDataNext && !showReproductionList && (
           <PreviewImage
             style={{
@@ -1458,7 +1373,6 @@ export default function ReactNetflixPlayer({
               setHoverPosition(null);
             }}
           >
-            {/* Current time display */}
             <span>{secondsToHms(progress)}</span>
             
             <ProgressBarContainer
@@ -1466,13 +1380,10 @@ export default function ReactNetflixPlayer({
               $bufferedProgress={disableBufferPreview ? 0 : bufferedProgress}
               $progressVideo={(progress * 100) / duration}
             >
-              {/* Buffered progress bar - conditionally rendered */}
               {!disableBufferPreview && <div className="buffered-bar" />}
               
-              {/* Played progress bar */}
               <div className="played-bar" />
               
-              {/* Interactive range input */}
               <input
                 type="range"
                 value={progress}
@@ -1491,7 +1402,6 @@ export default function ReactNetflixPlayer({
               />
             </ProgressBarContainer>
             
-            {/* Remaining time display */}
             <span>{secondsToHms(duration - progress)}</span>
           </div>
         )}
@@ -1560,7 +1470,6 @@ export default function ReactNetflixPlayer({
               )}
             </div>
 
-            {/* Center section for titleMedia */}
             <div className="center">
               <div className="item-control info-video">
                 <span className="info-first">{titleMedia}</span>
