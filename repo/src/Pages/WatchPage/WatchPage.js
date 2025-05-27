@@ -25,7 +25,7 @@ const WatchPage = () => {
     const [lastSavedTime, setLastSavedTime] = useState(0);
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
-    const [disablePreview, setDisablePreview] = useState(true);
+    const [disablePreview, setDisablePreview] = useState(false);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
