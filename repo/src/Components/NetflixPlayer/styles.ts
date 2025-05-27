@@ -165,10 +165,28 @@ export const Controls = styled.div<IControlsProps>`
   .controls {
     margin: 20px 0;
     display: flex;
-    justify-items: center;
+    justify-content: space-between;
+    align-items: center;
+
+    .start {
+      display: flex;
+      align-items: center;
+    }
+
+    .center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      
+      .info-video {
+        text-align: center;
+      }
+    }
 
     .end {
-      margin-left: auto;
+      display: flex;
+      align-items: center;
     }
 
     div {
