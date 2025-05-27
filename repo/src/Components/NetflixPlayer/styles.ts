@@ -18,9 +18,9 @@ const toUpOpacity = keyframes`
 `;
 
 export interface IContainerProps {
-  fullPlayer: boolean;
-  hideVideo: boolean;
-  fontFamily: string;
+  $fullPlayer: boolean;
+  $hideVideo: boolean;
+  $fontFamily: string;
 }
 
 export const Container = styled.div<IContainerProps>`
@@ -32,8 +32,8 @@ export const Container = styled.div<IContainerProps>`
     margin: 0;
     padding: 0;
     font-family: ${props =>
-      props.fontFamily
-        ? props.fontFamily
+      props.$fontFamily
+        ? props.$fontFamily
         : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"};
   }
 
@@ -49,7 +49,7 @@ export const Container = styled.div<IContainerProps>`
     width: 100% !important;
     max-width: 100% !important;
     cursor: none;
-    opacity: ${props => (props.hideVideo ? 0 : 1)};
+    opacity: ${props => (props.$hideVideo ? 0 : 1)};
 
     &::cue {
       color: #eee;
@@ -57,14 +57,14 @@ export const Container = styled.div<IContainerProps>`
       text-shadow: #222 0 0 5px;
       background: none;
       font-family: ${props =>
-        props.fontFamily
-          ? props.fontFamily
+        props.$fontFamily
+          ? props.$fontFamily
           : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"};
     }
   }
 
   ${props =>
-    props.fullPlayer &&
+    props.$fullPlayer &&
     css`
       position: fixed;
       top: 0;
@@ -74,14 +74,14 @@ export const Container = styled.div<IContainerProps>`
 `;
 
 export interface IControlsProps {
-  show: boolean;
-  primaryColor: string;
-  progressVideo: number;
+  $show: boolean;
+  $primaryColor: string;
+  $progressVideo: number;
 }
 
 export const Controls = styled.div<IControlsProps>`
-  opacity: ${props => (props.show ? 1 : 0)};
-  transform: ${props => (props.show ? 'scale(1)' : 'scale(1.05)')};
+  opacity: ${props => (props.$show ? 1 : 0)};
+  transform: ${props => (props.$show ? 'scale(1)' : 'scale(1.05)')};
 
   position: absolute;
   top: 0;
@@ -95,7 +95,7 @@ export const Controls = styled.div<IControlsProps>`
   will-change: opacity, transform;
   transform-origin: center;
   backface-visibility: hidden;
-  pointer-events: ${props => (props.show ? 'auto' : 'none')};
+  pointer-events: ${props => (props.$show ? 'auto' : 'none')};
 
   padding: 10px;
   color: #fff;
@@ -237,10 +237,10 @@ export const Controls = styled.div<IControlsProps>`
     height: 3px;
     transition: height 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     border-radius: 5px;
-    background: linear-gradient(
-      93deg,
-      ${props => props.primaryColor} ${props => props.progressVideo}%,
-      #fff ${props => props.progressVideo}%
+  background: linear-gradient(
+    93deg,
+      ${props => props.$primaryColor} ${props => props.$progressVideo}%,
+      #fff ${props => props.$progressVideo}%
     );
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -265,7 +265,7 @@ export const Controls = styled.div<IControlsProps>`
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.primaryColor};
+      background: ${props => props.$primaryColor};
       cursor: pointer;
 
       outline: none !important;
@@ -281,7 +281,7 @@ export const Controls = styled.div<IControlsProps>`
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.primaryColor};
+      background: ${props => props.$primaryColor};
       cursor: pointer;
 
       outline: none !important;
@@ -297,7 +297,7 @@ export const Controls = styled.div<IControlsProps>`
   }
 `;
 
-export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedProgress: number; progressVideo: number }>`
+export const ProgressBarContainer = styled.div<{ $primaryColor: string; $bufferedProgress: number; $progressVideo: number }>`
   position: relative;
   width: 100%;
   height: 5px;
@@ -313,7 +313,7 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
     left: 0;
     height: 100%;
     background: rgba(255, 255, 255, 0.5);
-    width: ${props => props.bufferedProgress}%;
+    width: ${props => props.$bufferedProgress}%;
     transition: width 0.2s ease;
     border-radius: 3px;
     will-change: width;
@@ -325,8 +325,8 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
     top: 0;
     left: 0;
     height: 100%;
-    background: ${props => props.primaryColor};
-    width: ${props => props.progressVideo}%;
+    background: ${props => props.$primaryColor};
+    width: ${props => props.$progressVideo}%;
     transition: width 0.1s ease;
     z-index: 1;
     border-radius: 3px;
@@ -357,7 +357,7 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.primaryColor};
+      background: ${props => props.$primaryColor};
       cursor: pointer;
       border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -372,7 +372,7 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.primaryColor};
+      background: ${props => props.$primaryColor};
       cursor: pointer;
       border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -387,7 +387,7 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.primaryColor};
+      background: ${props => props.$primaryColor};
       cursor: pointer;
       border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -432,15 +432,15 @@ export const ProgressBarContainer = styled.div<{ primaryColor: string; bufferedP
 `;
 
 export interface IVideoPreLoadingProps {
-  show: boolean;
-  colorTitle: string;
-  colorSubTitle: string;
-  colorIcon: string;
-  showError: boolean;
-  colorButtonError: string;
-  backgroundColorButtonError: string;
-  backgroundColorHoverButtonError: string;
-  colorHoverButtonError: string;
+  $show: boolean;
+  $colorTitle: string;
+  $colorSubTitle: string;
+  $colorIcon: string;
+  $showError: boolean;
+  $colorButtonError: string;
+  $backgroundColorButtonError: string;
+  $backgroundColorHoverButtonError: string;
+  $colorHoverButtonError: string;
 }
 
 export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
@@ -450,10 +450,10 @@ export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
   height: 100%;
   padding: 30px;
   transition: all 0.5s ease-out;
-  z-index: ${props => (props.show ? 2 : 0)};
+  z-index: ${props => (props.$show ? 2 : 0)};
   display: flex;
   flex-direction: column;
-  opacity: ${props => (props.show ? 1 : 0)};
+  opacity: ${props => (props.$show ? 1 : 0)};
 
   header {
     display: flex;
@@ -461,18 +461,18 @@ export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
     align-items: center;
 
     h1 {
-      color: ${props => props.colorTitle};
+      color: ${props => props.$colorTitle};
       font-size: 1.5em;
       font-weight: bold;
     }
 
     h2 {
-      color: ${props => props.colorSubTitle};
+      color: ${props => props.$colorSubTitle};
       font-size: 1.1em;
     }
 
     svg {
-      color: ${props => props.colorIcon};
+      color: ${props => props.$colorIcon};
       opacity: 0.5;
       margin-left: auto;
       font-size: 4em;
@@ -492,15 +492,15 @@ export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
     color: #ddd;
     margin: auto;
     transition: all 0.2s ease;
-    opacity: ${props => (props.showError ? 1 : 0)};
+    opacity: ${props => (props.$showError ? 1 : 0)};
 
     .links-error {
       display: inline-flex;
       margin: auto;
 
       div {
-        color: ${props => props.colorButtonError};
-        background: ${props => props.backgroundColorButtonError};
+        color: ${props => props.$colorButtonError};
+        background: ${props => props.$backgroundColorButtonError};
         display: flex;
         align-items: center;
         margin: 0 5px;
@@ -511,8 +511,8 @@ export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
         transition: all 0.2s ease;
 
         &:hover {
-          background: ${props => props.backgroundColorHoverButtonError};
-          color: ${props => props.colorHoverButtonError};
+          background: ${props => props.$backgroundColorHoverButtonError};
+          color: ${props => props.$colorHoverButtonError};
         }
       }
     }
@@ -529,9 +529,9 @@ export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
 `;
 
 export interface IStandByInfoProps {
-  show: boolean;
-  primaryColor: string;
-  secondaryColor: string;
+  $show: boolean;
+  $primaryColor: string;
+  $secondaryColor: string;
 }
 
 export const StandByInfo = styled.div<IStandByInfoProps>`
@@ -545,9 +545,9 @@ export const StandByInfo = styled.div<IStandByInfoProps>`
   justify-content: space-between;
   padding: 0 50px;
   transition: all 0.5s ease-out;
-  opacity: ${props => (props.show ? 1 : 0)};
-  pointer-events: ${props => (props.show ? 'auto' : 'none')}; /* Add this line */
-  z-index: ${props => (props.show ? 1000 : -1)}; /* Move z-index when hidden */
+  opacity: ${props => (props.$show ? 1 : 0)};
+  pointer-events: ${props => (props.$show ? 'auto' : 'none')}; /* Add this line */
+  z-index: ${props => (props.$show ? 1000 : -1)}; /* Move z-index when hidden */
 
   section {
     margin: auto 0;
@@ -563,12 +563,12 @@ export const StandByInfo = styled.div<IStandByInfoProps>`
     h1 {
       font-weight: bold;
       font-size: 3em;
-      color: ${props => props.primaryColor};
+      color: ${props => props.$primaryColor};
       margin: 10px 0;
     }
 
     h2 {
-      color: ${props => props.secondaryColor};
+      color: ${props => props.$secondaryColor};
       font-size: 20px;
       margin-top: -5px;
       font-weight: bold;
@@ -614,8 +614,8 @@ export const Loading = styled.div`
 `;
 
 export interface IVolumeControlProps {
-  primaryColor: string;
-  percentVolume: number;
+  $primaryColor: string;
+  $percentVolume: number;
 }
 
 export const VolumeControl = styled.div<IVolumeControlProps>`
@@ -650,8 +650,8 @@ export const VolumeControl = styled.div<IVolumeControlProps>`
       background: #999;
       background: linear-gradient(
         93deg,
-        ${props => props.primaryColor} ${props => props.percentVolume}%,
-        #fff ${props => props.percentVolume}%
+        ${props => props.$primaryColor} ${props => props.$percentVolume}%,
+        #fff ${props => props.$percentVolume}%
       );
       width: 70px;
       transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -662,7 +662,7 @@ export const VolumeControl = styled.div<IVolumeControlProps>`
         width: 18px;
         height: 18px;
         border-radius: 50%;
-        background: ${props => props.primaryColor};
+        background: ${props => props.$primaryColor};
         cursor: pointer;
         transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
@@ -673,7 +673,7 @@ export const VolumeControl = styled.div<IVolumeControlProps>`
         width: 18px;
         height: 18px;
         border-radius: 50%;
-        background: ${props => props.primaryColor};
+        background: ${props => props.$primaryColor};
         cursor: pointer;
         transition: all 0.03s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
@@ -696,7 +696,7 @@ const ItemControlBar = styled.div`
 `;
 
 export interface IconPlayBackRateProps {
-  primaryColor: string;
+  $primaryColor: string;
 }
 
 export const IconPlayBackRate = styled.div<IconPlayBackRateProps>`
@@ -734,9 +734,9 @@ export const IconPlayBackRate = styled.div<IconPlayBackRateProps>`
     opacity: 1;
     transform: scale(1.05);
     background: rgba(255, 255, 255, 0.1);
-    border-color: ${props => props.primaryColor || '#03dffc'};
+    border-color: ${props => props.$primaryColor || '#03dffc'};
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    color: ${props => props.primaryColor || '#03dffc'};
+    color: ${props => props.$primaryColor || '#03dffc'};
   }
 
   &:active {
@@ -745,7 +745,7 @@ export const IconPlayBackRate = styled.div<IconPlayBackRateProps>`
 `;
 
 export interface IconPlaylistProps {
-  primaryColor: string;
+  $primaryColor: string;
 }
 
 export const IconPlaylist = styled.div<IconPlaylistProps>`
@@ -772,9 +772,9 @@ export const IconPlaylist = styled.div<IconPlaylistProps>`
     opacity: 1;
     transform: scale(1.05);
     background: rgba(255, 255, 255, 0.1);
-    border-color: ${props => props.primaryColor || '#03dffc'};
+    border-color: ${props => props.$primaryColor || '#03dffc'};
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    color: ${props => props.primaryColor || '#03dffc'};
+    color: ${props => props.$primaryColor || '#03dffc'};
   }
 
   &:active {
@@ -783,7 +783,7 @@ export const IconPlaylist = styled.div<IconPlaylistProps>`
 `;
 
 export interface IconNextProps {
-  primaryColor: string;
+  $primaryColor: string;
 }
 
 export const IconNext = styled.div<IconNextProps>`
@@ -810,9 +810,9 @@ export const IconNext = styled.div<IconNextProps>`
     opacity: 1;
     transform: scale(1.05);
     background: rgba(255, 255, 255, 0.1);
-    border-color: ${props => props.primaryColor || '#03dffc'};
+    border-color: ${props => props.$primaryColor || '#03dffc'};
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    color: ${props => props.primaryColor || '#03dffc'};
+    color: ${props => props.$primaryColor || '#03dffc'};
   }
 
   &:active {
@@ -821,7 +821,7 @@ export const IconNext = styled.div<IconNextProps>`
 `;
 
 export interface ItemPlaybackRateProps {
-  primaryColor: string;
+  $primaryColor: string;
 }
 
 /* Update the ItemPlaybackRate to be more specific and not affect other components: */
@@ -882,7 +882,7 @@ export const ItemPlaybackRate = styled(ItemControlBar)<ItemPlaybackRateProps>`
       }
 
       &:hover {
-        background: linear-gradient(135deg, ${props => props.primaryColor || '#03dffc'}20, ${props => props.primaryColor || '#03dffc'}10);
+        background: linear-gradient(135deg, ${props => props.$primaryColor || '#03dffc'}20, ${props => props.$primaryColor || '#03dffc'}10);
         color: #ffffff;
         transform: translateX(4px);
         padding-left: 22px;
@@ -894,7 +894,7 @@ export const ItemPlaybackRate = styled(ItemControlBar)<ItemPlaybackRateProps>`
           top: 0;
           bottom: 0;
           width: 3px;
-          background: linear-gradient(180deg, ${props => props.primaryColor || '#03dffc'}, ${props => props.primaryColor || '#03dffc'}80);
+          background: linear-gradient(180deg, ${props => props.$primaryColor || '#03dffc'}, ${props => props.$primaryColor || '#03dffc'}80);
           border-radius: 0 2px 2px 0;
         }
       }

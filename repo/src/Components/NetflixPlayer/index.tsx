@@ -1221,9 +1221,9 @@ export default function ReactNetflixPlayer({
   
   return (
     <StandByInfo
-      primaryColor={primaryColor}
-      secondaryColor={secondaryColor}
-      show={showInfo === true && videoReady === true && playing === false}
+      $primaryColor={primaryColor}
+      $secondaryColor={secondaryColor}
+      $show={showInfo === true && videoReady === true && playing === false}
     >
       {(title || subTitle) && (
         <section className="center">
@@ -1240,15 +1240,15 @@ export default function ReactNetflixPlayer({
   function renderCloseVideo() {
     return (
       <VideoPreLoading
-        backgroundColorHoverButtonError="#f78b28"
-        colorHoverButtonError="#ddd"
-        colorButtonError="#ddd"
-        backgroundColorButtonError="#333"
-        colorTitle="#fff"
-        colorSubTitle="#fff"
-        colorIcon="#fff"
-        show={videoReady === false || (videoReady === true && !!error)}
-        showError={!!error}
+        $backgroundColorHoverButtonError="#f78b28"
+        $colorHoverButtonError="#ddd"
+        $colorButtonError="#ddd"
+        $backgroundColorButtonError="#333"
+        $colorTitle="#fff"
+        $colorSubTitle="#fff"
+        $colorIcon="#fff"
+        $show={videoReady === false || (videoReady === true && !!error)}
+        $showError={!!error}
       >
         {(title || subTitle) && (
           <header>
@@ -1319,9 +1319,9 @@ export default function ReactNetflixPlayer({
       ref={playerElement}
       onDoubleClick={chooseFullScreen}
       onClick={handleContainerClick}
-      fullPlayer={fullPlayer}
-      hideVideo={!!error}
-      fontFamily={fontFamily}
+      $fullPlayer={fullPlayer}
+      $hideVideo={!!error}
+      $fontFamily={fontFamily}
     >
       {(videoReady === false || (waitingBuffer === true && playing === true)) && !error && !end && renderLoading()}
 
@@ -1389,10 +1389,10 @@ export default function ReactNetflixPlayer({
       )}
 
       <Controls
-        show={showControls === true && videoReady === true && error === false}
+        $show={showControls === true && videoReady === true && error === false}
         // show={true}
-        primaryColor={primaryColor}
-        progressVideo={(progress * 100) / duration}
+        $primaryColor={primaryColor}
+        $progressVideo={(progress * 100) / duration}
       >
         {backButton && (
           <div className="back">
@@ -1453,9 +1453,9 @@ export default function ReactNetflixPlayer({
             <span>{secondsToHms(progress)}</span>
             
             <ProgressBarContainer
-              primaryColor={primaryColor}
-              bufferedProgress={bufferedProgress}
-              progressVideo={(progress * 100) / duration}
+              $primaryColor={primaryColor}
+              $bufferedProgress={bufferedProgress}
+              $progressVideo={(progress * 100) / duration}
             >
               {/* Buffered progress bar */}
               <div className="buffered-bar" />
@@ -1507,8 +1507,8 @@ export default function ReactNetflixPlayer({
                 <VolumeControl
                   onMouseLeave={() => setShowControlVolume(false)}
                   className="item-control"
-                  primaryColor={primaryColor}
-                  percentVolume={volume}
+                  $primaryColor={primaryColor}
+                  $percentVolume={volume}
                 >
                   {showControlVolume === true && (
                     <div className="volume-control">
@@ -1572,7 +1572,7 @@ export default function ReactNetflixPlayer({
                   onMouseLeave={() => setShowPlaybackRate(false)}
                 >
                   {showPlaybackRate === true && (
-                    <ItemPlaybackRate primaryColor={primaryColor}>
+                    <ItemPlaybackRate $primaryColor={primaryColor}>
                       <div>
                         <div className="title">{t('speeds', { lng: playerLanguage })}</div>
                         {playbackRateOptions.map(item => {
@@ -1606,7 +1606,7 @@ export default function ReactNetflixPlayer({
                     </ItemPlaybackRate>
                   )}
 
-                  <IconPlayBackRate primaryColor={primaryColor} className="playbackRate">
+                  <IconPlayBackRate $primaryColor={primaryColor} className="playbackRate">
                     <span className='playbackRate_span'>
                       {playbackRate === 'Normal' ? '1' : `${playbackRate}`}
                       <small>x</small>
@@ -1630,7 +1630,7 @@ export default function ReactNetflixPlayer({
                     </ItemNext>
                   )}
 
-                  <IconNext primaryColor={primaryColor}>
+                  <IconNext $primaryColor={primaryColor}>
                     <FaStepForward onClick={onNextClick} onMouseEnter={() => setShowDataNext(true)} />
                   </IconNext>
                 </div>
@@ -1671,7 +1671,7 @@ export default function ReactNetflixPlayer({
                   </ItemPlaylist>
                 )}
                 {reproductionList && reproductionList.length > 1 && (
-                  <IconPlaylist primaryColor={primaryColor}>
+                  <IconPlaylist $primaryColor={primaryColor}>
                     <FaClone onMouseEnter={() => setShowReproductionList(true)} />
                   </IconPlaylist>
                 )}
