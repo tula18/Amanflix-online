@@ -554,8 +554,9 @@ export default function ReactNetflixPlayer({
   // Optimized volume overlay renderer with memoization
   const renderVolumeOverlay = useCallback(() => {
     if (!showVolumeOverlay) return null;
+    const isMuted = volume == 0;
 
-    const volumeIcon = muted ? (
+    const volumeIcon = isMuted ? (
       <FaVolumeMute />
     ) : volume >= 60 ? (
       <FaVolumeUp />
@@ -567,7 +568,7 @@ export default function ReactNetflixPlayer({
       <FaVolumeMute />
     );
 
-    const volumeText = muted ? 'Muted' : `${Math.round(volume)}%`;
+    const volumeText = isMuted ? 'Muted' : `${Math.round(volume)}%`;
 
     return (
       <div
@@ -592,6 +593,7 @@ export default function ReactNetflixPlayer({
           animation: 'fadeInOut 2s ease-in-out',
           minWidth: '120px',
           justifyContent: 'center',
+          verticalAlign: 'center'
         }}
       >
         <style>
@@ -605,7 +607,7 @@ export default function ReactNetflixPlayer({
         </style>
         
         {/* Volume icon */}
-        <div style={{ fontSize: '16px', color: primaryColor, alignItems: 'center' }}>
+        <div style={{ fontSize: '16px', color: primaryColor, alignItems: 'center', alignSelf: 'center' }}>
           {volumeIcon}
         </div>
         
@@ -613,7 +615,7 @@ export default function ReactNetflixPlayer({
         <span>{volumeText}</span>
         
         {/* Volume bar */}
-        {!muted && (
+        {!isMuted && (
           <div
             style={{
               width: '60px',
