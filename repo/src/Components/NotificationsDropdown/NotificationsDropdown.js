@@ -10,7 +10,7 @@ const NotificationsDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [open, setOpen] = useState(false);
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
 
@@ -88,7 +88,7 @@ const NotificationsDropdown = () => {
     
     // Navigate to link if provided
     if (notification.link) {
-      setVisible(false);
+      setOpen(false);
       navigate(notification.link);
     }
   };
@@ -147,9 +147,9 @@ const NotificationsDropdown = () => {
     }
   };
 
-  const handleVisibleChange = (newVisible) => {
-    setVisible(newVisible);
-    if (newVisible) {
+  const handleOpenChange = (newOpen) => {
+    setOpen(newOpen);
+    if (newOpen) {
       // Refresh data when popover opens
       fetchUnreadCount();
       fetchNotifications();
@@ -212,9 +212,9 @@ const NotificationsDropdown = () => {
       trigger="hover" // Changed from "click" to "hover"
       placement="bottomRight"
       overlayClassName="notifications-popover"
-      visible={visible}
+      open={open}
       arrow={true}
-      onVisibleChange={handleVisibleChange}
+      onOpenChange={handleOpenChange}
     //   mouseEnterDelay={0}
     //   mouseLeaveDelay={0}
     >
