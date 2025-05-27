@@ -685,6 +685,21 @@ export const IconPlayBackRate = styled.div<IconPlayBackRateProps>`
   cursor: pointer;
   font-weight: bold;
   position: relative;
+  opacity: 0.7;
+  font-size: 24px;
+  transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  margin: -8px -12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 
   small {
     font-weight: 300;
@@ -693,33 +708,97 @@ export const IconPlayBackRate = styled.div<IconPlayBackRateProps>`
   }
 
   .playbackRate_span {
-    opacity: 0.7;
-    font-size: 24px;
-    transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     display: flex;
     align-items: center;
-    padding: 8px 12px;
-    margin: -8px 12px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(5px);
-    color: #ffffff;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+  }
 
-    &:hover {
-      opacity: 1;
-      transform: scale(1.05);
-      background: rgba(255, 255, 255, 0.1);
-      border-color: ${props => props.primaryColor || '#03dffc'};
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-      color: ${props => props.primaryColor || '#03dffc'};
-    }
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: ${props => props.primaryColor || '#03dffc'};
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    color: ${props => props.primaryColor || '#03dffc'};
+  }
 
-    &:active {
-      transform: scale(0.98);
-    }
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+export interface IconPlaylistProps {
+  primaryColor: string;
+}
+
+export const IconPlaylist = styled.div<IconPlaylistProps>`
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  opacity: 0.7;
+  font-size: 24px;
+  transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  margin: -8px -12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: ${props => props.primaryColor || '#03dffc'};
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    color: ${props => props.primaryColor || '#03dffc'};
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+export interface IconNextProps {
+  primaryColor: string;
+}
+
+export const IconNext = styled.div<IconNextProps>`
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  opacity: 0.7;
+  font-size: 24px;
+  transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  margin: -8px -5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: ${props => props.primaryColor || '#03dffc'};
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    color: ${props => props.primaryColor || '#03dffc'};
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 `;
 
@@ -822,34 +901,86 @@ export const ItemPlaybackRate = styled(ItemControlBar)<ItemPlaybackRateProps>`
 `;
 
 export const ItemNext = styled(ItemControlBar)`
+  max-width: 400px;
+  overflow: visible; /* Changed from hidden to visible */
+  right: -10px; /* Reduced offset to prevent cutoff */
+
   & > div:first-child {
-    background: #333;
+    background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
     display: flex;
     flex-direction: column;
-    border-radius: 5px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    margin-right: 10px; /* Add margin to ensure it doesn't get cut off */
 
     .title {
-      font-size: 18px;
-      font-weight: bold;
-      padding: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 16px 18px 12px;
       margin: 0;
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 13px;
     }
 
     .item {
-      background: #222;
+      background: transparent;
       display: flex;
       flex-direction: column;
-      font-size: 14px;
-      padding: 10px;
+      font-size: 15px;
+      padding: 12px 18px;
       cursor: pointer;
-      transition: all 0.2s ease-out;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      color: #e0e0e0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+
+      &:last-child {
+        border-bottom: none;
+      }
 
       &:hover {
-        background: #333;
+        background: linear-gradient(135deg, rgba(3, 223, 252, 0.2), rgba(3, 223, 252, 0.1));
+        color: #ffffff;
+        transform: translateX(4px);
+        padding-left: 22px;
+        
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: linear-gradient(180deg, #03dffc, rgba(3, 223, 252, 0.8));
+          border-radius: 0 2px 2px 0;
+        }
       }
     }
+    
     .bold {
-      font-weight: bold;
+      font-weight: 600;
+    }
+  }
+
+  /* Animation for the component */
+  animation: slideInUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 `;
@@ -859,65 +990,163 @@ export const ItemPlaylist = styled(ItemControlBar)`
   overflow: hidden;
 
   & > div:first-child {
-    background: #333;
+    background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
     display: flex;
     flex-direction: column;
-    border-radius: 5px;
+    border-radius: 12px;
+    margin-bottom: 10px;
     overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding-right: 6px; /* Add padding to accommodate the transform */
 
     .bold {
-      font-weight: bold;
+      font-weight: 600;
     }
 
     .title {
-      font-size: 18px;
-      font-weight: bold;
-      padding: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 16px 18px 12px;
       margin: 0;
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 13px;
     }
 
     .list-playback {
       display: flex;
       flex-direction: column;
       max-height: 400px;
-      overflow: auto;
+      overflow: hidden;
 
       &::-webkit-scrollbar-track {
-        background-color: #222;
+        background-color: rgba(255, 255, 255, 0.05);
       }
 
       &::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
       }
 
       &::-webkit-scrollbar-thumb {
-        background: #333;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
       }
 
       .item-playback {
-        background: #222;
+        background: transparent;
         display: flex;
         flex-direction: row;
         font-size: 14px;
-        padding: 10px;
+        padding: 12px 18px;
         cursor: pointer;
-        transition: all 0.2s ease-out;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        color: #e0e0e0;
+        position: relative;
+        margin-right: -6px; /* Negative margin to offset container padding */
+
+        &:last-child {
+          border-bottom: none;
+        }
 
         &:hover {
-          background: #333;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+          color: #ffffff;
+          transform: translateX(4px);
+          
+          &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #e50914, #e5091480);
+            border-radius: 0 2px 2px 0;
+          }
+
+          .bold span:first-child {
+            color: #e50914;
+            font-weight: 700;
+          }
+        }
+
+        .bold {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          
+          span:first-child {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 35px;
+            text-align: center;
+            margin-right: 12px;
+            transition: all 0.2s ease;
+          }
         }
 
         .percent {
           height: 3px;
-          width: 100px;
+          width: 80px;
           margin-left: auto;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 2px;
+          overflow: hidden;
+          
+          &::after {
+            content: '';
+            display: block;
+            height: 100%;
+            width: 60%; /* This should be dynamic based on actual percent */
+            background: #e50914;
+            border-radius: 2px;
+          }
+        }
+
+        &.selected {
+          background: linear-gradient(135deg, #e5091420, #e5091410);
+          color: #ffffff;
+          
+          .bold span:first-child {
+            background: #e50914;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
+          }
+
+          &::after {
+            content: '●';
+            position: absolute;
+            right: 18px;
+            color: #e50914;
+            font-size: 16px;
+            animation: pulse 2s infinite;
+          }
         }
       }
+    }
+  }
 
-      .selected {
-        background: #333;
-      }
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
     }
   }
 `;
@@ -937,23 +1166,28 @@ export const PreviewImage = styled.div`
   border-radius: 4px;
   border: 1px solid #333;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  backdrop-filter: none; /* Explicitly disable backdrop filter for preview */
-  transform: none; /* Disable any transform effects */
-  transition: none; /* Disable transitions for preview */
+  
+  /* Optimize for smooth rendering */
+  will-change: transform;
+  transform: translateZ(0); /* Hardware acceleration */
+  transition: none; /* Disable transitions for immediate response */
+  backdrop-filter: none; /* Disable backdrop filter for better performance */
 
   img {
-    width: 160px;
-    height: 90px;
+    width: 120px;
+    height: 68px;
     border-radius: 2px;
     border: 1px solid #555;
     object-fit: cover;
-    padding: 0; /* Ensure no padding on images */
+    margin: 0;
+    padding: 0;
   }
 
   .sprite-thumbnail {
     border-radius: 2px;
     border: 1px solid #555;
-    padding: 0; /* Ensure no padding on sprites */
+    margin: 0;
+    padding: 0;
   }
 
   .time-indicator {
@@ -961,13 +1195,17 @@ export const PreviewImage = styled.div`
     font-size: 12px;
     text-align: center;
     margin-top: 4px;
-    padding: 2px 4px !important; /* Keep original padding for time indicator */
+    padding: 2px 4px;
     background: rgba(0, 0, 0, 0.7);
     border-radius: 2px;
     font-weight: 500;
-    backdrop-filter: none; /* Disable backdrop filter */
-    transform: none; /* Disable transform */
-    transition: none; /* Disable transitions */
+    white-space: nowrap;
+    
+    /* Optimize for smooth rendering */
+    will-change: auto;
+    transform: translateZ(0);
+    transition: none;
+    backdrop-filter: none;
   }
 
   .loading-fallback {

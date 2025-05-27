@@ -127,15 +127,15 @@ const WatchPage = () => {
                         setMediaSubTitle(`Season ${seasonNumber} Episode ${episodeNumber}`);
                         setMediaTitleMedia(`${data.title} - Season ${seasonNumber} Episode ${episodeNumber}`);
                     }
-                    // setMediaExtraInfoMedia(`First Aired: ${data.first_air_date}`);
-
-                    // Populate reproductionList (episodes of the current season)
+                    // setMediaExtraInfoMedia(`First Aired: ${data.first_air_date}`);                    // Populate reproductionList (episodes of the current season)
                     if (currentSeason && currentSeason.episodes) {
                         const episodeList = currentSeason.episodes.map(ep => ({
                             id: `t-${contentId}-${currentSeason.season_number}-${ep.episode_number}`,
                             name: `E${ep.episode_number}: ${ep.title}`,
                             playing: ep.episode_number === episodeNumber,
-                            percent: 50
+                            percent: 50,
+                            seasonNumber: currentSeason.season_number,
+                            episodeNumber: ep.episode_number
                             // percent: calculate from watch history if available (future enhancement)
                         }));
                         setMediaReproductionList(episodeList);
@@ -288,14 +288,14 @@ const WatchPage = () => {
             const now = Date.now();
             
             // Throttle progress updates to reduce state changes and re-renders
-            if (now - lastProgressUpdate.current > 250) { // Update max 4 times per second
+            if (now - lastProgressUpdate.current > 1000) { // Update max 1 time per second for better performance
                 lastProgressUpdate.current = now;
                 setCurrentTime(newTime);
                 setProgress((newTime / videoRef.current.duration) * 100);
             }
             
-            // Save progress if we've moved at least 5 seconds since last save
-            if (Math.abs(newTime - lastSavedTime) > 5) {
+            // Save progress if we've moved at least 10 seconds since last save
+            if (Math.abs(newTime - lastSavedTime) > 10) {
                 saveWatchHistory();
             }
         }
@@ -322,9 +322,7 @@ const WatchPage = () => {
     const handleError = (event) => {
         ErrorHandler("video_error", navigate);
         console.error("Video playback error");
-    };
-
-    const handleNextEpisode = () => {
+    };    const handleNextEpisode = () => {
         if (mediaDataNext && mediaDataNext.nextContentId && mediaDataNext.nextSeasonNumber && mediaDataNext.nextEpisodeNumber) {
             const { nextContentId, nextSeasonNumber, nextEpisodeNumber } = mediaDataNext;
             const nextWatchId = `t-${nextContentId}-${nextSeasonNumber}-${nextEpisodeNumber}`;
@@ -333,6 +331,23 @@ const WatchPage = () => {
         } else {
             console.log("No next episode data available to navigate."); // DEBUGGING
         }
+    };
+
+    const handleEpisodeClick = (episodeId, isCurrentEpisode) => {
+        // Don't navigate if it's the current episode
+        if (isCurrentEpisode) {
+            console.log('Already watching this episode');
+            return;
+        }
+        
+        // Save current progress before navigating
+        if (videoRef.current && videoRef.current.currentTime > 0) {
+            saveWatchHistory();
+        }
+        
+        // Navigate to the selected episode
+        console.log(`Navigating to episode: /watch/${episodeId}`);
+        navigate(`/watch/${episodeId}`, { replace: true });
     };
 
     if (isLoadingMediaData && !useOldPlayer) {
@@ -353,8 +368,7 @@ const WatchPage = () => {
                     width="100%"
                     height="100%"
                 />
-            ) : (
-                <ReactNetflixPlayer 
+            ) : (                <ReactNetflixPlayer 
                     src={`${API_URL}/api/stream/${watch_id}`}
                     onErrorVideo={handleError}
                     onTimeUpdate={handleProgress}
@@ -369,6 +383,7 @@ const WatchPage = () => {
                     extraInfoMedia={mediaExtraInfoMedia}
                     dataNext={mediaDataNext}
                     reproductionList={mediaReproductionList}
+                    onClickItemListReproduction={handleEpisodeClick}
                     videoRef={videoRef}
                     onNextClick={mediaDataNext ? handleNextEpisode : undefined} // Pass the handler
                 />

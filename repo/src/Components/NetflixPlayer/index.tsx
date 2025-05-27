@@ -29,6 +29,8 @@ import {
   VolumeControl,
   ItemPlaybackRate,
   IconPlayBackRate,
+  IconPlaylist,
+  IconNext,
   ItemNext,
   ItemPlaylist,
   ItemListQuality,
@@ -70,6 +72,8 @@ export interface IItemReproduction {
   id: number | string;
   playing: boolean;
   name: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 export interface IProps {
@@ -227,40 +231,43 @@ export default function ReactNetflixPlayer({
   // Add this state with your other states
   const [bufferedProgress, setBufferedProgress] = useState(0);
 
-  // Optimized timeUpdate function for smooth performance
+  // Ultra-optimized timeUpdate function for maximum performance
   const timeUpdateRef = useRef<number>(0);
   const bufferedUpdateRef = useRef<number>(0);
-  const lastProgressState = useRef<{playing: boolean, buffered: number}>({playing: false, buffered: 0});
+  const lastProgressState = useRef<{playing: boolean, buffered: number, progress: number}>({playing: false, buffered: 0, progress: 0});
   
   const timeUpdate = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
     const target = e.target as HTMLVideoElement;
     const currentTime = target.currentTime;
     const duration = target.duration;
 
-    // Light throttling for smooth progress - update 10 times per second
+    // More aggressive throttling - update only 3 times per second for better performance
     const now = Date.now();
-    if (now - timeUpdateRef.current < 100) return;
+    if (now - timeUpdateRef.current < 333) return;
     timeUpdateRef.current = now;
 
-    // Always update progress for smooth playback
-    setProgress(currentTime);
+    // Only update progress if change is significant (>1 second)
+    if (Math.abs(currentTime - lastProgressState.current.progress) > 1) {
+      lastProgressState.current.progress = currentTime;
+      setProgress(currentTime);
+    }
 
     const videoElement = e.currentTarget;
     const isPlaying = !videoElement.paused;
     
-    // Only update playing state if it changed
+    // Only update playing state if it actually changed
     if (lastProgressState.current.playing !== isPlaying) {
       lastProgressState.current.playing = isPlaying;
       setPlaying(isPlaying);
     }
     
-    // Calculate buffered progress less frequently (every 2 seconds)
-    if (now - bufferedUpdateRef.current > 2000) {
+    // Calculate buffered progress much less frequently (every 10 seconds)
+    if (now - bufferedUpdateRef.current > 10000) {
       bufferedUpdateRef.current = now;
       if (target.buffered.length > 0) {
         const bufferedEnd = target.buffered.end(target.buffered.length - 1);
         const bufferedPercent = duration > 0 ? (bufferedEnd / duration) * 100 : 0;
-        if (Math.abs(bufferedPercent - lastProgressState.current.buffered) > 1) {
+        if (Math.abs(bufferedPercent - lastProgressState.current.buffered) > 10) {
           lastProgressState.current.buffered = bufferedPercent;
           setBufferedProgress(bufferedPercent);
         }
@@ -276,15 +283,15 @@ export default function ReactNetflixPlayer({
     if (timerBuffer.current) {
       clearTimeout(timerBuffer.current);
     }
-    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 3000);
+    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 8000);
 
-    // Call external onTimeUpdate less frequently
-    if (onTimeUpdate && now - timeUpdateRef.current > 500) {
+    // Call external onTimeUpdate much less frequently (every 2 seconds)
+    if (onTimeUpdate && now - timeUpdateRef.current > 2000) {
       onTimeUpdate(e);
     }
 
-    // Reset overlay states infrequently
-    if (Math.floor(currentTime) % 5 === 0) {
+    // Reset overlay states very infrequently
+    if (Math.floor(currentTime) % 15 === 0) {
       setShowInfo(false);
       setEnd(false);
     }
@@ -679,7 +686,7 @@ export default function ReactNetflixPlayer({
   const [loadingPreview, setLoadingPreview] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Optimized hover handling with immediate responsiveness
+  // Optimized hover handling - different performance profiles for preview enabled vs disabled
   const handleProgressBarHover = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
     if (!duration) return;
 
@@ -690,12 +697,29 @@ export default function ReactNetflixPlayer({
     const percent = Math.max(0, Math.min(1, x / totalWidth));
     const time = duration * percent;
 
-    // Update hover states immediately for instant response
-    setHoverTime(time);
-    setHoverPosition({ x: e.clientX, y: rect.top });
+    const now = Date.now();
+    
+    // Different throttling based on whether preview is enabled
+    if (disablePreview) {
+      // When preview is disabled, use requestAnimationFrame for ultra-smooth updates
+      if (now - (handleProgressBarHover as any).lastUpdate < 16) return;
+      (handleProgressBarHover as any).lastUpdate = now;
+      
+      // Use requestAnimationFrame for smooth 60fps updates when preview is off
+      requestAnimationFrame(() => {
+        setHoverTime(time);
+        setHoverPosition({ x: e.clientX, y: rect.top });
+      });
+    } else {
+      // When preview is enabled, use moderate throttling (50ms = 20fps)
+      if (now - (handleProgressBarHover as any).lastUpdate < 50) return;
+      (handleProgressBarHover as any).lastUpdate = now;
+      
+      // Update hover states
+      setHoverTime(time);
+      setHoverPosition({ x: e.clientX, y: rect.top });
 
-    // Handle preview capture if enabled
-    if (!disablePreview) {
+      // Handle preview capture with throttling
       const roundedTime = Math.floor(time);
 
       // Check cache first - instant if available
@@ -715,22 +739,23 @@ export default function ReactNetflixPlayer({
       setPreviewImage(null);
       setLoadingPreview(true);
 
-      // Reduced debounce for faster response (150ms instead of 200ms)
+      // Reduced debounce for better responsiveness (500ms instead of 800ms)
       hoverTimeoutRef.current = setTimeout(() => {
         if (!isCapturing) {
           captureFrameAtTime(time);
         }
-      }, 150);
+      }, 500);
     }
   }, [duration, disablePreview, isCapturing]);
 
-  // Optimized frame capture with better performance and error handling
+  // Ultra-optimized frame capture with maximum performance focus
   const captureFrameAtTime = useCallback(
     (time: number) => {
       // Early return if preview is disabled or already capturing
       if (disablePreview || !previewVideoRef.current || !previewCanvasRef.current || isCapturing) return;
 
-      const roundedTime = Math.floor(time);
+      // Round to nearest 5 seconds for better cache efficiency
+      const roundedTime = Math.floor(time / 5) * 5;
       
       // Check cache first
       const cachedFrame = frameCache.current.get(roundedTime);
@@ -741,7 +766,7 @@ export default function ReactNetflixPlayer({
       }
 
       // Only proceed if we're still hovering and not too far from requested time
-      if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 2) return;
+      if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 8) return;
 
       const video = previewVideoRef.current;
       const canvas = previewCanvasRef.current;
@@ -751,33 +776,38 @@ export default function ReactNetflixPlayer({
       // Remove any existing event listener to prevent memory leaks
       video.removeEventListener('seeked', video.onseeked as any);
       
-      // Shorter timeout for faster response
+      // Much shorter timeout for minimal UI blocking (300ms)
       const captureTimeout = setTimeout(() => {
         setIsCapturing(false);
         setLoadingPreview(false);
         video.removeEventListener('seeked', video.onseeked as any);
-      }, 1000);
+      }, 300);
       
       const handleSeeked = () => {
         clearTimeout(captureTimeout);
         
-        // Double-check we're still hovering and timing is still relevant
-        if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 1) {
+        // More lenient timing check for better performance
+        if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 8) {
           setIsCapturing(false);
           setLoadingPreview(false);
           return;
         }
         
-        const context = canvas.getContext('2d');
+        const context = canvas.getContext('2d', {
+          alpha: false, // Disable alpha channel for better performance
+          willReadFrequently: false // We don't read pixels frequently
+        });
+        
         if (context) {
           try {
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // Use even lower quality for faster processing
-            const dataURL = canvas.toDataURL('image/jpeg', 0.3);
+            // Use smaller canvas size for better performance (reduced from 160x90)
+            context.drawImage(video, 0, 0, 120, 68);
+            // Use extremely low quality for maximum performance
+            const dataURL = canvas.toDataURL('image/jpeg', 0.1);
             frameCache.current.set(roundedTime, dataURL);
             
-            // Only set preview if we're still hovering at roughly the same time
-            if (Math.abs((hoverTime || 0) - roundedTime) < 1.5) {
+            // More lenient timing check for preview setting
+            if (Math.abs((hoverTime || 0) - roundedTime) < 8) {
               setPreviewImage(dataURL);
             }
           } catch (error) {
@@ -792,10 +822,8 @@ export default function ReactNetflixPlayer({
 
       video.addEventListener('seeked', handleSeeked, { once: true });
       
-      // Use requestAnimationFrame for smoother seeking
-      requestAnimationFrame(() => {
-        video.currentTime = time;
-      });
+      // Use less frequent seeking for performance
+      video.currentTime = time;
     },
     [hoverTime, isCapturing, disablePreview]
   );
@@ -899,7 +927,7 @@ export default function ReactNetflixPlayer({
     setShowInfo(false);
     
     const now = Date.now();
-    if (now - mouseMoveTimeoutRef.current > 50) { // Reduced from 100ms to 50ms
+    if (now - mouseMoveTimeoutRef.current > 100) { // Increased from 50ms to 100ms for better performance
       mouseMoveTimeoutRef.current = now;
       hoverScreen();
     }
@@ -1379,8 +1407,8 @@ export default function ReactNetflixPlayer({
           />
           <canvas
             ref={previewCanvasRef}
-            width={160}
-            height={90}
+            width={120}
+            height={68}
             style={{ display: 'none' }}
           />
         </>
@@ -1405,7 +1433,7 @@ export default function ReactNetflixPlayer({
         {hoverPosition && hoverTime !== null && !showPlaybackRate && !showQuality && !showDataNext && !showReproductionList && (
           <PreviewImage
             style={{
-              left: `${hoverPosition.x - (disablePreview ? 25 : 90)}px`,
+              left: `${hoverPosition.x - (disablePreview ? 25 : 70)}px`, // Reduced from 90 to 70 for smaller preview
               bottom: `${window.innerHeight - hoverPosition.y + 10}px`, // Dynamic bottom based on hover position
               maxHeight: `${hoverPosition.y - 20}px`, // Ensure it doesn't go off-screen
             }}
@@ -1552,7 +1580,10 @@ export default function ReactNetflixPlayer({
                   <FaVolumeMute onClick={() => setMutedAction(false)} />
                 </div>
               )}
+            </div>
 
+            {/* Center section for titleMedia */}
+            <div className="center">
               <div className="item-control info-video">
                 <span className="info-first">{titleMedia}</span>
                 <span className="info-second">{extraInfoMedia}</span>
@@ -1630,7 +1661,9 @@ export default function ReactNetflixPlayer({
                     </ItemNext>
                   )}
 
-                  <FaStepForward onClick={onNextClick} onMouseEnter={() => setShowDataNext(true)} />
+                  <IconNext primaryColor={primaryColor}>
+                    <FaStepForward onClick={onNextClick} onMouseEnter={() => setShowDataNext(true)} />
+                  </IconNext>
                 </div>
               )}
 
@@ -1638,17 +1671,25 @@ export default function ReactNetflixPlayer({
                 {showReproductionList && (
                   <ItemPlaylist>
                     <div>
-                      <div className="title">{t('playlist', { lng: playerLanguage })}</div>
+                      <div className="title">
+                        {reproductionList.length > 0 && reproductionList[0].seasonNumber 
+                          ? `Season ${reproductionList[0].seasonNumber}` 
+                          : t('playlist', { lng: playerLanguage })
+                        }
+                      </div>
                       <div ref={playlistRef} className="list-playback scroll-clean-player">
                         {reproductionList.map((item, index) => (
                           <div
+                            key={item.id}
                             className={`item-playback ${item.playing && 'selected'}`}
                             onClick={() =>
                               onClickItemListReproduction && onClickItemListReproduction(item.id, item.playing)
                             }
                           >
                             <div className="bold">
-                              <span style={{ marginRight: 15 }}>{index + 1}</span>
+                              <span style={{ marginRight: 15 }}>
+                                {item.episodeNumber ? `E${item.episodeNumber}` : index + 1}
+                              </span>
                               {item.name}
                             </div>
 
@@ -1661,7 +1702,9 @@ export default function ReactNetflixPlayer({
                   </ItemPlaylist>
                 )}
                 {reproductionList && reproductionList.length > 1 && (
-                  <FaClone onMouseEnter={() => setShowReproductionList(true)} />
+                  <IconPlaylist primaryColor={primaryColor}>
+                    <FaClone onMouseEnter={() => setShowReproductionList(true)} />
+                  </IconPlaylist>
                 )}
               </div>
 
