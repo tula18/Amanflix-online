@@ -26,6 +26,7 @@ const WatchPage = () => {
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
     const [disablePreview, setDisablePreview] = useState(true);
+    const [disableBuffer, setDisableBuffer] = useState(true);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
@@ -376,6 +377,7 @@ const WatchPage = () => {
                     autoPlay
                     backButton={() => navigate(-1)}
                     disablePreview={disablePreview}
+                    disableBufferPreview={disableBuffer}
                     primaryColor='#e50914'
                     title={mediaTitle}
                     subTitle={mediaSubTitle}

@@ -108,6 +108,7 @@ export interface IProps {
   qualities?: IQualities[];
   onChangeQuality?: (quality: string | number) => void;
   disablePreview?: boolean; // Add this new prop
+  disableBufferPreview?: boolean; // Add buffer preview disable option
   videoRef?: React.MutableRefObject<HTMLVideoElement | null>; // Add this new prop
 }
 
@@ -150,6 +151,7 @@ export default function ReactNetflixPlayer({
   playbackRateOptions = ['0.25', '0.5', '0.75', 'Normal', '1.25', '1.5', '2'],
   playbackRateStart = 1,
   disablePreview = false,
+  disableBufferPreview = false,
   videoRef, // Add this new prop
 }: IProps) {
 
@@ -251,8 +253,8 @@ export default function ReactNetflixPlayer({
       setPlaying(isPlaying);
     }
     
-    // Calculate buffered progress much less frequently (every 10 seconds)
-    if (now - bufferedUpdateRef.current > 10000) {
+    // Calculate buffered progress much less frequently (every 10 seconds) - only if buffer preview is enabled
+    if (!disableBufferPreview && now - bufferedUpdateRef.current > 10000) {
       bufferedUpdateRef.current = now;
       if (target.buffered.length > 0) {
         const bufferedEnd = target.buffered.end(target.buffered.length - 1);
@@ -284,7 +286,7 @@ export default function ReactNetflixPlayer({
       setShowInfo(false);
       setEnd(false);
     }
-  }, [waitingBuffer, onTimeUpdate]);
+  }, [waitingBuffer, onTimeUpdate, disableBufferPreview]);
 
   const goToPosition = (position: number) => {
     if (videoComponent.current) {
@@ -1313,6 +1315,13 @@ export default function ReactNetflixPlayer({
     return () => clearInterval(syncInterval);
   }, [playing, videoReady, requiresInteraction]);
 
+  // Reset buffered progress when buffer preview is disabled
+  useEffect(() => {
+    if (disableBufferPreview) {
+      setBufferedProgress(0);
+    }
+  }, [disableBufferPreview]);
+
   return (
     <Container
       onMouseMove={throttledHoverScreen}
@@ -1454,11 +1463,11 @@ export default function ReactNetflixPlayer({
             
             <ProgressBarContainer
               $primaryColor={primaryColor}
-              $bufferedProgress={bufferedProgress}
+              $bufferedProgress={disableBufferPreview ? 0 : bufferedProgress}
               $progressVideo={(progress * 100) / duration}
             >
-              {/* Buffered progress bar */}
-              <div className="buffered-bar" />
+              {/* Buffered progress bar - conditionally rendered */}
+              {!disableBufferPreview && <div className="buffered-bar" />}
               
               {/* Played progress bar */}
               <div className="played-bar" />
