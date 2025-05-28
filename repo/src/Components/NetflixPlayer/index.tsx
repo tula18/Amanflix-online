@@ -270,46 +270,6 @@ export default function ReactNetflixPlayer({
     setProgress(currentTime);
   }, [playing, waitingBuffer, onTimeUpdate, disableBufferPreview]);
 
-  const timeUpdate2 = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
-    const target = e.target as HTMLVideoElement;
-    const currentTime = target.currentTime;
-    const duration = target.duration;
-    const now = Date.now();
-
-    if (now - timeUpdateRef.current < 1000) return;
-    timeUpdateRef.current = now;
-
-    if (progressInputRef.current) {
-      progressInputRef.current.value = currentTime.toString();
-    }
-    if (playedBarRef.current && duration > 0) {
-      playedBarRef.current.style.width = `${(currentTime / duration) * 100}%`;
-    }
-    setProgress(currentTime);
-    setPlaying(!target.paused);
-
-    if (!disableBufferPreview && now - bufferedUpdateRef.current > 10000) {
-      bufferedUpdateRef.current = now;
-      if (target.buffered.length > 0) {
-        const bufferedEnd = target.buffered.end(target.buffered.length - 1);
-        if (bufferedBarRef.current && duration > 0) {
-          bufferedBarRef.current.style.width = `${(bufferedEnd / duration) * 100}%`;
-        }
-      }
-    }
-
-    if (waitingBuffer) setWaitingBuffer(false);
-    if (Math.floor(currentTime) % 15 === 0) {
-      setShowInfo(false);
-      setEnd(false);
-    }
-
-    if (timerBuffer.current) clearTimeout(timerBuffer.current);
-    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 20000);
-
-    if (onTimeUpdate) onTimeUpdate(e);
-  }, [waitingBuffer, onTimeUpdate, disableBufferPreview]);
-
   const goToPosition = (position: number) => {
     const video = videoComponent.current;
     if (!video) return;

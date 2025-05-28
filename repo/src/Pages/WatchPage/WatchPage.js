@@ -26,7 +26,7 @@ const WatchPage = () => {
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
     const [disablePreview, setDisablePreview] = useState(true);
-    const [disableBuffer, setDisableBuffer] = useState(true);
+    const [disableBuffer, setDisableBuffer] = useState(false);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
@@ -357,6 +357,7 @@ const WatchPage = () => {
 
     return (
         <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
+            <FPSMeter />
             {useOldPlayer ? (
                 <video
                     ref={videoRef}
