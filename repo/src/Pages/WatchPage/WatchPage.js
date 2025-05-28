@@ -26,7 +26,7 @@ const WatchPage = () => {
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
     const [disablePreview, setDisablePreview] = useState(true);
-    const [disableBuffer, setDisableBuffer] = useState(false);
+    const [disableBuffer, setDisableBuffer] = useState(true);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');

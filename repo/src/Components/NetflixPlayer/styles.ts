@@ -1443,11 +1443,3 @@ export const VideoElement = styled.video`
   height: 100%;
   object-fit: contain;
 `;
-
-export const HiddenVideo = styled.video`
-  display: none;
-`;
-
-export const HiddenCanvas = styled.canvas`
-  display: none;
-`;

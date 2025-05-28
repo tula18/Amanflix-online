@@ -38,8 +38,6 @@ import {
   AutoplayOverlay,
   VolumeOverlay,
   VideoElement,
-  HiddenVideo,
-  HiddenCanvas,
 } from './styles.ts';
 import translations from './i18n/index.ts';
 
@@ -155,11 +153,6 @@ export default function ReactNetflixPlayer({
   const playerElement = useRef<null | HTMLDivElement>(null);
   const playlistRef = useRef<null | HTMLDivElement>(null);
 
-  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
-  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const frameCache = useRef<Map<number, string>>(new Map());
-  const maxCacheSize = 50;
-
   const [videoReady, setVideoReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -185,7 +178,6 @@ export default function ReactNetflixPlayer({
   const [showReproductionList, setShowReproductionList] = useState(false);
 
   const [hoverTime, setHoverTime] = useState<number | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
 
   const [operation, setOperation] = useState<{ icon: JSX.Element; text: string } | null>(null);
@@ -207,7 +199,78 @@ export default function ReactNetflixPlayer({
   const timeUpdateRef = useRef<number>(0);
   const bufferedUpdateRef = useRef<number>(0);
 
+
   const timeUpdate = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
+    const target = e.target as HTMLVideoElement;
+    const currentTime = target.currentTime;
+    const duration = target.duration;
+
+    // Reset UI states
+    setShowInfo(false);
+    setEnd(false);
+
+    // Update playing state based on actual video state
+    if (playing !== !target.paused) {
+      setPlaying(!target.paused);
+    }
+
+    // Handle buffering state
+    if (waitingBuffer) {
+      setWaitingBuffer(false);
+    }
+
+    if (timerBuffer.current) {
+      clearTimeout(timerBuffer.current);
+    }
+
+    // Set buffer timeout (keep original's shorter timeout for better responsiveness)
+    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 1000);
+
+    // Call external onTimeUpdate callback
+    if (onTimeUpdate) {
+      onTimeUpdate(e);
+    }
+
+    // Update progress bar elements directly (more efficient than state updates)
+    if (progressInputRef.current) {
+      progressInputRef.current.value = currentTime.toString();
+    }
+    if (playedBarRef.current && duration > 0) {
+      playedBarRef.current.style.width = `${(currentTime / duration) * 100}%`;
+    }
+
+    // Update buffered progress (throttled)
+    if (!disableBufferPreview) {
+      const now = Date.now();
+      if (now - bufferedUpdateRef.current > 2000) { // Reduced from 10000ms to 2000ms
+        bufferedUpdateRef.current = now;
+        
+        // Use original's buffer calculation logic (more robust)
+        const lengthBuffer = target.buffered.length;
+        let endBuffer = 0;
+        
+        for (let i = 1; i <= lengthBuffer; i++) {
+          const startCheck = target.buffered.start(i - 1);
+          const endCheck = target.buffered.end(i - 1);
+          
+          if (endCheck > currentTime && currentTime > startCheck) {
+            if (endCheck > endBuffer) {
+              endBuffer = endCheck;
+            }
+          }
+        }
+        
+        if (bufferedBarRef.current && duration > 0 && endBuffer > 0) {
+          bufferedBarRef.current.style.width = `${(endBuffer / duration) * 100}%`;
+        }
+      }
+    }
+
+    // Update progress state (this triggers re-renders, so do it last)
+    setProgress(currentTime);
+  }, [playing, waitingBuffer, onTimeUpdate, disableBufferPreview]);
+
+  const timeUpdate2 = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
     const target = e.target as HTMLVideoElement;
     const currentTime = target.currentTime;
     const duration = target.duration;
@@ -510,8 +573,6 @@ export default function ReactNetflixPlayer({
     setPlaybackRate(speed);
   };
 
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [loadingPreview, setLoadingPreview] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleProgressBarHover = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
@@ -521,105 +582,15 @@ export default function ReactNetflixPlayer({
     const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const time = duration * percent;
     const now = Date.now();
-    const throttleInterval = disablePreview ? 16 : 50;
+    const throttleInterval = 16; // Consistent throttling regardless of preview setting
     if (now - (handleProgressBarHover as any).lastUpdate < throttleInterval) return;
     (handleProgressBarHover as any).lastUpdate = now;
 
     setHoverTime(time);
     setHoverPosition({ x: e.clientX, y: rect.top });
+  }, [duration]);
 
-    if (!disablePreview) {
-      const roundedTime = Math.floor(time);
-      const cachedFrame = frameCache.current.get(roundedTime);
-      
-      if (cachedFrame) {
-        setPreviewImage(cachedFrame);
-        setLoadingPreview(false);
-      } else {
-        setPreviewImage(null);
-        setLoadingPreview(true);
-        
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = setTimeout(() => {
-          if (!isCapturing) captureFrameAtTime(time);
-        }, 300);
-      }
-    }
-  }, [duration, disablePreview, isCapturing]);
 
-  const captureFrameAtTime = (time: number) => {
-    if (disablePreview || !previewVideoRef.current || !previewCanvasRef.current || isCapturing) {
-      return;
-    }
-
-    const roundedTime = Math.floor(time / 5) * 5;
-    
-    const cachedFrame = frameCache.current.get(roundedTime);
-    if (cachedFrame && hoverTime !== null) {
-      setPreviewImage(cachedFrame);
-      setLoadingPreview(false);
-      return;
-    }
-
-    if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 8) {
-      return;
-    }
-
-    const video = previewVideoRef.current;
-    const canvas = previewCanvasRef.current;
-    
-    setIsCapturing(true);
-    
-    video.removeEventListener('seeked', video.onseeked as any);
-    
-    const captureTimeout = setTimeout(() => {
-      setIsCapturing(false);
-      setLoadingPreview(false);
-      video.removeEventListener('seeked', video.onseeked as any);
-    }, 300);
-    
-    const handleSeeked = () => {
-      clearTimeout(captureTimeout);
-      
-      if (hoverTime === null || Math.abs((hoverTime || 0) - roundedTime) > 8) {
-        setIsCapturing(false);
-        setLoadingPreview(false);
-        return;
-      }
-      
-      const context = canvas.getContext('2d', {
-        alpha: false,
-        willReadFrequently: false
-      });
-      
-      if (context) {
-        try {
-          context.drawImage(video, 0, 0, 120, 68);
-          const dataURL = canvas.toDataURL('image/jpeg', 0.6);
-          
-          if (frameCache.current.size >= maxCacheSize) {
-            const firstKey = frameCache.current.keys().next().value;
-            frameCache.current.delete(firstKey);
-          }
-          
-          frameCache.current.set(roundedTime, dataURL);
-          
-          if (Math.abs((hoverTime || 0) - roundedTime) < 8) {
-            setPreviewImage(dataURL);
-          }
-        } catch (error) {
-          console.warn('Failed to capture frame:', error);
-        }
-      }
-      
-      setIsCapturing(false);
-      setLoadingPreview(false);
-      video.removeEventListener('seeked', handleSeeked);
-    };
-
-    video.addEventListener('seeked', handleSeeked, { once: true });
-    video.currentTime = time;
-  };
 
   useEffect(() => {
     if (showReproductionList) {
@@ -629,8 +600,6 @@ export default function ReactNetflixPlayer({
 
   useEffect(() => {
     if (src && videoComponent.current) {
-      frameCache.current.clear();
-      
       videoComponent.current.currentTime = startPosition;
       
       setProgress(startPosition);
@@ -643,7 +612,6 @@ export default function ReactNetflixPlayer({
       setBufferedProgress(0);
       
       setHoverTime(null);
-      setPreviewImage(null);
       setHoverPosition(null);
     }
   }, [src, startPosition]);
@@ -999,23 +967,6 @@ export default function ReactNetflixPlayer({
         crossOrigin="anonymous"
       />
 
-      {!disablePreview && (
-        <>
-          <HiddenVideo
-            ref={previewVideoRef}
-            src={src}
-            muted
-            preload="auto"
-            crossOrigin="anonymous"
-          />
-          <HiddenCanvas
-            ref={previewCanvasRef}
-            width={120}
-            height={68}
-          />
-        </>
-      )}
-
       <Controls
         $show={showControls === true && videoReady === true && error === false}
         $primaryColor={primaryColor}
@@ -1040,24 +991,9 @@ export default function ReactNetflixPlayer({
           >
             {!disablePreview ? (
               <>
-                {previewImage ? (
-                  <img src={previewImage} alt="Preview" />
-                ) : (
-                  <div className="loading-fallback">
-                    {loadingPreview ? (
-                      <>
-                        <div className="loading-spinner">
-                          <div></div>
-                          <div></div>
-                          <div></div>
-                        </div>
-                        <span>Loading...</span>
-                      </>
-                    ) : (
-                      <span>No preview</span>
-                    )}
-                  </div>
-                )}
+                <div className="loading-fallback">
+                  <span>No preview</span>
+                </div>
                 <div className="time-indicator">{formatTime(hoverTime)}</div>
               </>
             ) : (
@@ -1070,7 +1006,6 @@ export default function ReactNetflixPlayer({
           <div 
             className="line-reproduction" 
             onMouseLeave={() => {
-              setPreviewImage(null);
               setHoverTime(null);
               setHoverPosition(null);
             }}
@@ -1098,8 +1033,6 @@ export default function ReactNetflixPlayer({
                 onMouseLeave={() => {
                   setHoverTime(null);
                   setHoverPosition(null);
-                  setPreviewImage(null);
-                  setLoadingPreview(false);
                 }}
                 title=""
               />
