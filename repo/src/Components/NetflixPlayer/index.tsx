@@ -779,11 +779,7 @@ export default function ReactNetflixPlayer({
       e.preventDefault();
       e.stopPropagation();
       
-      if (requiresInteraction) {
-        forcePlay();
-      } else {
-        togglePlayPause();
-      }
+      togglePlayPause();
     }
   };
 
@@ -952,7 +948,7 @@ export default function ReactNetflixPlayer({
           transition: 'all 0.5s ease-out',
           opacity: 1
         }}
-        onClick={forcePlay}
+        onClick={togglePlayPause}
       >
         {(title || titleMedia || subTitle) && (
           <section style={{
@@ -1507,7 +1503,7 @@ export default function ReactNetflixPlayer({
                     <ItemNext>
                       <div>
                         <div className="title">{t('nextEpisode', { lng: playerLanguage })}</div>
-                        <div className="item" onClick={onNextClick}>
+                        <div className="item">
                           <div className="bold">{dataNext.title}</div>
                           {dataNext.description && <div>{dataNext.description}</div>}
                         </div>
@@ -1586,7 +1582,6 @@ export default function ReactNetflixPlayer({
                       <div className="box-connector" />
                     </ItemListQuality>
                   )}
-
                   <FaCog onMouseEnter={() => setShowQuality(true)} />
                 </div>
               )}

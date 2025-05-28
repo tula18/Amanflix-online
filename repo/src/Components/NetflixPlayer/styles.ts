@@ -954,7 +954,6 @@ export const ItemNext = styled(ItemControlBar)`
       flex-direction: column;
       font-size: 15px;
       padding: 12px 18px;
-      cursor: pointer;
       transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       color: #e0e0e0;
@@ -962,24 +961,6 @@ export const ItemNext = styled(ItemControlBar)`
 
       &:last-child {
         border-bottom: none;
-      }
-
-      &:hover {
-        background: linear-gradient(135deg, rgba(3, 223, 252, 0.2), rgba(3, 223, 252, 0.1));
-        color: #ffffff;
-        transform: translateX(4px);
-        padding-left: 22px;
-        
-        &::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 3px;
-          background: linear-gradient(180deg, #03dffc, rgba(3, 223, 252, 0.8));
-          border-radius: 0 2px 2px 0;
-        }
       }
     }
     
