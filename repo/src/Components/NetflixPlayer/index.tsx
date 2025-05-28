@@ -141,11 +141,15 @@ export default function ReactNetflixPlayer({
 
   playbackRateOptions = ['0.25', '0.5', '0.75', 'Normal', '1.25', '1.5', '2'],
   playbackRateStart = 1,
-  disablePreview = false,
+  disablePreview = true,
   disableBufferPreview = false,
   videoRef,
 }: IProps) {
   const videoComponent = useRef<null | HTMLVideoElement>(null);
+  const progressInputRef = useRef<HTMLInputElement | null>(null);
+  const playedBarRef = useRef<HTMLDivElement | null>(null);
+  const bufferedBarRef = useRef<HTMLDivElement | null>(null);
+
   const timerRef = useRef<null | NodeJS.Timeout>(null);
   const timerBuffer = useRef<null | NodeJS.Timeout>(null);
   const playerElement = useRef<null | HTMLDivElement>(null);
@@ -209,17 +213,25 @@ export default function ReactNetflixPlayer({
     const duration = target.duration;
     const now = Date.now();
 
-    if (now - timeUpdateRef.current < 100) return;
+    if (now - timeUpdateRef.current < 1000) return;
     timeUpdateRef.current = now;
 
+    if (progressInputRef.current) {
+      progressInputRef.current.value = currentTime.toString();
+    }
+    if (playedBarRef.current && duration > 0) {
+      playedBarRef.current.style.width = `${(currentTime / duration) * 100}%`;
+    }
     setProgress(currentTime);
     setPlaying(!target.paused);
 
-    if (!disableBufferPreview && now - bufferedUpdateRef.current > 5000) {
+    if (!disableBufferPreview && now - bufferedUpdateRef.current > 10000) {
       bufferedUpdateRef.current = now;
       if (target.buffered.length > 0) {
         const bufferedEnd = target.buffered.end(target.buffered.length - 1);
-        setBufferedProgress(duration > 0 ? (bufferedEnd / duration) * 100 : 0);
+        if (bufferedBarRef.current && duration > 0) {
+          bufferedBarRef.current.style.width = `${(bufferedEnd / duration) * 100}%`;
+        }
       }
     }
 
@@ -230,7 +242,7 @@ export default function ReactNetflixPlayer({
     }
 
     if (timerBuffer.current) clearTimeout(timerBuffer.current);
-    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 8000);
+    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 20000);
 
     if (onTimeUpdate) onTimeUpdate(e);
   }, [waitingBuffer, onTimeUpdate, disableBufferPreview]);
@@ -1070,13 +1082,14 @@ export default function ReactNetflixPlayer({
               $bufferedProgress={disableBufferPreview ? 0 : bufferedProgress}
               $progressVideo={(progress * 100) / duration}
             >
-              {!disableBufferPreview && <div className="buffered-bar" />}
+              {!disableBufferPreview && <div ref={bufferedBarRef} className="buffered-bar" />}
               
-              <div className="played-bar" />
+              <div ref={playedBarRef} className="played-bar" />
               
               <input
+                ref={progressInputRef}
                 type="range"
-                value={progress}
+                defaultValue={progress.toString()}
                 className="progress-bar"
                 max={duration}
                 onChange={e => goToPosition(+e.target.value)}
