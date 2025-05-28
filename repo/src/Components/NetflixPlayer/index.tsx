@@ -12,14 +12,13 @@ import {
   FaArrowLeft,
   FaExpand,
   FaStepForward,
-  FaCog,
   FaClone,
   FaCompress,
   FaRedoAlt,
   FaForward,
   FaBackward,
 } from 'react-icons/fa';
-import { FiCheck, FiX } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 import {
   Loading,
   StandByInfo,
@@ -33,7 +32,6 @@ import {
   IconNext,
   ItemNext,
   ItemPlaylist,
-  ItemListQuality,
   PreviewImage,
   ProgressBarContainer,
   OperationOverlay,
@@ -63,13 +61,6 @@ export enum LanguagesPlayer {
 export interface IDataNext {
   title: string;
   description?: string;
-}
-
-export interface IQualities {
-  prefix: string;
-  name: string;
-  playing: boolean;
-  id: string | number;
 }
 
 export interface IItemReproduction {
@@ -110,8 +101,6 @@ export interface IProps {
   overlayEnabled?: boolean;
   dataNext?: IDataNext;
   reproductionList?: IItemReproduction[];
-  qualities?: IQualities[];
-  onChangeQuality?: (quality: string | number) => void;
   disablePreview?: boolean;
   disableBufferPreview?: boolean;
   videoRef?: React.MutableRefObject<HTMLVideoElement | null>;
@@ -142,8 +131,6 @@ export default function ReactNetflixPlayer({
 
   dataNext = {} as IDataNext,
   reproductionList = [],
-  qualities = [],
-  onChangeQuality = [] as any,
   playbackRateEnable = true,
   overlayEnabled = true,
   autoControlCloseEnabled = true,
@@ -189,7 +176,6 @@ export default function ReactNetflixPlayer({
   const volumeOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [showControlVolume, setShowControlVolume] = useState(false);
-  const [showQuality, setShowQuality] = useState(false);
   const [showDataNext, setShowDataNext] = useState(false);
   const [showPlaybackRate, setShowPlaybackRate] = useState(false);
   const [showReproductionList, setShowReproductionList] = useState(false);
@@ -217,22 +203,18 @@ export default function ReactNetflixPlayer({
   const timeUpdateRef = useRef<number>(0);
   const bufferedUpdateRef = useRef<number>(0);
 
-  // Simplified and optimized timeUpdate function
   const timeUpdate = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
     const target = e.target as HTMLVideoElement;
     const currentTime = target.currentTime;
     const duration = target.duration;
     const now = Date.now();
 
-    // Throttle updates
     if (now - timeUpdateRef.current < 100) return;
     timeUpdateRef.current = now;
 
-    // Update progress and playing state
     setProgress(currentTime);
     setPlaying(!target.paused);
 
-    // Update buffered progress less frequently
     if (!disableBufferPreview && now - bufferedUpdateRef.current > 5000) {
       bufferedUpdateRef.current = now;
       if (target.buffered.length > 0) {
@@ -241,18 +223,15 @@ export default function ReactNetflixPlayer({
       }
     }
 
-    // Reset waiting buffer and show info states
     if (waitingBuffer) setWaitingBuffer(false);
     if (Math.floor(currentTime) % 15 === 0) {
       setShowInfo(false);
       setEnd(false);
     }
 
-    // Handle buffer timeout
     if (timerBuffer.current) clearTimeout(timerBuffer.current);
     timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 8000);
 
-    // Call external timeUpdate handler
     if (onTimeUpdate) onTimeUpdate(e);
   }, [waitingBuffer, onTimeUpdate, disableBufferPreview]);
 
@@ -412,7 +391,6 @@ export default function ReactNetflixPlayer({
     setError(t('playError', { lng: playerLanguage }));
   };
 
-  // Optimized volume control
   const updateVolume = useCallback((value: number, showOverlay = true) => {
     const video = videoComponent.current;
     if (!video) return;
@@ -737,11 +715,7 @@ export default function ReactNetflixPlayer({
     switch (e.code) {
       case 'Space':
         e.preventDefault();
-        if (video.paused && requiresInteractionRef.current) {
-          togglePlayPause();
-        } else {
-          togglePlayPause();
-        }
+        togglePlayPause();
         break;
 
       case 'ArrowLeft':
@@ -793,7 +767,10 @@ export default function ReactNetflixPlayer({
         $primaryColor={primaryColor}
         $secondaryColor={secondaryColor}
         $show={requiresInteraction}
-        onClick={togglePlayPause}
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePlayPause();
+        }}
       >
         {(title || titleMedia || subTitle) && (
           <section className="section-main">
@@ -817,13 +794,7 @@ export default function ReactNetflixPlayer({
         )}
 
         <div className="play-button-container">
-          <div
-            className="play-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayPause();
-            }}
-          >
+          <div className="play-button">
             <FaPlay className="play-icon" />
           </div>
           
@@ -936,7 +907,6 @@ export default function ReactNetflixPlayer({
     playingRef.current = playing;
   }, [playing]);
 
-  // Event listeners setup
   useEffect(() => {
     const handleFullscreenChange = () => updateFullscreenState();
     
@@ -1048,7 +1018,7 @@ export default function ReactNetflixPlayer({
           </div>
         )}
 
-        {hoverPosition && hoverTime !== null && !showPlaybackRate && !showQuality && !showDataNext && !showReproductionList && (
+        {hoverPosition && hoverTime !== null && !showPlaybackRate && !showDataNext && !showReproductionList && (
           <PreviewImage
             style={{
               left: `${hoverPosition.x - (disablePreview ? 25 : 70)}px`,
@@ -1084,7 +1054,7 @@ export default function ReactNetflixPlayer({
           </PreviewImage>
         )}
 
-        {showControlVolume !== true && showQuality !== true && !showDataNext && !showReproductionList && (
+        {showControlVolume !== true && !showDataNext && !showReproductionList && (
           <div 
             className="line-reproduction" 
             onMouseLeave={() => {
@@ -1243,7 +1213,6 @@ export default function ReactNetflixPlayer({
                       <div className="box-connector" />
                     </ItemPlaybackRate>
                   )}
-
                   <IconPlayBackRate $primaryColor={primaryColor} className="playbackRate">
                     <span className='playbackRate_span'>
                       {playbackRate === 'Normal' ? '1' : `${playbackRate}`}
@@ -1267,7 +1236,6 @@ export default function ReactNetflixPlayer({
                       <div className="box-connector" />
                     </ItemNext>
                   )}
-
                   <IconNext $primaryColor={primaryColor}>
                     <FaStepForward onClick={onNextClick} onMouseEnter={() => setShowDataNext(true)} />
                   </IconNext>
@@ -1299,7 +1267,6 @@ export default function ReactNetflixPlayer({
                               </span>
                               {item.name}
                             </div>
-
                             {item.percent && <div className="percent" />}
                           </div>
                         ))}
@@ -1314,33 +1281,6 @@ export default function ReactNetflixPlayer({
                   </IconPlaylist>
                 )}
               </div>
-
-              {qualities && qualities.length > 1 && (
-                <div className="item-control" onMouseLeave={() => setShowQuality(false)}>
-                  {showQuality === true && (
-                    <ItemListQuality>
-                      <div>
-                        {qualities &&
-                          qualities.map(item => (
-                            <div
-                              onClick={() => {
-                                setShowQuality(false);
-                                onChangeQuality(item.id);
-                              }}
-                            >
-                              {item.prefix && <span>HD</span>}
-
-                              <span>{item.name}</span>
-                              {item.playing && <FiCheck />}
-                            </div>
-                          ))}
-                      </div>
-                      <div className="box-connector" />
-                    </ItemListQuality>
-                  )}
-                  <FaCog onMouseEnter={() => setShowQuality(true)} />
-                </div>
-              )}
 
               <div className="item-control">
                 {fullScreen === false && <FaExpand onClick={toggleFullscreen} />}

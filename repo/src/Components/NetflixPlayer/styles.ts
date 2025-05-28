@@ -32,6 +32,17 @@ const fadeInOut = keyframes`
   }
 `;
 
+const slideInUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+`;
+
 export interface IContainerProps {
   $fullPlayer: boolean;
   $hideVideo: boolean;
@@ -252,7 +263,7 @@ export const Controls = styled.div<IControlsProps>`
     height: 3px;
     transition: height 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     border-radius: 5px;
-  background: linear-gradient(
+    background: linear-gradient(
     93deg,
       ${props => props.$primaryColor} ${props => props.$progressVideo}%,
       #fff ${props => props.$progressVideo}%
@@ -895,19 +906,7 @@ export const ItemPlaybackRate = styled(ItemControlBar)<ItemPlaybackRateProps>`
     }
   }
 
-  /* Animation only for this component */
-  animation: slideInUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
+  animation: ${slideInUp} 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 `;
 
 export const ItemNext = styled(ItemControlBar)`
@@ -961,19 +960,7 @@ export const ItemNext = styled(ItemControlBar)`
     }
   }
 
-  /* Animation for the component */
-  animation: slideInUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
+  animation: ${slideInUp} 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 `;
 
 export const ItemPlaylist = styled(ItemControlBar)`
@@ -1118,32 +1105,10 @@ export const ItemPlaylist = styled(ItemControlBar)`
             color: #ffffff;
             box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
           }
-
-          &::after {
-            content: '●';
-            position: absolute;
-            right: 18px;
-            color: #e50914;
-            font-size: 16px;
-            animation: pulse 2s infinite;
-          }
         }
       }
     }
   }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-`;
-
-const spin = keyframes`
-  to { transform: rotate(360deg); }
 `;
 
 export const PreviewImage = styled.div`
@@ -1254,45 +1219,6 @@ export const PreviewImage = styled.div`
     40% {
       transform: scale(1);
       opacity: 1;
-    }
-  }
-`;
-
-export const ItemListQuality = styled(ItemControlBar)`
-  max-width: 200px;
-  min-width: 200px;
-
-  & > div:first-child {
-    font-size: 14px;
-    background: #222222;
-    border-radius: 5px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    div {
-      display: flex;
-      align-items: center;
-      padding: 10px;
-      cursor: pointer;
-
-      &:hover {
-        background: #333;
-      }
-    }
-
-    span {
-      margin-right: 5px;
-
-      &:nth-child(1) {
-        font-weight: bold;
-      }
-    }
-
-    svg {
-      color: #f78b28;
-      font-size: 2em;
-      margin-left: auto;
     }
   }
 `;
