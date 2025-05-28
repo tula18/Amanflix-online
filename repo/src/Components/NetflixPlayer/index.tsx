@@ -37,6 +37,11 @@ import {
   PreviewImage,
   ProgressBarContainer,
   OperationOverlay,
+  AutoplayOverlay,
+  VolumeOverlay,
+  VideoElement,
+  HiddenVideo,
+  HiddenCanvas,
 } from './styles.ts';
 import translations from './i18n/index.ts';
 
@@ -452,69 +457,22 @@ export default function ReactNetflixPlayer({
     const volumeText = isMuted ? 'Muted' : `${Math.round(volume)}%`;
 
     return (
-      <div
-        style={{
-          position: 'absolute',
-          top: '30px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          zIndex: 2000,
-          fontSize: '14px',
-          fontWeight: '500',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-          animation: 'fadeInOut 2s ease-in-out',
-          minWidth: '120px',
-          justifyContent: 'center',
-          verticalAlign: 'center'
-        }}
-      >
-        <style>
-          {`
-            @keyframes fadeInOut {
-              0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-              10%, 90% { opacity: 1; transform: translateX(-50%) translateY(0); }
-              100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-            }
-          `}
-        </style>
-        
-        <div style={{ fontSize: '16px', color: primaryColor, alignItems: 'center', alignSelf: 'center' }}>
+      <VolumeOverlay $primaryColor={primaryColor}>
+        <div className="volume-icon">
           {volumeIcon}
         </div>
         
         <span>{volumeText}</span>
         
         {!isMuted && (
-          <div
-            style={{
-              width: '60px',
-              height: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              borderRadius: '2px',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: `${volume}%`,
-                height: '100%',
-                backgroundColor: primaryColor,
-                borderRadius: '2px',
-                transition: 'width 0.2s ease'
-              }}
+          <div className="volume-bar">
+            <div 
+              className="volume-fill"
+              style={{ width: `${volume}%` }}
             />
           </div>
         )}
-      </div>
+      </VolumeOverlay>
     );
   };
 
@@ -831,118 +789,45 @@ export default function ReactNetflixPlayer({
     if (!requiresInteraction) return null;
 
     return (
-      <div 
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '0 50px',
-          zIndex: 1000,
-          cursor: 'pointer',
-          transition: 'all 0.5s ease-out',
-          opacity: 1
-        }}
+      <AutoplayOverlay
+        $primaryColor={primaryColor}
+        $secondaryColor={secondaryColor}
+        $show={requiresInteraction}
         onClick={togglePlayPause}
       >
         {(title || titleMedia || subTitle) && (
-          <section style={{
-            margin: 'auto 0',
-            paddingTop: '100px',
-            paddingLeft: '100px',
-            color: '#ffffff'
-          }}>
-            <h3 style={{
-              color: primaryColor,
-              fontSize: '1.1em',
-              marginBottom: '5px',
-              fontWeight: 'normal'
-            }}>
+          <section className="section-main">
+            <h3 className="subtitle">
               {autoPlay ? 
                 (t('autoplayBlocked', { lng: playerLanguage }) || 'Autoplay was blocked') :
                 (t('youAreWatching', { lng: playerLanguage }) || 'You are watching')
               }
             </h3>
             
-            <h1 style={{
-              color: '#ffffff',
-              fontWeight: 'bold',
-              fontSize: '3em',
-              margin: '10px 0',
-              lineHeight: '1.1'
-            }}>
+            <h1 className="title">
               {title || titleMedia}
             </h1>
             
             {subTitle && (
-              <h2 style={{
-                color: secondaryColor,
-                fontSize: '20px',
-                fontWeight: 'normal',
-                marginTop: '-5px',
-                opacity: '0.9'
-              }}>
+              <h2 className="subtitle-text">
                 {subTitle}
               </h2>
             )}
           </section>
         )}
 
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 1001,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}>
+        <div className="play-button-container">
           <div
-            style={{
-              width: '120px',
-              height: '120px',
-              borderRadius: '50%',
-              backgroundColor: primaryColor,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: `0 4px 20px ${primaryColor}66`,
-              marginBottom: '20px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.1)';
-              e.currentTarget.style.boxShadow = `0 6px 25px ${primaryColor}99`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = `0 4px 20px ${primaryColor}66`;
-            }}
+            className="play-button"
             onClick={(e) => {
               e.stopPropagation();
               togglePlayPause();
             }}
           >
-            <FaPlay style={{ 
-              fontSize: '45px', 
-              marginLeft: '8px', 
-              color: 'white' 
-            }} />
+            <FaPlay className="play-icon" />
           </div>
           
-          <div style={{
-            color: '#ffffff',
-            fontSize: '1.2em',
-            textAlign: 'center',
-            fontWeight: '500'
-          }}>
+          <div className="play-text">
             {autoPlay ? 
               (t('clickToPlay', { lng: playerLanguage }) || 'Click to Play') :
               (t('clickToStart', { lng: playerLanguage }) || 'Click to Start')
@@ -951,27 +836,15 @@ export default function ReactNetflixPlayer({
         </div>
 
         {!(title || titleMedia || subTitle) && (
-          <section style={{
-            margin: 'auto',
-            textAlign: 'center',
-            color: '#ffffff'
-          }}>
-            <h1 style={{
-              fontSize: '2.5em',
-              marginBottom: '20px',
-              fontWeight: 'bold'
-            }}>
+          <section className="center-section">
+            <h1 className="center-title">
               {autoPlay ? 
                 (t('clickToPlay', { lng: playerLanguage }) || 'Click to Play') :
                 (t('readyToWatch', { lng: playerLanguage }) || 'Ready to Watch')
               }
             </h1>
 
-            <p style={{
-              fontSize: '1.2em',
-              opacity: '0.8',
-              margin: '0'
-            }}>
+            <p className="center-text">
               {autoPlay ? 
                 (t('autoplayBlocked', { lng: playerLanguage }) || 'Your browser prevented autoplay') :
                 (t('clickToStart', { lng: playerLanguage }) || 'Click anywhere to start watching')
@@ -980,21 +853,13 @@ export default function ReactNetflixPlayer({
           </section>
         )}
 
-        <footer style={{
-          marginTop: 'auto',
-          marginBottom: '50px',
-          marginLeft: 'auto',
-          textTransform: 'uppercase',
-          color: secondaryColor,
-          fontSize: '0.9em',
-          opacity: '0.7'
-        }}>
+        <footer className="footer-section">
           {autoPlay ? 
             (t('autoplayPrevented', { lng: playerLanguage }) || 'Autoplay prevented') :
             (t('clickToPlay', { lng: playerLanguage }) || 'Click to play')
           }
         </footer>
-      </div>
+      </AutoplayOverlay>
     );
   }
 
@@ -1058,20 +923,6 @@ export default function ReactNetflixPlayer({
           {error && (
             <div>
               <h1>{error}</h1>
-              {qualities.length > 1 && (
-                <div>
-                  <p>{t('tryAccessingOtherQuality', { lng: playerLanguage })}</p>
-                  <div className="links-error">
-                    {qualities.map(item => (
-                      <div onClick={() => onChangeQuality(item.id)}>
-                        {item.prefix && <span>HD</span>}
-                        <span>{item.name}</span>
-                        {item.playing && <FiX />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </section>
@@ -1153,7 +1004,7 @@ export default function ReactNetflixPlayer({
         </OperationOverlay>
       )}
 
-      <video
+      <VideoElement
         ref={videoRefCallback}
         src={src}
         controls={false}
@@ -1163,34 +1014,22 @@ export default function ReactNetflixPlayer({
         onError={errorVideo}
         onEnded={onEndedFunction}
         muted={muted}
-        style={{ 
-          cursor: 'pointer',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          zIndex: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain'
-        }}
         crossOrigin="anonymous"
       />
 
       {!disablePreview && (
         <>
-          <video
+          <HiddenVideo
             ref={previewVideoRef}
             src={src}
-            style={{ display: 'none' }}
             muted
             preload="auto"
             crossOrigin="anonymous"
           />
-          <canvas
+          <HiddenCanvas
             ref={previewCanvasRef}
             width={120}
             height={68}
-            style={{ display: 'none' }}
           />
         </>
       )}

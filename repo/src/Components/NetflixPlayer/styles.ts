@@ -17,6 +17,21 @@ const toUpOpacity = keyframes`
   }
 `;
 
+const fadeInOut = keyframes`
+  0% { 
+    opacity: 0; 
+    transform: translateX(-50%) translateY(-10px); 
+  }
+  10%, 90% { 
+    opacity: 1; 
+    transform: translateX(-50%) translateY(0); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translateX(-50%) translateY(-10px); 
+  }
+`;
+
 export interface IContainerProps {
   $fullPlayer: boolean;
   $hideVideo: boolean;
@@ -1344,4 +1359,192 @@ export const OperationOverlay = styled.div`
       transform: translate(-50%, -50%) scale(0.8);
     }
   }
+`;
+
+export const AutoplayOverlay = styled.div<{
+  $primaryColor: string;
+  $secondaryColor: string;
+  $show: boolean;
+}>`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 50px;
+  z-index: 1000;
+  cursor: pointer;
+  transition: all 0.5s ease-out;
+  opacity: ${props => props.$show ? 1 : 0};
+  pointer-events: ${props => props.$show ? 'auto' : 'none'};
+
+  .section-main {
+    margin: auto 0;
+    padding-top: 100px;
+    padding-left: 100px;
+    color: #ffffff;
+
+    .subtitle {
+      color: ${props => props.$primaryColor};
+      font-size: 1.1em;
+      margin-bottom: 5px;
+      font-weight: normal;
+    }
+
+    .title {
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 3em;
+      margin: 10px 0;
+      line-height: 1.1;
+    }
+
+    .subtitle-text {
+      color: ${props => props.$secondaryColor};
+      font-size: 20px;
+      font-weight: normal;
+      margin-top: -5px;
+      opacity: 0.9;
+    }
+  }
+
+  .play-button-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .play-button {
+      width: 100px;
+      height: 120px;
+      border-radius: 50%;
+      background-color: ${props => props.$primaryColor};
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px ${props => props.$primaryColor}66;
+      margin-bottom: 20px;
+
+      &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 25px ${props => props.$primaryColor}99;
+      }
+
+      .play-icon {
+        font-size: 45px;
+        margin-left: 8px;
+        color: white;
+      }
+    }
+
+    .play-text {
+      color: #ffffff;
+      font-size: 1.2em;
+      text-align: center;
+      font-weight: 500;
+    }
+  }
+
+  .center-section {
+    margin: auto;
+    text-align: center;
+    color: #ffffff;
+
+    .center-title {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .center-text {
+      font-size: 1.2em;
+      opacity: 0.8;
+      margin: 0;
+    }
+  }
+
+  .footer-section {
+    margin-top: auto;
+    margin-bottom: 50px;
+    margin-left: auto;
+    text-transform: uppercase;
+    color: ${props => props.$secondaryColor};
+    font-size: 0.9em;
+    opacity: 0.7;
+  }
+`;
+
+export const VolumeOverlay = styled.div<{ $primaryColor: string }>`
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2000;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: ${fadeInOut} 2s ease-in-out;
+  min-width: 120px;
+  justify-content: center;
+  align-items: center;
+
+  .volume-icon {
+    font-size: 16px;
+    color: ${props => props.$primaryColor};
+    display: flex;
+    align-items: center;
+  }
+
+  .volume-bar {
+    width: 60px;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+
+    .volume-fill {
+      height: 100%;
+      background-color: ${props => props.$primaryColor};
+      border-radius: 2px;
+      transition: width 0.2s ease;
+    }
+  }
+`;
+
+export const VideoElement = styled.video`
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+`;
+
+export const HiddenVideo = styled.video`
+  display: none;
+`;
+
+export const HiddenCanvas = styled.canvas`
+  display: none;
 `;
