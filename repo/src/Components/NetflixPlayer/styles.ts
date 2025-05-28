@@ -509,29 +509,6 @@ export const VideoPreLoading = styled.div<IVideoPreLoadingProps>`
     transition: all 0.2s ease;
     opacity: ${props => (props.$showError ? 1 : 0)};
 
-    .links-error {
-      display: inline-flex;
-      margin: auto;
-
-      div {
-        color: ${props => props.$colorButtonError};
-        background: ${props => props.$backgroundColorButtonError};
-        display: flex;
-        align-items: center;
-        margin: 0 5px;
-        padding: 10px;
-        font-weight: bold;
-        cursor: pointer;
-        border-radius: 5px;
-        transition: all 0.2s ease;
-
-        &:hover {
-          background: ${props => props.$backgroundColorHoverButtonError};
-          color: ${props => props.$colorHoverButtonError};
-        }
-      }
-    }
-
     h1 {
       font-size: 2em;
     }
