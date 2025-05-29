@@ -30,6 +30,7 @@ import {
   ItemPlaybackRate,
   IconPlayBackRate,
   IconPlaylist,
+  IconPiP,
   IconNext,
   ItemNext,
   ItemPlaylist,
@@ -1296,16 +1297,12 @@ export default function ReactNetflixPlayer({
               </div>
 
               {isPiPSupported && (
-                <div className="item-control">
+                <div className="item-control">  
+                  <IconPiP $primaryColor={primaryColor} $isActive={isPiPMode} onClick={togglePictureInPicture}>
                   <FaExternalLinkAlt 
-                    onClick={togglePictureInPicture}
                     title={t('pipTooltip')}
-                    style={{ 
-                      opacity: isPiPMode ? 1 : 0.7,
-                      color: isPiPMode ? primaryColor : 'inherit',
-                      cursor: 'pointer'
-                    }}
                   />
+                  </IconPiP>
                 </div>
               )}
 

@@ -843,6 +843,45 @@ export const IconNext = styled.div<IconNextProps>`
   }
 `;
 
+export interface IconPiPProps {
+  $primaryColor: string;
+  $isActive?: boolean;
+}
+
+export const IconPiP = styled.div<IconPiPProps>`
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  opacity: ${props => props.$isActive ? 1 : 0.7};
+  font-size: 24px;
+  transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  margin: -8px -12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  color: ${props => props.$isActive ? props.$primaryColor : '#ffffff'};
+  font-weight: 600;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: ${props => props.$primaryColor || '#03dffc'};
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    color: ${props => props.$primaryColor || '#03dffc'};
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
 export interface ItemPlaybackRateProps {
   $primaryColor: string;
 }
