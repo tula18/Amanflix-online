@@ -17,6 +17,7 @@ import {
   FaRedoAlt,
   FaForward,
   FaBackward,
+  FaExternalLinkAlt,
 } from 'react-icons/fa';
 import { FiX } from 'react-icons/fi';
 import {
@@ -221,6 +222,8 @@ export default function ReactNetflixPlayer({
   const operationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [requiresInteraction, setRequiresInteraction] = useState(autoPlay);
+  const [isPiPMode, setIsPiPMode] = useState(false);
+  const [isPiPSupported, setIsPiPSupported] = useState(false);
 
   const { t } = useTranslation();
 
@@ -537,6 +540,55 @@ export default function ReactNetflixPlayer({
     );
   };
 
+  const togglePictureInPicture = useCallback(async () => {
+    const video = videoComponent.current;
+    if (!video) return;
+
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setIsPiPMode(false);
+        showOperationOverlay(<FaExternalLinkAlt />, t('exitPictureInPicture'));
+      } else if (video.requestPictureInPicture) {
+        await video.requestPictureInPicture();
+        setIsPiPMode(true);
+        showOperationOverlay(<FaExternalLinkAlt />, t('pictureInPicture'));
+      }
+    } catch (error) {
+      console.error('Picture-in-Picture toggle failed:', error);
+      showOperationOverlay(<FaExternalLinkAlt />, t('pipNotSupported'));
+    }
+  }, [showOperationOverlay]);
+
+  // Check PiP support
+  useEffect(() => {
+    if (videoComponent.current && 'requestPictureInPicture' in videoComponent.current) {
+      setIsPiPSupported(true);
+    }
+  }, [videoComponent.current]);
+
+  // Listen for PiP events
+  useEffect(() => {
+    const video = videoComponent.current;
+    if (!video) return;
+
+    const handleEnterPiP = () => {
+      setIsPiPMode(true);
+    };
+
+    const handleLeavePiP = () => {
+      setIsPiPMode(false);
+    };
+
+    video.addEventListener('enterpictureinpicture', handleEnterPiP);
+    video.addEventListener('leavepictureinpicture', handleLeavePiP);
+
+    return () => {
+      video.removeEventListener('enterpictureinpicture', handleEnterPiP);
+      video.removeEventListener('leavepictureinpicture', handleLeavePiP);
+    };
+  }, [videoComponent.current]);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -744,8 +796,15 @@ export default function ReactNetflixPlayer({
           document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen'
         );
         break;
+
+      case 'KeyP':
+        e.preventDefault();
+        if (isPiPSupported) {
+          togglePictureInPicture();
+        }
+        break;
     }
-  }, [togglePlayPause, seekBySeconds, updateVolume, setMutedAction, toggleFullscreen, handleShowControls, showOperationOverlay]);
+  }, [togglePlayPause, seekBySeconds, updateVolume, setMutedAction, toggleFullscreen, handleShowControls, showOperationOverlay, isPiPSupported, togglePictureInPicture]);
 
   function renderAutoplayOverlay() {
     if (!requiresInteraction) return null;
@@ -1235,6 +1294,20 @@ export default function ReactNetflixPlayer({
                   </IconPlaylist>
                 )}
               </div>
+
+              {isPiPSupported && (
+                <div className="item-control">
+                  <FaExternalLinkAlt 
+                    onClick={togglePictureInPicture}
+                    title={t('pipTooltip')}
+                    style={{ 
+                      opacity: isPiPMode ? 1 : 0.7,
+                      color: isPiPMode ? primaryColor : 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="item-control">
                 {fullScreen === false && <FaExpand onClick={toggleFullscreen} />}
