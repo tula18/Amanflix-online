@@ -183,13 +183,16 @@ export const Controls = styled.div.attrs<IControlsProps>(props => ({
     align-items: center;
 
     input {
-      margin: auto;
+      flex: 1;
+      /* margin: 0 10px; */
     }
 
     span {
       font-size: 14px;
-      margin-left: 10px;
-      margin-right: 10px
+      margin: 0px 5px;
+      min-width: 60px;
+      text-align: center;
+      flex-shrink: 0;
     }
   }
 
