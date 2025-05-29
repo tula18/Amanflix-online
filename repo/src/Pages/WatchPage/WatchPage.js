@@ -357,7 +357,6 @@ const WatchPage = () => {
 
     return (
         <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
-            <FPSMeter />
             {useOldPlayer ? (
                 <video
                     ref={videoRef}

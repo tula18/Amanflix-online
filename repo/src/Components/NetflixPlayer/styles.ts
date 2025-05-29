@@ -105,7 +105,12 @@ export interface IControlsProps {
   $progressVideo: number;
 }
 
-export const Controls = styled.div<IControlsProps>`
+export const Controls = styled.div.attrs<IControlsProps>(props => ({
+  style: {
+    '--primary-color': props.$primaryColor,
+    '--progress-video': `${props.$progressVideo}%`,
+  } as React.CSSProperties,
+}))<IControlsProps>`
   opacity: ${props => (props.$show ? 1 : 0)};
   transform: ${props => (props.$show ? 'scale(1)' : 'scale(1.05)')};
 
@@ -265,8 +270,8 @@ export const Controls = styled.div<IControlsProps>`
     border-radius: 5px;
     background: linear-gradient(
     93deg,
-      ${props => props.$primaryColor} ${props => props.$progressVideo}%,
-      #fff ${props => props.$progressVideo}%
+      var(--primary-color) var(--progress-video),
+      #fff var(--progress-video)
     );
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -291,7 +296,7 @@ export const Controls = styled.div<IControlsProps>`
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.$primaryColor};
+      background: var(--primary-color);
       cursor: pointer;
 
       outline: none !important;
@@ -307,7 +312,7 @@ export const Controls = styled.div<IControlsProps>`
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.$primaryColor};
+      background: var(--primary-color);
       cursor: pointer;
 
       outline: none !important;
@@ -323,7 +328,19 @@ export const Controls = styled.div<IControlsProps>`
   }
 `;
 
-export const ProgressBarContainer = styled.div<{ $primaryColor: string; $bufferedProgress: number; $progressVideo: number }>`
+interface IProgressBarContainerProps {
+  $primaryColor: string;
+  $bufferedProgress: number;
+  $progressVideo: number;
+}
+
+export const ProgressBarContainer = styled.div.attrs<IProgressBarContainerProps>(props => ({
+  style: {
+    '--buffered-progress': `${props.$bufferedProgress}%`,
+    '--progress-video': `${props.$progressVideo}%`,
+    '--primary-color': props.$primaryColor,
+  } as React.CSSProperties,
+}))<IProgressBarContainerProps>`
   position: relative;
   width: 100%;
   height: 5px;
@@ -339,7 +356,7 @@ export const ProgressBarContainer = styled.div<{ $primaryColor: string; $buffere
     left: 0;
     height: 100%;
     background: rgba(255, 255, 255, 0.5);
-    width: ${props => props.$bufferedProgress}%;
+    width: var(--buffered-progress);
     transition: width 0.2s ease;
     border-radius: 3px;
     will-change: width;
@@ -351,8 +368,8 @@ export const ProgressBarContainer = styled.div<{ $primaryColor: string; $buffere
     top: 0;
     left: 0;
     height: 100%;
-    background: ${props => props.$primaryColor};
-    width: ${props => props.$progressVideo}%;
+    background: var(--primary-color);
+    width: var(--progress-video);
     transition: width 0.1s ease;
     z-index: 1;
     border-radius: 3px;
@@ -383,7 +400,7 @@ export const ProgressBarContainer = styled.div<{ $primaryColor: string; $buffere
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.$primaryColor};
+      background: var(--primary-color);
       cursor: pointer;
       border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -398,7 +415,7 @@ export const ProgressBarContainer = styled.div<{ $primaryColor: string; $buffere
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.$primaryColor};
+      background: var(--primary-color);
       cursor: pointer;
       border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -413,7 +430,7 @@ export const ProgressBarContainer = styled.div<{ $primaryColor: string; $buffere
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: ${props => props.$primaryColor};
+      background: var(--primary-color);
       cursor: pointer;
       border: 2px solid #fff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);

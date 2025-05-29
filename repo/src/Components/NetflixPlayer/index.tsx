@@ -145,8 +145,6 @@ export default function ReactNetflixPlayer({
 }: IProps) {
   const videoComponent = useRef<null | HTMLVideoElement>(null);
   const progressInputRef = useRef<HTMLInputElement | null>(null);
-  const playedBarRef = useRef<HTMLDivElement | null>(null);
-  const bufferedBarRef = useRef<HTMLDivElement | null>(null);
 
   const timerRef = useRef<null | NodeJS.Timeout>(null);
   const timerBuffer = useRef<null | NodeJS.Timeout>(null);
@@ -201,74 +199,81 @@ export default function ReactNetflixPlayer({
 
 
   const timeUpdate = useCallback((e: SyntheticEvent<HTMLVideoElement, Event>) => {
-    const target = e.target as HTMLVideoElement;
-    const currentTime = target.currentTime;
-    const duration = target.duration;
+  const target = e.target as HTMLVideoElement;
+  const currentTime = target.currentTime;
+  const duration = target.duration;
 
-    // Reset UI states
-    setShowInfo(false);
-    setEnd(false);
+  // Store current time for sync checks
+  timeUpdateRef.current = Date.now();
 
-    // Update playing state based on actual video state
-    if (playing !== !target.paused) {
-      setPlaying(!target.paused);
-    }
+  // Only update states when necessary to prevent excessive re-renders
+  const actuallyPlaying = !target.paused;
+  if (playing !== actuallyPlaying) {
+    setPlaying(actuallyPlaying);
+  }
 
-    // Handle buffering state
-    if (waitingBuffer) {
-      setWaitingBuffer(false);
-    }
+  // Handle buffering state efficiently
+  if (waitingBuffer) {
+    setWaitingBuffer(false);
+  }
 
-    if (timerBuffer.current) {
-      clearTimeout(timerBuffer.current);
-    }
+  // Clear and reset buffer timeout
+  if (timerBuffer.current) {
+    clearTimeout(timerBuffer.current);
+  }
+  timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 1200);
 
-    // Set buffer timeout (keep original's shorter timeout for better responsiveness)
-    timerBuffer.current = setTimeout(() => setWaitingBuffer(true), 1000);
+  // Call external callback
+  if (onTimeUpdate) {
+    onTimeUpdate(e);
+  }
 
-    // Call external onTimeUpdate callback
-    if (onTimeUpdate) {
-      onTimeUpdate(e);
-    }
+  // Update progress input value directly
+  if (progressInputRef.current) {
+    progressInputRef.current.value = currentTime.toString();
+  }
 
-    // Update progress bar elements directly (more efficient than state updates)
-    if (progressInputRef.current) {
-      progressInputRef.current.value = currentTime.toString();
-    }
-    if (playedBarRef.current && duration > 0) {
-      playedBarRef.current.style.width = `${(currentTime / duration) * 100}%`;
-    }
-
-    // Update buffered progress (throttled)
-    if (!disableBufferPreview) {
-      const now = Date.now();
-      if (now - bufferedUpdateRef.current > 2000) { // Reduced from 10000ms to 2000ms
-        bufferedUpdateRef.current = now;
-        
-        // Use original's buffer calculation logic (more robust)
-        const lengthBuffer = target.buffered.length;
+  // Throttled buffered progress update
+  if (!disableBufferPreview) {
+    const now = Date.now();
+    if (now - bufferedUpdateRef.current > 1500) {
+      bufferedUpdateRef.current = now;
+      
+      try {
+        const buffered = target.buffered;
         let endBuffer = 0;
         
-        for (let i = 1; i <= lengthBuffer; i++) {
-          const startCheck = target.buffered.start(i - 1);
-          const endCheck = target.buffered.end(i - 1);
+        for (let i = 0; i < buffered.length; i++) {
+          const start = buffered.start(i);
+          const end = buffered.end(i);
           
-          if (endCheck > currentTime && currentTime > startCheck) {
-            if (endCheck > endBuffer) {
-              endBuffer = endCheck;
-            }
+          if (currentTime >= start && currentTime <= end) {
+            endBuffer = Math.max(endBuffer, end);
           }
         }
         
-        if (bufferedBarRef.current && duration > 0 && endBuffer > 0) {
-          bufferedBarRef.current.style.width = `${(endBuffer / duration) * 100}%`;
+        if (duration > 0 && endBuffer > 0) {
+          const bufferPercentage = (endBuffer / duration) * 100;
+          setBufferedProgress(bufferPercentage);
         }
+      } catch (error) {
+        // Silently handle buffered range errors
       }
     }
+  }
 
-    // Update progress state (this triggers re-renders, so do it last)
+  // Update progress state only when significant change (reduce re-renders)
+  const progressDiff = Math.abs(currentTime - progress);
+  if (progressDiff > 0.5 || currentTime === 0) {
     setProgress(currentTime);
-  }, [playing, waitingBuffer, onTimeUpdate, disableBufferPreview]);
+  }
+
+  // Reset overlay states efficiently
+  if (showInfo || end) {
+    setShowInfo(false);
+    setEnd(false);
+  }
+}, [playing, waitingBuffer, onTimeUpdate, disableBufferPreview, progress, showInfo, end]);
 
   const goToPosition = (position: number) => {
     const video = videoComponent.current;
@@ -977,9 +982,9 @@ export default function ReactNetflixPlayer({
               $bufferedProgress={disableBufferPreview ? 0 : bufferedProgress}
               $progressVideo={(progress * 100) / duration}
             >
-              {!disableBufferPreview && <div ref={bufferedBarRef} className="buffered-bar" />}
+              {!disableBufferPreview && <div className="buffered-bar" />}
               
-              <div ref={playedBarRef} className="played-bar" />
+              <div className="played-bar" />
               
               <input
                 ref={progressInputRef}
