@@ -41,6 +41,45 @@ import {
 } from './styles.ts';
 import translations from './i18n/index.ts';
 
+// Constants for localStorage keys
+const VOLUME_STORAGE_KEY = 'netflix-player-volume';
+const MUTED_STORAGE_KEY = 'netflix-player-muted';
+
+// Helper functions for localStorage
+const getStoredVolume = (): number => {
+  try {
+    const stored = localStorage.getItem(VOLUME_STORAGE_KEY);
+    return stored ? parseInt(stored, 10) : 100;
+  } catch {
+    return 100;
+  }
+};
+
+const getStoredMuted = (): boolean => {
+  try {
+    const stored = localStorage.getItem(MUTED_STORAGE_KEY);
+    return stored === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const setStoredVolume = (volume: number): void => {
+  try {
+    localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
+  } catch {
+    // Silently handle localStorage errors
+  }
+};
+
+const setStoredMuted = (muted: boolean): void => {
+  try {
+    localStorage.setItem(MUTED_STORAGE_KEY, muted.toString());
+  } catch {
+    // Silently handle localStorage errors
+  }
+};
+
 i18n.use(initReactI18next).init({
   resources: translations,
   lng: 'en',
@@ -158,8 +197,8 @@ export default function ReactNetflixPlayer({
   const [end, setEnd] = useState(false);
   const [controlBackEnd, setControlBackEnd] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
-  const [volume, setVolume] = useState(100);
-  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(getStoredVolume());
+  const [muted, setMuted] = useState(getStoredMuted());
   const [error, setError] = useState<boolean | string>(false);
   const [waitingBuffer, setWaitingBuffer] = useState(false);
   const [showControls, setShowControls] = useState(false);
@@ -443,6 +482,8 @@ export default function ReactNetflixPlayer({
       if (volumeOverlayTimeoutRef.current) clearTimeout(volumeOverlayTimeoutRef.current);
       volumeOverlayTimeoutRef.current = setTimeout(() => setShowVolumeOverlay(false), 2000);
     }
+
+    setStoredVolume(value);
   }, []);
 
   const setMutedAction = useCallback((value: boolean) => {
@@ -461,6 +502,8 @@ export default function ReactNetflixPlayer({
     
     if (volumeOverlayTimeoutRef.current) clearTimeout(volumeOverlayTimeoutRef.current);
     volumeOverlayTimeoutRef.current = setTimeout(() => setShowVolumeOverlay(false), 2000);
+
+    setStoredMuted(value);
   }, [volume, showOperationOverlay]);
 
   const renderVolumeOverlay = () => {
