@@ -1,0 +1,116 @@
+/* UnifiedUploadModal.css - Matches existing Movie/Show modal styling */
+
+/* Use the same modal structure and colors as the main modals */
+.upload__form {
+    width: 80%;
+}
+
+.ant-upload {
+    color: aliceblue;
+}
+
+.profile-form_uploading {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+}
+
+.ant-upload-list-item-name, .ant-progress-text, .ant-upload-list-item .anticon-paper-clip,.ant-upload-list-item .anticon-delete {
+    color: aliceblue !important;
+}
+
+.ant-progress-circle-trail {
+    stroke: #333 !important;
+}
+
+.vid_message {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 40px;
+    border-radius: 4px;
+    padding-left: 10px;
+    margin-top: 16px;
+    transition: all 0.2s;
+}
+
+.vid_message p {
+    margin-left: 5px;
+    color: #fff;
+}
+
+.success {
+    background-color: rgba(60, 180, 109, .5);
+}
+
+.error {
+    background-color: rgba(229, 9, 20, .5);
+}
+
+.ant-input-group-addon {
+    background-color: #fff !important;
+    outline: none !important;
+    border: none !important;
+}
+
+/* Match the exact button styling from ProfilePage.css */
+.profile_save_btn {
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background-color: #ffffff;
+    padding: 5px 25px;
+    border: 3px solid #ffffff;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 400;
+    font-size: 32px;
+    transition: all 0.2s ease-in-out;
+    color: #000;
+}
+
+.profile_save_btn:hover {
+    background-color: #ddd;
+    color: #333;
+}
+
+.profile_save_btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.profile_delete_btn {
+    background-color: transparent;
+    color: #3c4041;
+    border: 3px solid #3c4041;
+    border-radius: 2px;
+    padding: 5px 25px;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 32px;
+    transition: all 0.3s;
+}
+
+.profile_delete_btn:hover {
+    background-color: #e50914;
+    border-color: #e50914;
+    color: #fff;
+}
+
+.profile-form_buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 40px;
+}
+
+/* Match the divider styling */
+.divider {
+    border: 1px solid #393939;
+    border-radius: 10px;
+    width: 90%;
+    background-color: #393939;
+    margin: 20px 0;
+}
