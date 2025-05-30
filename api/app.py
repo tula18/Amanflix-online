@@ -37,6 +37,7 @@ from api.routes.upload_request import upload_request_bp
 from api.routes.watch_history import watch_history_bp
 from api.routes.notifications import notifications_bp
 from api.routes.analytics import analytics_bp
+from api.routes.file_parser import file_parser_bp
 
 # Print server header with version and timestamp
 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -128,6 +129,7 @@ app.register_blueprint(upload_request_bp)
 app.register_blueprint(watch_history_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(analytics_bp)
+app.register_blueprint(file_parser_bp)
 log_section_end()
 
 # Content catalog loading with improved progress indicators

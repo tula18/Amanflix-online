@@ -1,0 +1,543 @@
+/* AddByFile.css */
+.add-by-file-container {
+    padding: 24px;
+    background-color: #141b2d;
+    min-height: 100vh;
+    color: #e0e0e0;
+}
+
+.add-by-file-header {
+    margin-bottom: 32px;
+}
+
+.add-by-file-header h1 {
+    color: #e50914;
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.add-by-file-header p {
+    color: #a0a0a0;
+    font-size: 16px;
+    margin: 0;
+}
+
+.steps-container {
+    margin-bottom: 32px;
+    padding: 24px;
+    background-color: #1e2a3a;
+    border-radius: 8px;
+    border: 1px solid #2a304d;
+}
+
+.step-content {
+    background-color: #1e2a3a;
+    border-radius: 8px;
+    border: 1px solid #2a304d;
+    min-height: 400px;
+}
+
+/* Override Ant Design Steps styling for dark theme */
+.ant-steps .ant-steps-item-title {
+    color: #e0e0e0 !important;
+}
+
+.ant-steps .ant-steps-item-description {
+    color: #a0a0a0 !important;
+}
+
+/* Completely remove all backgrounds from step icons - aggressive overrides */
+/* Target the inner content of step icons */
+.ant-steps .ant-steps-item-icon > .ant-steps-icon,
+.ant-steps .ant-steps-item-icon .ant-steps-icon {
+    color: #a0a0a0 !important;
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* Active/current step - only these should have background */
+/* .ant-steps .ant-steps-item-process .ant-steps-icon,
+.ant-steps .ant-steps-item-process .ant-steps-icon::before,
+.ant-steps .ant-steps-item-process .ant-steps-icon::after {
+    background-color: #e50914 !important;
+    color: #e50914 !important;
+    background: #e50914 !important;
+    border-color: #e50914 !important;
+} */
+
+.ant-steps .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon {
+    color: #e50914 !important;
+    background: none !important;
+}
+
+/* Completed steps - only these should have background */
+.ant-steps .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon {
+    color: #52c41a !important;
+    background: none !important;
+}
+
+/* Ensure waiting/future steps have no background */
+.ant-steps .ant-steps-item-wait .ant-steps-item-icon,
+.ant-steps .ant-steps-item-wait .ant-steps-item-icon::before,
+.ant-steps .ant-steps-item-wait .ant-steps-item-icon::after {
+    background-color: transparent !important;
+    background: none !important;
+    background-image: none !important;
+    border-color: #3a4966 !important;
+}
+
+.ant-steps .ant-steps-item-tail::after {
+    background-color: #3a4966 !important;
+}
+
+.ant-steps .ant-steps-item-finish .ant-steps-item-tail::after {
+    background-color: #52c41a !important;
+}
+
+/* File Dropper Styles */
+.file-dropper-container {
+    padding: 40px;
+    text-align: center;
+}
+
+.file-drop-zone {
+    border: 2px dashed #3a4966;
+    border-radius: 8px;
+    padding: 60px 40px;
+    background-color: #141b2d;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 24px;
+}
+
+.file-drop-zone:hover,
+.file-drop-zone.drag-over {
+    border-color: #e50914;
+    background-color: rgba(229, 9, 20, 0.05);
+}
+
+.drop-icon {
+    font-size: 64px;
+    color: #e50914;
+    margin-bottom: 16px;
+}
+
+.drop-text {
+    font-size: 20px;
+    color: #e0e0e0;
+    margin-bottom: 8px;
+}
+
+.drop-hint {
+    font-size: 14px;
+    color: #a0a0a0;
+    margin-bottom: 24px;
+}
+
+.file-input {
+    display: none;
+}
+
+.browse-button {
+    background-color: #e50914 !important;
+    border-color: #e50914 !important;
+    color: white !important;
+    font-weight: 500;
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 4px;
+}
+
+.browse-button:hover,
+.browse-button:focus {
+    background-color: #b8070f !important;
+    border-color: #b8070f !important;
+    color: white !important;
+}
+
+.browse-button:active {
+    background-color: #9c0613 !important;
+    border-color: #9c0613 !important;
+    color: white !important;
+}
+
+.selected-files {
+    margin-top: 24px;
+}
+
+.file-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 16px;
+    background-color: #2a304d;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.file-item-text {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.file-name {
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+.file-size {
+    color: #a0a0a0;
+    font-size: 14px;
+}
+
+.remove-file-btn {
+    background: none;
+    border: none;
+    color: #e50914;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-size: 28px;
+    font-weight: bold;
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-file-btn:hover {
+    background-color: rgba(229, 9, 20, 0.1);
+}
+
+.parse-button {
+    background-color: #e50914 !important;
+    border-color: #e50914 !important;
+    color: white !important;
+    font-weight: 500;
+    height: 40px;
+    padding: 0 32px;
+    border-radius: 4px;
+    margin-top: 16px;
+}
+
+.parse-button:hover,
+.parse-button:focus {
+    background-color: #b8070f !important;
+    border-color: #b8070f !important;
+    color: white !important;
+}
+
+.parse-button:active {
+    background-color: #9c0613 !important;
+    border-color: #9c0613 !important;
+    color: white !important;
+}
+
+.parse-button:disabled {
+    background-color: #3a4966 !important;
+    border-color: #3a4966 !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+/* Review Cards Styles */
+.review-cards-container {
+    padding: 24px;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.review-title {
+    color: #e0e0e0 !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
+.review-summary {
+    color: #a0a0a0 !important;
+    font-size: 14px !important;
+}
+
+.content-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.content-card {
+    background-color: #2a304d;
+    border-radius: 8px;
+    border: 1px solid #3a4966;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+}
+
+.content-card:hover {
+    transform: translateY(-2px);
+    border-color: #e50914;
+}
+
+.card-header {
+    background-color: #3a4966;
+    border-radius: 8px;
+    padding: 16px;
+    border-bottom: 1px solid #4a5574;
+}
+
+.card-title {
+    color: #e50914;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.card-type {
+    color: #a0a0a0;
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.card-content {
+    padding: 16px;
+}
+
+.metadata-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.metadata-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.metadata-label {
+    color: #fff;
+    font-size: 14px;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.metadata-value {
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.files-list {
+    margin-top: 16px;
+}
+
+.files-title {
+    color: #a0a0a0;
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.file-tag {
+    background-color: #141b2d;
+    color: #fff;
+    border: 1px solid #3a4966;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px 24px;
+}
+
+.back-button {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    font-weight: 500;
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 4px;
+}
+
+.back-button:hover {
+    background-color: #5a6268;
+    border-color: #5a6268;
+}
+
+.continue-button {
+    background-color: #e50914 !important;
+    border-color: #e50914 !important;
+    color: white !important;
+    font-weight: 500;
+    height: 40px;
+    padding: 0 32px;
+    border-radius: 4px;
+}
+
+.continue-button:hover,
+.continue-button:focus {
+    background-color: #b8070f !important;
+    border-color: #b8070f !important;
+    color: white !important;
+}
+
+.continue-button:active {
+    background-color: #9c0613 !important;
+    border-color: #9c0613 !important;
+    color: white !important;
+}
+
+/* Prefilled Upload Styles */
+.prefilled-upload-container {
+    padding: 24px;
+}
+
+.upload-header {
+    margin-bottom: 24px;
+}
+
+.upload-title {
+    color: #e0e0e0 !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    margin: 0 0 8px 0 !important;
+}
+
+.upload-description {
+    color: #a0a0a0;
+    font-size: 14px;
+    margin: 0;
+}
+
+.upload-items {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.upload-item {
+    background-color: #2a304d;
+    border-radius: 8px;
+    border: 1px solid #3a4966;
+    padding: 24px;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.item-title {
+    color: #e50914;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.item-type {
+    background-color: #e50914;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.item-summary {
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.upload-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.upload-btn {
+    background-color: #e50914;
+    border-color: #e50914;
+    color: white;
+    font-weight: 500;
+    height: 36px;
+    padding: 0 20px;
+    border-radius: 4px;
+}
+
+.upload-btn:hover {
+    background-color: #b8070f;
+    border-color: #b8070f;
+}
+
+.edit-btn {
+    background-color: transparent;
+    border-color: #3a4966;
+    color: #a0a0a0;
+    font-weight: 500;
+    height: 36px;
+    padding: 0 20px;
+    border-radius: 4px;
+}
+
+.edit-btn:hover {
+    border-color: #e50914;
+    color: #e50914;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(20, 27, 45, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.loading-content {
+    text-align: center;
+    color: #e0e0e0;
+}
+
+.loading-spinner {
+    font-size: 32px;
+    color: #e50914;
+    margin-bottom: 16px;
+}
+
+.loading-text {
+    font-size: 16px;
+    font-weight: 500;
+}

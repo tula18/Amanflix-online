@@ -20,6 +20,7 @@ import ManageNotifications from "./pages/Notifications/ManageNotificationsPage";
 import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import ActiveSessions from './pages/Analytics/ActiveSessions';
 import CdnManagementPage from './pages/CDNManagement/CDNManagementPage'; // Add this import
+import AddByFile from './pages/UploadByFile/AddByFile';
 
 const AdminPage = () => {
     const token = localStorage.getItem('admin_token');
@@ -87,6 +88,7 @@ const AdminPage = () => {
                         <Route path="/profile" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><AdminProfile/></AdminPrivateRoute>}/>
                         <Route path="/upload/movie" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageMovies/></AdminPrivateRoute>}/>
                         <Route path="/upload/show" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><ManageShows/></AdminPrivateRoute>}/>
+                        <Route path="/upload/by-file" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><AddByFile/></AdminPrivateRoute>}/>
                         <Route path="/users" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageUsers/></AdminPrivateRoute>}/>
                         <Route path="/users/:user_id" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><UserProfile/></AdminPrivateRoute>}/>
                         <Route path="/admins" element={<AdminPrivateRoute requiredRoleLevel={"admin"}><ManageAdmins/></AdminPrivateRoute>}/>

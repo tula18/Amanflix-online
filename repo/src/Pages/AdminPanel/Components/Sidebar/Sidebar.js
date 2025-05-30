@@ -83,6 +83,7 @@ const Sidebar = ({user}) => {
             links: [
                 {name: 'Upload Movie', path: '/admin/upload/movie', requiredRoleLevel: 1, icon: TbMovie, description: "Upload a new Movie to the streaming service"},
                 {name: 'Upload TV Show', path: '/admin/upload/show', requiredRoleLevel: 1, icon: TbMovie, description: "Upload a new TV Show to the streaming service"},
+                {name: 'Add By File', path: '/admin/upload/by-file', requiredRoleLevel: 1, icon: UploadOutlined, description: "Upload content by analyzing file names with smart detection"},
                 // Add the CDN Management link here
                 {name: 'CDN Management', path: '/admin/cdn', requiredRoleLevel: 1, icon: CloudServerOutlined, description: "Manage content delivery network and import data"},
             ]
