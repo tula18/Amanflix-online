@@ -119,7 +119,7 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
             vote_average: show.cdn_data?.vote_average || '',
             tagline: show.cdn_data?.tagline || '',
             spoken_languages: show.cdn_data?.spoken_languages || '',
-            first_air_date: show.cdn_data?.first_air_date || show.year ? `${show.year}-01-01` : '',
+            first_air_date: show.cdn_data?.first_air_date || (show.year ? `${show.year}-01-01` : ''),
             last_air_date: show.cdn_data?.last_air_date || '',
             production_companies: show.cdn_data?.production_companies || '',
             production_countries: show.cdn_data?.production_countries || '',
