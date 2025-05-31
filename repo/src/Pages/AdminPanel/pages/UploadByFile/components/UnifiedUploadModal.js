@@ -76,6 +76,7 @@ const UnifiedUploadModal = ({
     const [errors, setErrors] = useState({});
     const [success, setSuccess] = useState({});
     const [episodeExists, setEpisodeExists] = useState({});
+    const [uploadedSize, setUploadedSize] = useState(0);
 
     const modalContentRef = useRef(null);
     const seasonRef = useRef(null);
@@ -513,6 +514,14 @@ const UnifiedUploadModal = ({
         });
     };
 
+    const formatEstimatedTime = (seconds) => {
+        const hours = Math.floor(seconds / 3600);
+        seconds -= hours * 3600;
+        const minutes = Math.floor(seconds / 60);
+        seconds -= minutes * 60;
+        return `${hours ? `${hours} hour${hours > 1 ? 's' : ''} `: ''} ${minutes ? `${minutes} minute${minutes > 1 ? 's' : ''} and` : ''} ${Math.round(seconds)} second${seconds === 1 ? '' : 's'}`;
+    };
+
     const addEpisode = (seasonIndex) => {
         const newSeasons = [...showData.seasons];
         const season = newSeasons[seasonIndex];
@@ -623,8 +632,18 @@ const UnifiedUploadModal = ({
                     });
                     setSaveLoading(false);
                     setProgress(100);
-                    if (onSuccess) onSuccess();
-                    onClose();
+                    
+                    // Call onSuccess callback first, then close modal
+                    if (onSuccess) {
+                        console.log('Calling onSuccess callback');
+                        onSuccess();
+                    }
+                    
+                    // Add a small delay to ensure state updates complete before closing
+                    setTimeout(() => {
+                        console.log('Closing modal');
+                        onClose();
+                    }, 100);
                 } else {
                     const response = JSON.parse(xhr.responseText);
                     notification.error({
@@ -643,43 +662,63 @@ const UnifiedUploadModal = ({
                 setSaveLoading(false);
             };
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const now = new Date().getTime();
-                    const loaded = event.loaded;
-                    const total = event.total;
-                    const percentComplete = Math.round((loaded / total) * 100);
+            // xhr.upload.onprogress = (event) => {
+            //     if (event.lengthComputable) {
+            //         const now = new Date().getTime();
+            //         const loaded = event.loaded;
+            //         const total = event.total;
+            //         const percentComplete = Math.round((loaded / total) * 100);
                     
-                    setProgress(percentComplete);
+            //         setProgress(percentComplete);
                     
-                    // Calculate upload speed (MB/s) and remaining time
-                    if (timeStart && loaded > 0) {
-                        const elapsedMs = now - timeStart;
-                        const bytesPerMs = loaded / elapsedMs;
-                        const mbps = (bytesPerMs * 1000) / (1024 * 1024);
-                        setUploadSpeed(mbps.toFixed(2));
+            //         // Calculate upload speed (MB/s) and remaining time
+            //         if (timeStart && loaded > 0) {
+            //             const elapsedMs = now - timeStart;
+            //             const bytesPerMs = loaded / elapsedMs;
+            //             const mbps = (bytesPerMs * 1000) / (1024 * 1024);
+            //             setUploadSpeed(mbps.toFixed(2));
                         
-                        // Calculate remaining time
-                        const remainingBytes = total - loaded;
-                        const remainingMs = remainingBytes / bytesPerMs;
+            //             // Calculate remaining time
+            //             const remainingBytes = total - loaded;
+            //             const remainingMs = remainingBytes / bytesPerMs;
                         
-                        let remainingTimeString = "calculating...";
-                        if (remainingMs > 0) {
-                            if (remainingMs < 60000) {
-                                remainingTimeString = `${Math.ceil(remainingMs / 1000)} seconds`;
-                            } else if (remainingMs < 3600000) {
-                                remainingTimeString = `${Math.ceil(remainingMs / 60000)} minutes`;
-                            } else {
-                                const hours = Math.floor(remainingMs / 3600000);
-                                const minutes = Math.ceil((remainingMs % 3600000) / 60000);
-                                remainingTimeString = `${hours} hours, ${minutes} minutes`;
-                            }
-                        }
+            //             let remainingTimeString = "calculating...";
+            //             if (remainingMs > 0) {
+            //                 if (remainingMs < 60000) {
+            //                     remainingTimeString = `${Math.ceil(remainingMs / 1000)} seconds`;
+            //                 } else if (remainingMs < 3600000) {
+            //                     remainingTimeString = `${Math.ceil(remainingMs / 60000)} minutes`;
+            //                 } else {
+            //                     const hours = Math.floor(remainingMs / 3600000);
+            //                     const minutes = Math.ceil((remainingMs % 3600000) / 60000);
+            //                     remainingTimeString = `${hours} hours, ${minutes} minutes`;
+            //                 }
+            //             }
                         
-                        setRemainingTime(remainingTimeString);
-                    }
+            //             setRemainingTime(remainingTimeString);
+            //         }
+            //     }
+            // };
+
+            let startTime;
+
+            xhr.upload.addEventListener('loadstart', (e) => {
+                startTime = Date.now();
+            });
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const progress = Math.round((e.loaded / e.total) * 100);
+                    setProgress(progress)
+                    const elapsedTime = (Date.now() - startTime) / 1000;
+                    const uploadSpeed = e.loaded / elapsedTime;
+                    setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
+                    const remainingSize = e.total - e.loaded;
+                    const estimatedTime = remainingSize / uploadSpeed;
+                    setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)))
+                    setUploadedSize(e.loaded);
                 }
-            };
+            });
 
             setTimeStart(new Date().getTime());
             xhr.send(formData);

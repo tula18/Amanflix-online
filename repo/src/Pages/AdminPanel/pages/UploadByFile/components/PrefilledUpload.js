@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Button, Typography, Card, Tag, message, Modal } from 'antd';
+import { Button, Typography, Tag, message, Modal } from 'antd';
 import { PlayCircleOutlined, DesktopOutlined, EditOutlined, UploadOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import UnifiedUploadModal from './UnifiedUploadModal';
 import '../AddByFile.css';
 
 const { Text, Title } = Typography;
 
-const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }) => {
-    const [isUploading, setIsUploading] = useState(false);
+const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onDataUpdate, onBack }) => {
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [currentUploadData, setCurrentUploadData] = useState(null);
     const [currentUploadType, setCurrentUploadType] = useState(null); // 'movie' or 'tv_show'
-    const navigate = useNavigate();
+    const [currentUploadItem, setCurrentUploadItem] = useState(null); // Store the current item being uploaded
 
     // Function to find matching file by filename
     const findFileByName = (filename) => {
@@ -24,6 +22,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
         const transformedMovieData = transformMovieDataForModal(movie);
         setCurrentUploadData(transformedMovieData);
         setCurrentUploadType('movie');
+        setCurrentUploadItem(movie); // Store the original item
         setShowUploadModal(true);
     };
 
@@ -31,6 +30,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
         const transformedShowData = transformShowDataForModal(show);
         setCurrentUploadData(transformedShowData);
         setCurrentUploadType('tv_show');
+        setCurrentUploadItem(show); // Store the original item
         setShowUploadModal(true);
     };
 
@@ -149,11 +149,41 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
         setShowUploadModal(false);
         setCurrentUploadData(null);
         setCurrentUploadType(null);
+        setCurrentUploadItem(null);
     };
 
     const handleUploadSuccess = () => {
         message.success('Upload completed successfully!');
-        // Optionally refresh the parent component or update state
+        
+        // Remove the uploaded item from the original parsed data using the callback
+        if (currentUploadItem && currentUploadType && onDataUpdate) {
+            console.log('Removing item from parsed data');
+            const newData = { ...parsedData };
+            
+            if (currentUploadType === 'movie' && newData.movies) {
+                console.log('Filtering movies, before:', newData.movies.length);
+                // Use title and year as unique identifier instead of object reference
+                newData.movies = newData.movies.filter(movie => 
+                    !(movie.title === currentUploadItem.title && movie.year === currentUploadItem.year)
+                );
+                console.log('Filtering movies, after:', newData.movies.length);
+            } else if (currentUploadType === 'tv_show' && newData.tv_shows) {
+                console.log('Filtering TV shows, before:', newData.tv_shows.length);
+                // Use title and year as unique identifier instead of object reference
+                newData.tv_shows = newData.tv_shows.filter(show => 
+                    !(show.title === currentUploadItem.title && show.year === currentUploadItem.year)
+                );
+                console.log('Filtering TV shows, after:', newData.tv_shows.length);
+            }
+            
+            console.log('Updating parent data:', newData);
+            onDataUpdate(newData);
+        } else {
+            console.log('No current upload item or type to remove, or no onDataUpdate callback');
+        }
+        
+        // Close the modal
+        handleModalClose();
     };
 
     const handleBulkUpload = () => {
@@ -293,6 +323,23 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
             <div className="upload-items">
                 {parsedData?.movies?.map(renderMovieItem)}
                 {parsedData?.tv_shows?.map(renderTVShowItem)}
+                
+                {/* Show message when all items are uploaded */}
+                {totalItems === 0 && (
+                    <div style={{ 
+                        textAlign: 'center', 
+                        padding: '40px', 
+                        backgroundColor: '#2a304d', 
+                        borderRadius: '8px',
+                        border: '1px solid #3a4966'
+                    }}>
+                        <Title level={3} style={{ color: '#4caf50' }}>All items uploaded successfully!</Title>
+                        <Text style={{ color: '#a0a0a0' }}>
+                            You have successfully uploaded all movies and TV shows. 
+                            You can now go back to add more files or finish the upload process.
+                        </Text>
+                    </div>
+                )}
             </div>
 
             <div className="action-buttons">

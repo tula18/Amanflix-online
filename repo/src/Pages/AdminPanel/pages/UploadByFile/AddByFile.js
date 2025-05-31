@@ -46,6 +46,10 @@ const AddByFile = () => {
         setCurrentStep(2);
     };
 
+    const handleDataUpdate = (updatedData) => {
+        setParsedData(updatedData);
+    };
+
     const handleUploadComplete = () => {
         message.success('Upload completed successfully!');
         // Reset the component
@@ -84,6 +88,7 @@ const AddByFile = () => {
                         parsedData={parsedData}
                         selectedFiles={selectedFiles}
                         onUploadComplete={handleUploadComplete}
+                        onDataUpdate={handleDataUpdate}
                         onBack={() => handleBackToStep(1)}
                     />
                 );

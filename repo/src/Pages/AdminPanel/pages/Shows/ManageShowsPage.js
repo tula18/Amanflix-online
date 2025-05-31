@@ -232,6 +232,7 @@ const ManageShows = () => {
                         style={{
                             width: 300,
                         }}
+                        autoComplete="none"
                         value={query}
                         onChange={(e) => {
                             setQuery(e.target.value)
