@@ -600,7 +600,7 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
             overview: item.overview
         });
         setValidationDetailsVisible(true);
-    };§
+    };
 
     return (
         <div className="review-cards-container">
