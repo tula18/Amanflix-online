@@ -59,13 +59,45 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
     const [progress, setProgress] = useState(0);
     const [remainingTime, setRemainingTime] = useState(0);
     const [uploadSpeed, setUploadSpeed] = useState(0);
-    const [uploadedSize, setUploadedSize] = useState(0);
-    const [showBackdrop, setShowBackdrop] = useState(false)
-    const [showPoster, setShowPoster] = useState(false)
+    const [uploadedSize, setUploadedSize] = useState(0);    const [showBackdrop, setShowBackdrop] = useState(false);
+    const [showPoster, setShowPoster] = useState(false);
     const [suggestions, setSuggestions] = useState([]);
     const [loadingMovies, setLoadingMovies] = useState(false);
 
     const modalContentRef = useRef(null);
+
+    // Validation function for upload pre-check
+    const validateUpload = async (contentType, contentId) => {
+        try {
+            const payload = {
+                content_type: contentType,
+                content_id: contentId
+            };
+            
+            const response = await fetch(`${API_URL}/api/upload/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Validation error:', error);
+            return {
+                success: false,
+                can_upload: true, // Default to allowing upload if validation fails
+                errors: [],
+                warnings: []
+            };
+        }
+    };
 
 
     useEffect(() => {
@@ -301,11 +333,41 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
         seconds -= minutes * 60;
         return `${hours ? `${hours} hour${hours > 1 ? 's' : ''} `: ''} ${minutes ? `${minutes} minute${minutes > 1 ? 's' : ''} and` : ''} ${Math.round(seconds)} second${seconds === 1 ? '' : 's'}`;
     };
-    
-    const handleSubmit = async (e) => {
+      const handleSubmit = async (e) => {
         e.preventDefault();
         setInputErrors({});
         setProgress(0);
+
+        // Pre-upload validation (only for new uploads, not edits)
+        if (!isEdit && movieData.id) {
+            try {
+                const validationResult = await validateUpload('movie', movieData.id);
+                
+                // Check validation result
+                if (validationResult && !validationResult.can_upload) {
+                    const errorMessages = validationResult.errors.map(error => error.message).join('\n');
+                    notification.error({
+                        message: 'Upload Blocked',
+                        description: errorMessages,
+                        duration: 8,
+                    });
+                    return;
+                }
+
+                // Show warnings if any
+                if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                    const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                    notification.warning({
+                        message: 'Upload Warnings',
+                        description: warningMessages,
+                        duration: 6,
+                    });
+                }
+            } catch (error) {
+                console.error('Validation failed:', error);
+                // Continue with upload despite validation failure
+            }
+        }
 
         const method = isEdit ? 'PUT' : 'POST'
         const url = isEdit ? `${API_URL}/api/upload/movie/${movieData.id}` : `${API_URL}/api/upload/movie`

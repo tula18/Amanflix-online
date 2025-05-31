@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 from api.utils import ensure_upload_folder_exists, save_with_progress, validate_title_data, validate_episode_data, admin_token_required
+from models import Movie, TVShow, Season, Episode
 import os
 import subprocess
 import json
@@ -467,7 +468,7 @@ def upload_tvshow(current_admin):
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
                     return jsonify({
                         'message': f'Video for season {season_data["season_number"]}, Episode {episode_data["episode_number"]} already exists. Use force upload to overwrite.'
-                    }), 400
+                    }, 400)
 
                 try:
                     save_with_progress(video_file, video_path)
@@ -835,3 +836,101 @@ def update_tvshow(current_admin, show_id):
         db.session.rollback()
         log_error(f"Error updating TV show ID {show_id}: {e}")
         return jsonify(message=f"An error occurred while updating the TV show: {str(e)}"), 500
+
+@upload_bp.route('/validate', methods=['POST'])
+@admin_token_required('moderator')
+def validate_upload(current_admin):
+    """Pre-upload validation endpoint to check if content can be uploaded"""
+    data = request.get_json()
+    
+    pprint(data, indent=2)
+    
+    if not data:
+        return jsonify(success=False, message="No data provided"), 400
+    
+    content_type = data.get('content_type')  # 'movie' or 'tv'
+    content_id = data.get('content_id')
+    
+    if not content_type or not content_id:
+        return jsonify(success=False, message="content_type and content_id are required"), 400
+    
+    try:
+        content_id = int(content_id)
+    except (ValueError, TypeError):
+        return jsonify(success=False, message="content_id must be a valid integer"), 400
+    
+    validation_result = {
+        'success': True,
+        'can_upload': True,
+        'warnings': [],
+        'errors': [],
+        'content_type': content_type,
+        'content_id': content_id
+    }
+    
+    if content_type == 'movie':
+        # Check if movie already exists in database
+        existing_movie = Movie.query.filter_by(movie_id=content_id).first()
+        if existing_movie:
+            validation_result['can_upload'] = False
+            validation_result['errors'].append({
+                'type': 'duplicate_database',
+                'message': f"Movie with ID {content_id} already exists in the database",
+                'suggestion': "Try editing the existing movie from the Manage Movies page or enable Force Overwrite"
+            })
+        
+        # Check if video file already exists
+        video_filepath = os.path.join('uploads', str(content_id) + '.mp4')
+        if os.path.exists(video_filepath):
+            if existing_movie:
+                validation_result['errors'].append({
+                    'type': 'duplicate_file_and_database',
+                    'message': f"Both movie data and video file already exist for ID {content_id}",
+                    'suggestion': "Enable Force Overwrite to replace existing content"
+                })
+            else:
+                validation_result['warnings'].append({
+                    'type': 'orphaned_file',
+                    'message': f"Video file exists but no database entry found for movie ID {content_id}",
+                    'suggestion': "The upload will link the video to the new database entry"
+                })
+    
+    elif content_type == 'tv':
+        # Check if TV show already exists in database
+        existing_show = TVShow.query.filter_by(show_id=content_id).first()
+        if existing_show:
+            validation_result['can_upload'] = False
+            validation_result['errors'].append({
+                'type': 'duplicate_database',
+                'message': f"TV Show with ID {content_id} already exists in the database",
+                'suggestion': "Try editing the existing show from the Manage Shows page or enable Force Overwrite"
+            })
+        
+        # For TV shows, check episodes if provided
+        episodes_data = data.get('episodes', [])
+        if episodes_data and existing_show:
+            existing_episodes = []
+            for episode_data in episodes_data:
+                season_num = episode_data.get('season_number')
+                episode_num = episode_data.get('episode_number')
+                if season_num and episode_num:
+                    # Check if episode file exists
+                    episode_filename = f"{content_id}{season_num}{episode_num}.mp4"
+                    episode_filepath = os.path.join('uploads', episode_filename)
+                    if os.path.exists(episode_filepath):
+                        existing_episodes.append(f"S{season_num}E{episode_num}")
+            
+            if existing_episodes:
+                validation_result['warnings'].append({
+                    'type': 'duplicate_episodes',
+                    'message': f"Some episodes already exist: {', '.join(existing_episodes)}",
+                    'suggestion': "Enable Force Overwrite for individual episodes to replace them"
+                })
+    
+    else:
+        return jsonify(success=False, message="content_type must be 'movie' or 'tv'"), 400
+    
+    # Set overall success based on whether there are any blocking errors
+    validation_result['success'] = validation_result['can_upload']
+    
+    return jsonify(validation_result), 200

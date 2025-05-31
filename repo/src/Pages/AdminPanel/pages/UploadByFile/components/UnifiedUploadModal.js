@@ -25,6 +25,43 @@ const UnifiedUploadModal = ({
     const [showBackdrop, setShowBackdrop] = useState(false);
     const [showPoster, setShowPoster] = useState(false);
 
+    // Validation function for upload pre-check
+    const validateUpload = async (contentType, contentId, episodes = null) => {
+        try {
+            const payload = {
+                content_type: contentType,
+                content_id: contentId
+            };
+            
+            if (episodes) {
+                payload.episodes = episodes;
+            }
+            
+            const response = await fetch(`${API_URL}/api/upload/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Validation error:', error);
+            return {
+                success: false,
+                can_upload: true, // Default to allowing upload if validation fails
+                errors: [],
+                warnings: []
+            };
+        }
+    };
+
     // Movie data state
     const [movieData, setMovieData] = useState({
         id: '',
@@ -550,6 +587,48 @@ const UnifiedUploadModal = ({
         setProgress(0);
 
         try {
+            // Pre-upload validation
+            let validationResult = null;
+            if (type === 'movie' && movieData.id) {
+                validationResult = await validateUpload('movie', movieData.id);
+            } else if (type === 'tv_show' && showData.id) {
+                // Prepare episodes data for validation
+                const episodes = [];
+                showData.seasons.forEach(season => {
+                    season.episodes.forEach(episode => {
+                        if (episode.videoFile || episode.filename) {
+                            episodes.push({
+                                season_number: season.seasonNumber,
+                                episode_number: episode.episodeNumber
+                            });
+                        }
+                    });
+                });
+                validationResult = await validateUpload('tv', showData.id, episodes);
+            }
+
+            // Check validation result
+            if (validationResult && !validationResult.can_upload) {
+                const errorMessages = validationResult.errors.map(error => error.message).join('\n');
+                notification.error({
+                    message: 'Upload Blocked',
+                    description: errorMessages,
+                    duration: 8,
+                });
+                setSaveLoading(false);
+                return;
+            }
+
+            // Show warnings if any
+            if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                notification.warning({
+                    message: 'Upload Warnings',
+                    description: warningMessages,
+                    duration: 6,
+                });
+            }
+
             const formData = new FormData();
             let isValid = false;
 
@@ -632,18 +711,8 @@ const UnifiedUploadModal = ({
                     });
                     setSaveLoading(false);
                     setProgress(100);
-                    
-                    // Call onSuccess callback first, then close modal
-                    if (onSuccess) {
-                        console.log('Calling onSuccess callback');
-                        onSuccess();
-                    }
-                    
-                    // Add a small delay to ensure state updates complete before closing
-                    setTimeout(() => {
-                        console.log('Closing modal');
-                        onClose();
-                    }, 100);
+                    if (onSuccess) onSuccess();
+                    onClose();
                 } else {
                     const response = JSON.parse(xhr.responseText);
                     notification.error({

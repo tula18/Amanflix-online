@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Button, Tag, Typography, Card, Row, Col, Modal, Form, Input, Select, message } from 'antd';
-import { EditOutlined, PlayCircleOutlined, DesktopOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Button, Tag, Typography, Card, Row, Col, Modal, Form, Input, Select, message, Alert, Spin } from 'antd';
+import { EditOutlined, PlayCircleOutlined, DesktopOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { API_URL } from '../../../../../config';
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -11,7 +12,167 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
     const [editingType, setEditingType] = useState(null);
     const [editForm] = Form.useForm();
     const [localData, setLocalData] = useState(parsedData);
+    const [validationResults, setValidationResults] = useState({});
+    const [isValidating, setIsValidating] = useState(false);
     console.log(parsedData);
+    
+    // Validate content on component mount and when data changes
+    useEffect(() => {
+        validateAllContent();
+    }, [localData]);
+
+    const validateContent = async (contentType, contentId, episodes = null) => {
+        try {
+            const token = localStorage.getItem('admin_token');
+            const payload = {
+                content_type: contentType,
+                content_id: contentId
+            };
+            
+            if (episodes) {
+                payload.episodes = episodes;
+            }
+            
+            const response = await fetch(`${API_URL}/api/upload/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Validation error:', error);
+            return {
+                success: false,
+                can_upload: true,
+                errors: [{ type: 'validation_error', message: 'Could not validate content' }],
+                warnings: []
+            };
+        }
+    };
+
+    const validateAllContent = async () => {
+        setIsValidating(true);
+        const results = {};
+        
+        try {
+            // Validate movies
+            if (localData.movies && localData.movies.length > 0) {
+                for (const movie of localData.movies) {
+                    if (movie.cdn_data?.id) {
+                        const result = await validateContent('movie', movie.cdn_data.id);
+                        results[`movie_${movie.cdn_data.id}`] = result;
+                    }
+                }
+            }
+            
+            // Validate TV shows
+            if (localData.tv_shows && localData.tv_shows.length > 0) {
+                for (const show of localData.tv_shows) {
+                    if (show.cdn_data?.id) {
+                        // Prepare episodes data for validation
+                        const episodes = [];
+                        if (show.episodes) {
+                            Object.keys(show.episodes).forEach(seasonNum => {
+                                show.episodes[seasonNum].forEach(episode => {
+                                    episodes.push({
+                                        season_number: parseInt(seasonNum),
+                                        episode_number: episode.episode
+                                    });
+                                });
+                            });
+                        }
+                        
+                        const result = await validateContent('tv', show.cdn_data.id, episodes);
+                        results[`tv_${show.cdn_data.id}`] = result;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error validating content:', error);
+            message.error('Failed to validate content');
+        }
+        
+        setValidationResults(results);
+        setIsValidating(false);
+    };
+
+    const getValidationKey = (item, type) => {
+        return `${type}_${item.cdn_data?.id}`;
+    };
+
+    const renderValidationStatus = (item, type) => {
+        const key = getValidationKey(item, type);
+        const validation = validationResults[key];
+        
+        if (!validation || !item.cdn_data?.id) {
+            return null;
+        }
+        
+        if (validation.errors && validation.errors.length > 0) {
+            return (
+                <Alert
+                    type="error"
+                    showIcon
+                    icon={<ExclamationCircleOutlined />}
+                    message="Cannot Upload"
+                    description={
+                        <div>
+                            {validation.errors.map((error, idx) => (
+                                <div key={idx}>
+                                    <strong>{error.message}</strong>
+                                    {error.suggestion && <div style={{ fontSize: '12px', marginTop: '4px' }}>{error.suggestion}</div>}
+                                </div>
+                            ))}
+                        </div>
+                    }
+                    style={{ marginTop: '8px', fontSize: '12px' }}
+                />
+            );
+        }
+        
+        if (validation.warnings && validation.warnings.length > 0) {
+            return (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Upload Warnings"
+                    description={
+                        <div>
+                            {validation.warnings.map((warning, idx) => (
+                                <div key={idx}>
+                                    <strong>{warning.message}</strong>
+                                    {warning.suggestion && <div style={{ fontSize: '12px', marginTop: '4px' }}>{warning.suggestion}</div>}
+                                </div>
+                            ))}
+                        </div>
+                    }
+                    style={{ marginTop: '8px', fontSize: '12px' }}
+                />
+            );
+        }
+        
+        if (validation.can_upload) {
+            return (
+                <Alert
+                    type="success"
+                    showIcon
+                    icon={<CheckCircleOutlined />}
+                    message="Ready to Upload"
+                    style={{ marginTop: '8px', fontSize: '12px' }}
+                />
+            );
+        }
+        
+        return null;
+    };
     
 
     const handleEdit = (item, type) => {
@@ -130,6 +291,8 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                         </Tag>
                     ))}
                 </div>
+                
+                {renderValidationStatus(movie, 'movie')}
             </div>
         </Card>
     );
@@ -213,6 +376,8 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                         </div>
                     ))}
                 </div>
+                
+                {renderValidationStatus(show, 'tv')}
             </div>
         </Card>
     );
@@ -223,6 +388,38 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
         : 0;
 
     const totalItems = (localData?.movies?.length || 0) + (localData?.tv_shows?.length || 0);
+    
+    // Calculate uploadable items (excluding those with validation errors)
+    const getUploadableItems = () => {
+        const uploadableMovies = localData?.movies?.filter(movie => {
+            const key = getValidationKey(movie, 'movie');
+            const validation = validationResults[key];
+            return !validation || validation.can_upload;
+        }) || [];
+        
+        const uploadableShows = localData?.tv_shows?.filter(show => {
+            const key = getValidationKey(show, 'tv');
+            const validation = validationResults[key];
+            return !validation || validation.can_upload;
+        }) || [];
+        
+        return {
+            movies: uploadableMovies,
+            tv_shows: uploadableShows
+        };
+    };
+    
+    const uploadableItems = getUploadableItems();
+    const uploadableCount = uploadableItems.movies.length + uploadableItems.tv_shows.length;
+
+    const handleContinueToUpload = () => {
+        const filteredData = {
+            ...localData,
+            movies: uploadableItems.movies,
+            tv_shows: uploadableItems.tv_shows
+        };
+        onReviewComplete(filteredData);
+    };
 
     return (
         <div className="review-cards-container">
@@ -231,6 +428,11 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                     <Title level={2} className="review-title">Review Detected Content</Title>
                     <Text className="review-summary">
                         Found {totalItems} content items from {totalFiles} files
+                        {totalItems !== uploadableCount && (
+                            <span style={{ color: '#faad14', marginLeft: '8px' }}>
+                                ({uploadableCount} can be uploaded)
+                            </span>
+                        )}
                     </Text>
                 </div>
                 
@@ -253,10 +455,11 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                 <Button 
                     type="primary" 
                     className="continue-button"
-                    onClick={() => onReviewComplete(localData)}
-                    disabled={totalItems === 0}
+                    onClick={handleContinueToUpload}
+                    disabled={uploadableCount === 0}
+                    loading={isValidating}
                 >
-                    Continue to Upload ({totalItems} items)
+                    {isValidating ? 'Validating...' : `Continue to Upload (${uploadableCount} items)`}
                 </Button>
             </div>
 
