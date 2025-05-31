@@ -52,6 +52,206 @@ def get_video_duration_in_minutes(video_path):
         log_error(f"Error calculating video duration: {str(e)}")
         return None
 
+def get_file_size(file_path):
+    """Get file size in bytes"""
+    try:
+        return os.path.getsize(file_path)
+    except OSError as e:
+        log_error(f"Error getting file size for {file_path}: {str(e)}")
+        return None
+
+def get_file_modified_date(file_path):
+    """Get file modification date"""
+    try:
+        timestamp = os.path.getmtime(file_path)
+        return datetime.fromtimestamp(timestamp)
+    except OSError as e:
+        log_error(f"Error getting file modified date for {file_path}: {str(e)}")
+        return None
+
+def get_free_disk_space(path='.'):
+    """Get free disk space in bytes"""
+    try:
+        import shutil
+        _, _, free = shutil.disk_usage(path)
+        return free
+    except Exception as e:
+        log_error(f"Error getting disk space: {str(e)}")
+        return None
+
+def validate_video_quality(video_path):
+    """Validate video quality parameters"""
+    try:
+        metadata = get_video_metadata(video_path)
+        if not metadata:
+            return [], ["Could not read video metadata"]
+        
+        warnings = []
+        errors = []
+        
+        # Find video stream
+        video_stream = None
+        for stream in metadata.get('streams', []):
+            if stream.get('codec_type') == 'video':
+                video_stream = stream
+                break
+        
+        if not video_stream:
+            errors.append("No video stream found in file")
+            return warnings, errors
+        
+        # Check resolution
+        width = video_stream.get('width', 0)
+        height = video_stream.get('height', 0)
+        
+        if width < 640 or height < 480:
+            warnings.append(f"Low resolution: {width}x{height}. Recommended minimum: 640x480")
+        elif width >= 3840 and height >= 2160:
+            warnings.append(f"4K content detected: {width}x{height}. Ensure sufficient storage space")
+        
+        # Check bitrate
+        bit_rate = video_stream.get('bit_rate')
+        if bit_rate:
+            bit_rate = int(bit_rate)
+            if bit_rate < 500000:  # 500 kbps
+                warnings.append(f"Low bitrate: {bit_rate // 1000} kbps. Quality may be poor")
+            elif bit_rate > 50000000:  # 50 Mbps
+                warnings.append(f"Very high bitrate: {bit_rate // 1000000} Mbps. Large file size expected")
+        
+        # Check codec
+        codec = video_stream.get('codec_name', '').lower()
+        if codec not in ['h264', 'h265', 'hevc', 'av1']:
+            warnings.append(f"Unusual video codec: {codec}. Compatibility may vary")
+        
+        return warnings, errors
+    except Exception as e:
+        log_error(f"Error validating video quality: {str(e)}")
+        return [], ["Error analyzing video quality"]
+
+def validate_language(content_data):
+    """Validate language information"""
+    warnings = []
+    common_languages = [
+        'af', 'am', 'ar', 'as', 'az', 'bg', 'bn', 'br', 'ca', 'co', 'cs', 'cy',
+        'da', 'de', 'el', 'en', 'es', 'et', 'eu', 'fi', 'fo', 'fr', 'fur', 'ga', 
+        'gl', 'gu', 'ha', 'he', 'hi', 'hr', 'hu', 'hy', 'id', 'ig', 'is', 'it', 
+        'ja', 'ka', 'kk', 'km', 'kn', 'ko', 'ky', 'lad', 'lb', 'lo', 'lt', 'lv', 
+        'ml', 'mn', 'ms', 'mt', 'my', 'ne', 'nl', 'no', 'or', 'pa', 'pl', 'pt', 
+        'rm', 'ro', 'ru', 'sc', 'si', 'sk', 'sp', 'sl', 'sv', 'sw', 'ta', 'te', 'th', 
+        'ti', 'tk', 'tl', 'tr', 'ur', 'uz', 'vi', 'xh', 'yo', 'zh', 'zu'
+    ]
+    
+    spoken_languages = content_data.get('spoken_languages', [])
+    if isinstance(spoken_languages, str):
+        spoken_languages = [spoken_languages]
+    
+    if not spoken_languages:
+        warnings.append("No language information available")
+    else:
+        for lang in spoken_languages:
+            if isinstance(lang, dict):
+                lang_code = lang.get('iso_639_1', '').lower()
+            else:
+                lang_code = str(lang).lower()[:2]
+            
+            if lang_code and lang_code not in common_languages:
+                warnings.append(f"Uncommon language detected: {lang_code}")
+    
+    return warnings
+
+def validate_genres(content_data, content_type):
+    """Validate genre information"""
+    valid_genres = {
+        'movie': [
+            'Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary',
+            'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery',
+            'Romance', 'Science Fiction', 'TV Movie', 'Thriller', 'War', 'Western'
+        ],
+        'tv': [
+            'Action & Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary',
+            'Drama', 'Family', 'Kids', 'Mystery', 'News', 'Reality', 'Sci-Fi & Fantasy',
+            'Soap', 'Talk', 'War & Politics', 'Western'
+        ]
+    }
+    
+    warnings = []
+    genres = content_data.get('genres', [])
+    
+    if isinstance(genres, str):
+        genres = [g.strip() for g in genres.split(',')]
+    elif isinstance(genres, list) and genres and isinstance(genres[0], dict):
+        genres = [g.get('name', '') for g in genres]
+    
+    if not genres:
+        warnings.append("No genre information available")
+        return warnings
+    
+    valid_list = valid_genres.get(content_type, [])
+    for genre in genres:
+        if genre and genre not in valid_list:
+            warnings.append(f"Unusual genre: {genre}")
+    
+    return warnings
+
+def validate_runtime(runtime, content_type):
+    """Validate runtime duration"""
+    warnings = []
+    
+    if not runtime:
+        warnings.append("No runtime information available")
+        return warnings
+    
+    try:
+        runtime = int(runtime)
+        if content_type == 'movie':
+            if runtime < 60:
+                warnings.append(f"Very short movie: {runtime} minutes. Typical movies are 90+ minutes")
+            elif runtime > 300:
+                warnings.append(f"Very long movie: {runtime} minutes. Verify this is correct")
+        elif content_type == 'tv':
+            if runtime < 15:
+                warnings.append(f"Very short episode: {runtime} minutes")
+            elif runtime > 120:
+                warnings.append(f"Very long episode: {runtime} minutes. Verify this is correct")
+    except (ValueError, TypeError):
+        warnings.append("Invalid runtime format")
+    
+    return warnings
+
+def validate_file_integrity(file_path):
+    """Basic file integrity checks"""
+    warnings = []
+    errors = []
+    
+    try:
+        # Check if file exists and is readable
+        if not os.path.exists(file_path):
+            errors.append("File does not exist")
+            return warnings, errors
+        
+        if not os.access(file_path, os.R_OK):
+            errors.append("File is not readable")
+            return warnings, errors
+        
+        # Check file size
+        file_size = get_file_size(file_path)
+        if file_size is None:
+            warnings.append("Could not determine file size")
+        elif file_size < 1024 * 1024:  # Less than 1MB
+            warnings.append("File is very small (< 1MB). May be corrupted")
+        elif file_size > 50 * 1024 * 1024 * 1024:  # Greater than 50GB
+            warnings.append("File is very large (> 50GB). Ensure sufficient storage")
+        
+        # Try to read video metadata as integrity check
+        metadata = get_video_metadata(file_path)
+        if not metadata:
+            warnings.append("Could not read video metadata. File may be corrupted")
+        
+    except Exception as e:
+        errors.append(f"File integrity check failed: {str(e)}")
+    
+    return warnings, errors
+
 def validate_video_file(file):
     """Validate that the file is a valid video file"""
     if not file or file.filename == '':
@@ -803,7 +1003,7 @@ def update_tvshow(current_admin, show_id):
                 episode = Episode.query.filter_by(id=episode_id).first()
                 if episode:
                     # Delete video file
-                    video_path = os.path.join('uploads', f'{episode_id}.mp4')
+                    video_path = os.path.join('uploads', f'{episode.video_id}.mp4')
                     if os.path.exists(video_path):
                         os.remove(video_path)
                     
@@ -841,94 +1041,484 @@ def update_tvshow(current_admin, show_id):
 @admin_token_required('moderator')
 def validate_upload(current_admin):
     """Pre-upload validation endpoint to check if content can be uploaded"""
-    data = request.get_json()
-    
-    if not data:
-        return jsonify(success=False, message="No data provided"), 400
-    
-    content_type = data.get('content_type')  # 'movie' or 'tv'
-    content_id = data.get('content_id')
-    
-    if not content_type or not content_id:
-        return jsonify(success=False, message="content_type and content_id are required"), 400
-    
     try:
-        content_id = int(content_id)
-    except (ValueError, TypeError):
-        return jsonify(success=False, message="content_id must be a valid integer"), 400
-    
-    validation_result = {
-        'success': True,
-        'can_upload': True,
-        'warnings': [],
-        'errors': [],
-        'content_type': content_type,
-        'content_id': content_id
-    }
-    
-    if content_type == 'movie':
-        # Check if movie already exists in database
-        existing_movie = Movie.query.filter_by(movie_id=content_id).first()
-        if existing_movie:
-            validation_result['can_upload'] = False
-            validation_result['errors'].append({
-                'type': 'duplicate_database',
-                'message': f"Movie with ID {content_id} already exists in the database",
-                'suggestion': "Try editing the existing movie from the Manage Movies page or enable Force Overwrite"
+        data = request.get_json()
+        log_info(f"🔍 Validation request from admin {current_admin.username}: {data}")
+        
+        if not data:
+            log_warning("❌ No data provided in validation request")
+            return jsonify(success=False, message="No data provided"), 400
+        
+        content_type = data.get('content_type')  # 'movie' or 'tv'
+        content_id = data.get('content_id')
+        content_data = data.get('content_data', {})  # Additional content metadata for validation
+        
+        log_info(f"📊 Validating {content_type} with ID {content_id}")
+        
+        if not content_type or not content_id:
+            log_warning("❌ Missing content_type or content_id in validation request")
+            return jsonify(success=False, message="content_type and content_id are required"), 400
+        
+        try:
+            content_id = int(content_id)
+        except (ValueError, TypeError):
+            log_warning(f"❌ Invalid content_id format: {content_id}")
+            return jsonify(success=False, message="content_id must be a valid integer"), 400
+        
+        validation_result = {
+            'success': True,
+            'can_upload': True,
+            'warnings': [],
+            'errors': [],
+            'info': [],
+            'content_type': content_type,
+            'content_id': content_id,
+            'system_checks': {
+                'disk_space': None,
+                'existing_content': None,
+                'file_validation': None
+            }
+        }
+        
+        log_info(f"🚀 Starting validation checks for {content_type} ID {content_id}")
+        
+        # System-wide checks
+        try:
+            log_info("💾 Checking disk space...")
+            # Check disk space
+            free_space = get_free_disk_space('uploads')
+            if free_space:
+                free_gb = free_space / (1024**3)
+                validation_result['system_checks']['disk_space'] = f"{free_gb:.1f} GB available"
+                log_info(f"💾 Disk space check: {free_gb:.1f} GB available")
+                if free_gb < 1:
+                    validation_result['errors'].append({
+                        'type': 'insufficient_disk_space',
+                        'message': f"Low disk space: {free_gb:.1f} GB remaining",
+                        'suggestion': "Free up disk space before uploading large files"
+                    })
+                    log_warning(f"⚠️ Low disk space: {free_gb:.1f} GB")
+                elif free_gb < 5:
+                    validation_result['warnings'].append({
+                        'type': 'low_disk_space',
+                        'message': f"Limited disk space: {free_gb:.1f} GB remaining",
+                        'suggestion': "Monitor disk usage during upload"
+                    })
+                    log_info(f"⚠️ Limited disk space: {free_gb:.1f} GB")
+            else:
+                log_warning("💾 Could not determine disk space")
+        except Exception as e:
+            log_error(f"💾 Disk space check failed: {str(e)}")
+            validation_result['warnings'].append({
+                'type': 'disk_space_check_failed',
+                'message': "Could not check available disk space",
+                'suggestion': "Ensure sufficient storage before uploading"
             })
         
-        # Check if video file already exists
-        video_filepath = os.path.join('uploads', str(content_id) + '.mp4')
-        if os.path.exists(video_filepath):
+        if content_type == 'movie':
+            log_info(f"🎬 Validating movie ID {content_id}")
+            # Check if movie already exists in database
+            existing_movie = Movie.query.filter_by(movie_id=content_id).first()
             if existing_movie:
+                log_warning(f"🎬 Movie ID {content_id} already exists: {existing_movie.title}")
+                validation_result['can_upload'] = False
                 validation_result['errors'].append({
-                    'type': 'duplicate_file_and_database',
-                    'message': f"Both movie data and video file already exist for ID {content_id}",
-                    'suggestion': "Enable Force Overwrite to replace existing content"
+                    'type': 'duplicate_database',
+                    'message': f"Movie '{existing_movie.title}' (ID: {content_id}) already exists in database",
+                    'suggestion': "Try editing the existing movie from the Manage Movies page or enable Force Overwrite",
+                    'details': {
+                        'existing_title': existing_movie.title,
+                        'existing_year': existing_movie.release_date.year if existing_movie.release_date else None
+                    }
                 })
             else:
-                validation_result['warnings'].append({
-                    'type': 'orphaned_file',
-                    'message': f"Video file exists but no database entry found for movie ID {content_id}",
-                    'suggestion': "The upload will link the video to the new database entry"
+                log_info(f"🎬 Movie ID {content_id} not found in database - OK to upload")
+            
+            # Check if video file already exists
+            video_filepath = os.path.join('uploads', str(content_id) + '.mp4')
+            log_info(f"📁 Checking for existing video file: {video_filepath}")
+            if os.path.exists(video_filepath):
+                log_warning(f"📁 Video file already exists: {video_filepath}")
+                if existing_movie:
+                    validation_result['errors'].append({
+                        'type': 'duplicate_file_and_database',
+                        'message': f"Both movie data and video file already exist for ID {content_id}",
+                        'suggestion': "Enable Force Overwrite to replace existing content"
+                    })
+                else:
+                    validation_result['warnings'].append({
+                        'type': 'orphaned_file',
+                        'message': f"Video file exists but no database entry found for movie ID {content_id}",
+                        'suggestion': "The upload will link the video to the new database entry"
+                    })
+                
+                # Validate existing file integrity
+                log_info(f"🔍 Validating existing file integrity: {video_filepath}")
+                warnings, errors = validate_file_integrity(video_filepath)
+                for warning in warnings:
+                    validation_result['warnings'].append({
+                        'type': 'file_integrity_warning',
+                        'message': f"Existing file issue: {warning}",
+                        'suggestion': "Consider replacing with a higher quality file"
+                    })
+                for error in errors:
+                    validation_result['errors'].append({
+                        'type': 'file_integrity_error',
+                        'message': f"Existing file error: {error}",
+                        'suggestion': "File must be replaced"
+                    })
+            else:
+                log_info(f"📁 No existing video file found - OK to upload")
+            
+            # Content metadata validation
+            if content_data:
+                log_info(f"📋 Validating content metadata for movie ID {content_id}")
+                # Validate languages
+                language_warnings = validate_language(content_data)
+                for warning in language_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'language',
+                        'message': warning,
+                        'suggestion': "Add language information for better categorization"
+                    })
+                
+                # Validate genres
+                genre_warnings = validate_genres(content_data, 'movie')
+                for warning in genre_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'genre',
+                        'message': warning,
+                        'suggestion': "Verify genre classification"
+                    })
+                
+                # Validate runtime
+                runtime = content_data.get('runtime')
+                runtime_warnings = validate_runtime(runtime, 'movie')
+                for warning in runtime_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'runtime',
+                        'message': warning,
+                        'suggestion': "Verify runtime information"
+                    })
+                
+                # Check for similar titles in database
+                title = content_data.get('title', '')
+                if title:
+                    log_info(f"🔍 Checking for similar movie titles to: {title}")
+                    similar_movies = Movie.query.filter(
+                        Movie.title.ilike(f"%{title}%")
+                    ).limit(3).all()
+                    
+                    if similar_movies:
+                        similar_titles = [f"'{m.title}' ({m.release_date.year if m.release_date else 'Unknown'})" for m in similar_movies[:3]]
+                        log_info(f"🔍 Found similar movie titles: {similar_titles}")
+                        validation_result['warnings'].append({
+                            'type': 'similar_titles',
+                            'message': f"Similar titles found: {', '.join(similar_titles)}",
+                            'suggestion': "Verify this is not a duplicate with different metadata"
+                        })
+            else:
+                log_info(f"📋 No content metadata provided for movie ID {content_id}")
+        
+        elif content_type == 'tv':
+            log_info(f"📺 Validating TV show ID {content_id}")
+            # Check if TV show already exists in database
+            existing_show = TVShow.query.filter_by(show_id=content_id).first()
+            if existing_show:
+                log_warning(f"📺 TV show ID {content_id} already exists: {existing_show.title}")
+                validation_result['can_upload'] = False
+                validation_result['errors'].append({
+                    'type': 'duplicate_database',
+                    'message': f"TV Show '{existing_show.title}' (ID: {content_id}) already exists in database",
+                    'suggestion': "Try editing the existing show from the Manage Shows page or enable Force Overwrite",
+                    'details': {
+                        'existing_title': existing_show.title,
+                        'existing_year': existing_show.first_air_date.year if existing_show.first_air_date else None
+                    }
                 })
-    
-    elif content_type == 'tv':
-        # Check if TV show already exists in database
-        existing_show = TVShow.query.filter_by(show_id=content_id).first()
-        if existing_show:
-            validation_result['can_upload'] = False
-            validation_result['errors'].append({
-                'type': 'duplicate_database',
-                'message': f"TV Show with ID {content_id} already exists in the database",
-                'suggestion': "Try editing the existing show from the Manage Shows page or enable Force Overwrite"
+            else:
+                log_info(f"📺 TV show ID {content_id} not found in database - OK to upload")
+            
+            # For TV shows, check episodes if provided
+            episodes_data = data.get('episodes', [])
+            if episodes_data:
+                log_info(f"📺 Validating {len(episodes_data)} episodes for TV show ID {content_id}")
+                existing_episodes = []
+                episode_warnings = []
+                episode_errors = []
+                
+                for episode_data in episodes_data:
+                    season_num = episode_data.get('season_number')
+                    episode_num = episode_data.get('episode_number')
+                    if season_num and episode_num:
+                        # Check if episode file exists
+                        episode_filename = f"{content_id}S{season_num:02d}E{episode_num:02d}.mp4"
+                        episode_filepath = os.path.join('uploads', episode_filename)
+                        
+                        log_info(f"📁 Checking episode file: {episode_filepath}")
+                        
+                        if os.path.exists(episode_filepath):
+                            existing_episodes.append(f"S{season_num}E{episode_num}")
+                            log_warning(f"📁 Episode file already exists: {episode_filepath}")
+                            
+                            # Validate episode file integrity
+                            warnings, errors = validate_file_integrity(episode_filepath)
+                            episode_warnings.extend(warnings)
+                            episode_errors.extend(errors)
+                            
+                            # Validate video quality
+                            quality_warnings, quality_errors = validate_video_quality(episode_filepath)
+                            episode_warnings.extend(quality_warnings)
+                            episode_errors.extend(quality_errors)
+                
+                if existing_episodes:
+                    validation_result['warnings'].append({
+                        'type': 'duplicate_episodes',
+                        'message': f"Some episodes already exist: {', '.join(existing_episodes)}",
+                        'suggestion': "Enable Force Overwrite for individual episodes to replace them"
+                    })
+                
+                # Add episode-specific warnings and errors
+                for warning in episode_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'episode_file_warning',
+                        'message': f"Episode file issue: {warning}",
+                        'suggestion': "Review episode files before upload"
+                    })
+                
+                for error in episode_errors:
+                    validation_result['errors'].append({
+                        'type': 'episode_file_error',
+                        'message': f"Episode file error: {error}",
+                        'suggestion': "Fix episode file issues before upload"
+                    })
+            else:
+                log_info(f"📺 No episodes data provided for TV show ID {content_id}")
+            
+            # Content metadata validation for TV shows
+            if content_data:
+                log_info(f"📋 Validating content metadata for TV show ID {content_id}")
+                # Validate languages
+                language_warnings = validate_language(content_data)
+                for warning in language_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'language',
+                        'message': warning,
+                        'suggestion': "Add language information for better categorization"
+                    })
+                
+                # Validate genres
+                genre_warnings = validate_genres(content_data, 'tv')
+                for warning in genre_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'genre',
+                        'message': warning,
+                        'suggestion': "Verify TV show genre classification"
+                    })
+                
+                # Check for similar titles in database
+                title = content_data.get('title', '')
+                if title:
+                    log_info(f"🔍 Checking for similar TV show titles to: {title}")
+                    similar_shows = TVShow.query.filter(
+                        TVShow.title.ilike(f"%{title}%")
+                    ).limit(3).all()
+                    
+                    if similar_shows:
+                        similar_titles = [f"'{s.title}' ({s.first_air_date.year if s.first_air_date else 'Unknown'})" for s in similar_shows[:3]]
+                        log_info(f"🔍 Found similar TV show titles: {similar_titles}")
+                        validation_result['warnings'].append({
+                            'type': 'similar_titles',
+                            'message': f"Similar titles found: {', '.join(similar_titles)}",
+                            'suggestion': "Verify this is not a duplicate with different metadata"
+                        })
+            else:
+                log_info(f"📋 No content metadata provided for TV show ID {content_id}")
+        
+        else:
+            log_warning(f"❌ Invalid content_type: {content_type}")
+            return jsonify(success=False, message="content_type must be 'movie' or 'tv'"), 400
+        
+        # Add informational messages
+        validation_result['info'].append({
+            'type': 'validation_complete',
+            'message': f"Validation completed for {content_type} ID {content_id}",
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        if validation_result['warnings']:
+            validation_result['info'].append({
+                'type': 'warnings_found',
+                'message': f"Found {len(validation_result['warnings'])} warnings that should be reviewed",
+                'suggestion': "Warnings won't prevent upload but should be addressed for better quality"
             })
         
-        # For TV shows, check episodes if provided
-        episodes_data = data.get('episodes', [])
-        if episodes_data and existing_show:
-            existing_episodes = []
-            for episode_data in episodes_data:
-                season_num = episode_data.get('season_number')
-                episode_num = episode_data.get('episode_number')
-                if season_num and episode_num:
-                    # Check if episode file exists
-                    episode_filename = f"{content_id}{season_num}{episode_num}.mp4"
-                    episode_filepath = os.path.join('uploads', episode_filename)
-                    if os.path.exists(episode_filepath):
-                        existing_episodes.append(f"S{season_num}E{episode_num}")
+        # Set overall success based on whether there are any blocking errors
+        validation_result['success'] = validation_result['can_upload'] and len(validation_result['errors']) == 0
+        
+        # Update system checks summary
+        if not validation_result['errors']:
+            validation_result['system_checks']['existing_content'] = "No conflicts found"
+            validation_result['system_checks']['file_validation'] = "Passed basic checks"
+        else:
+            validation_result['system_checks']['existing_content'] = "Conflicts detected"
+            validation_result['system_checks']['file_validation'] = "Issues found"
+        
+        log_info(f"✅ Validation completed for {content_type} ID {content_id}: {len(validation_result['errors'])} errors, {len(validation_result['warnings'])} warnings, can_upload: {validation_result['can_upload']}")
+        
+        return jsonify(validation_result), 200
+        
+    except Exception as e:
+        log_error(f"💥 Validation endpoint error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'can_upload': False,
+            'errors': [{ 
+                'type': 'server_error', 
+                'message': f"Server error during validation: {str(e)}"
+            }],
+            'warnings': [],
+            'info': []
+        }), 500
+
+@upload_bp.route('/validate/test', methods=['POST'])
+@admin_token_required('moderator')
+def test_validation(current_admin):
+    """Test endpoint to simulate various validation scenarios"""
+    try:
+        data = request.get_json()
+        scenario = data.get('scenario', 'success')
+        content_type = data.get('content_type', 'movie')
+        content_id = data.get('content_id', 12345)
+        
+        log_info(f"🧪 Testing validation scenario: {scenario} for {content_type} ID {content_id}")
+        
+        # Simulate different validation scenarios
+        if scenario == 'success':
+            return jsonify({
+                'success': True,
+                'can_upload': True,
+                'warnings': [],
+                'errors': [],
+                'info': [
+                    {'message': 'All validation checks passed successfully', 'type': 'general'}
+                ],
+                'content_type': content_type,
+                'content_id': content_id,
+                'system_checks': {
+                    'disk_space': '25.4 GB available',
+                    'existing_content': 'No conflicts found',
+                    'file_validation': 'Ready for upload'
+                }
+            })
+        
+        elif scenario == 'duplicate':
+            return jsonify({
+                'success': False,
+                'can_upload': False,
+                'warnings': [
+                    {
+                        'type': 'similar_titles',
+                        'message': 'Found similar title: "The Matrix Reloaded" (2003)',
+                        'suggestion': 'Verify this is not a duplicate with different metadata'
+                    }
+                ],
+                'errors': [
+                    {
+                        'type': 'duplicate_database',
+                        'message': f'{content_type.title()} "The Matrix" (ID: {content_id}) already exists in database',
+                        'suggestion': 'Try editing the existing movie from the Manage Movies page or enable Force Overwrite',
+                        'details': {
+                            'existing_title': 'The Matrix',
+                            'existing_year': 1999
+                        }
+                    }
+                ],
+                'info': [],
+                'content_type': content_type,
+                'content_id': content_id,
+                'system_checks': {
+                    'disk_space': '25.4 GB available',
+                    'existing_content': 'Conflict detected',
+                    'file_validation': 'Blocked by duplicate'
+                }
+            })
+        
+        elif scenario == 'warnings':
+            return jsonify({
+                'success': True,
+                'can_upload': True,
+                'warnings': [
+                    {
+                        'type': 'content_rating',
+                        'message': 'Content rating not specified or may be inappropriate',
+                        'suggestion': 'Verify content rating is appropriate'
+                    },
+                    {
+                        'type': 'low_disk_space',
+                        'message': 'Limited disk space: 4.2 GB remaining',
+                        'suggestion': 'Monitor disk usage during upload'
+                    },
+                    {
+                        'type': 'file_integrity_warning',
+                        'message': 'Video quality lower than recommended (480p)',
+                        'suggestion': 'Consider replacing with a higher quality file'
+                    }
+                ],
+                'errors': [],
+                'info': [
+                    {'message': 'Upload will proceed despite warnings', 'type': 'general'}
+                ],
+                'content_type': content_type,
+                'content_id': content_id,
+                'system_checks': {
+                    'disk_space': '4.2 GB available',
+                    'existing_content': 'No conflicts',
+                    'file_validation': 'Quality concerns'
+                }
+            })
+        
+        elif scenario == 'multiple_errors':
+            return jsonify({
+                'success': False,
+                'can_upload': False,
+                'warnings': [
+                    {
+                        'type': 'runtime',
+                        'message': 'Runtime information missing or invalid',
+                        'suggestion': 'Verify runtime information'
+                    }
+                ],
+                'errors': [
+                    {
+                        'type': 'duplicate_file_and_database',
+                        'message': f'Both {content_type} data and video file already exist for ID {content_id}',
+                        'suggestion': 'Enable Force Overwrite to replace existing content'
+                    },
+                    {
+                        'type': 'file_integrity_error',
+                        'message': 'Video file is corrupted or unreadable',
+                        'suggestion': 'File must be replaced with a valid video file'
+                    },
+                    {
+                        'type': 'insufficient_disk_space',
+                        'message': 'Low disk space: 0.8 GB remaining',
+                        'suggestion': 'Free up disk space before uploading large files'
+                    }
+                ],
+                'info': [],
+                'content_type': content_type,
+                'content_id': content_id,
+                'system_checks': {
+                    'disk_space': '0.8 GB available',
+                    'existing_content': 'Multiple conflicts',
+                    'file_validation': 'Critical errors found'
+                }
+            })
+        
+        else:
+            return jsonify({'error': f'Unknown scenario: {scenario}'}), 400
             
-            if existing_episodes:
-                validation_result['warnings'].append({
-                    'type': 'duplicate_episodes',
-                    'message': f"Some episodes already exist: {', '.join(existing_episodes)}",
-                    'suggestion': "Enable Force Overwrite for individual episodes to replace them"
-                })
-    
-    else:
-        return jsonify(success=False, message="content_type must be 'movie' or 'tv'"), 400
-    
-    # Set overall success based on whether there are any blocking errors
-    validation_result['success'] = validation_result['can_upload']
-    
-    return jsonify(validation_result), 200
+    except Exception as e:
+        log_error(f"💥 Test validation error: {str(e)}")
+        return jsonify({'error': str(e)}), 500

@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Tag, Typography, Card, Row, Col, Modal, Form, Input, Select, message, Alert, Spin } from 'antd';
-import { EditOutlined, PlayCircleOutlined, DesktopOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { 
+    Button, Tag, Typography, Card, Modal, Form, Input, message, 
+    Alert, Spin, Progress, Tooltip, Divider 
+} from 'antd';
+import { 
+    EditOutlined, PlayCircleOutlined, DesktopOutlined, ExclamationCircleOutlined, 
+    CheckCircleOutlined, WarningOutlined, InfoCircleOutlined, ClockCircleOutlined,
+    DatabaseOutlined, FileTextOutlined, SafetyCertificateOutlined,
+} from '@ant-design/icons';
 import { API_URL } from '../../../../../config';
 
 const { Text, Title } = Typography;
-const { Option } = Select;
 
 const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
     const [editModalVisible, setEditModalVisible] = useState(false);
@@ -14,6 +20,13 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
     const [localData, setLocalData] = useState(parsedData);
     const [validationResults, setValidationResults] = useState({});
     const [isValidating, setIsValidating] = useState(false);
+    const [expandedValidation, setExpandedValidation] = useState({});
+    const [validationProgress, setValidationProgress] = useState(0);
+    
+    // Validation Details Modal
+    const [validationDetailsVisible, setValidationDetailsVisible] = useState(false);
+    const [selectedValidationData, setSelectedValidationData] = useState(null);
+    const [selectedContentInfo, setSelectedContentInfo] = useState(null);
     console.log(parsedData);
     
     // Validate content on component mount and when data changes
@@ -21,7 +34,7 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
         validateAllContent();
     }, [localData]);
 
-    const validateContent = async (contentType, contentId, episodes = null) => {
+    const validateContent = async (contentType, contentId, episodes = null, contentData = null) => {
         try {
             const token = localStorage.getItem('admin_token');
             const payload = {
@@ -33,6 +46,12 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                 payload.episodes = episodes;
             }
             
+            if (contentData) {
+                payload.content_data = contentData;
+            }
+            
+            console.log(`🔍 Validating ${contentType} ID ${contentId}:`, payload);
+            
             const response = await fetch(`${API_URL}/api/upload/validate`, {
                 method: 'POST',
                 headers: {
@@ -42,41 +61,93 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                 body: JSON.stringify(payload)
             });
             
+            console.log(`📡 Validation response status: ${response.status}`);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error(`❌ Validation failed for ${contentType} ID ${contentId}:`, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorText
+                });
+                
+                return {
+                    success: false,
+                    can_upload: false,
+                    errors: [{ 
+                        type: 'validation_request_failed', 
+                        message: `Validation request failed: ${response.status} ${response.statusText}`,
+                        details: { status: response.status, error: errorText }
+                    }],
+                    warnings: [],
+                    info: []
+                };
             }
             
-            return await response.json();
+            const result = await response.json();
+            console.log(`✅ Validation result for ${contentType} ID ${contentId}:`, result);
+            
+            return result;
         } catch (error) {
-            console.error('Validation error:', error);
+            console.error(`💥 Validation error for ${contentType} ID ${contentId}:`, error);
+            
             return {
                 success: false,
-                can_upload: true,
-                errors: [{ type: 'validation_error', message: 'Could not validate content' }],
-                warnings: []
+                can_upload: false,
+                errors: [{ 
+                    type: 'validation_network_error', 
+                    message: `Network error during validation: ${error.message}`,
+                    details: { 
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    }
+                }],
+                warnings: [],
+                info: []
             };
         }
     };
 
     const validateAllContent = async () => {
+        console.log('🚀 Starting validation for all content...');
         setIsValidating(true);
+        setValidationProgress(0);
         const results = {};
+        
+        const totalItems = (localData.movies?.length || 0) + (localData.tv_shows?.length || 0);
+        let completedItems = 0;
+        
+        console.log(`📊 Total items to validate: ${totalItems}`, {
+            movies: localData.movies?.length || 0,
+            tv_shows: localData.tv_shows?.length || 0
+        });
         
         try {
             // Validate movies
             if (localData.movies && localData.movies.length > 0) {
+                console.log('🎬 Validating movies...');
                 for (const movie of localData.movies) {
                     if (movie.cdn_data?.id) {
-                        const result = await validateContent('movie', movie.cdn_data.id);
+                        console.log(`🎬 Validating movie: "${movie.title}" (ID: ${movie.cdn_data.id})`);
+                        const result = await validateContent('movie', movie.cdn_data.id, null, movie.cdn_data);
                         results[`movie_${movie.cdn_data.id}`] = result;
+                        completedItems++;
+                        setValidationProgress((completedItems / totalItems) * 100);
+                        console.log(`✓ Movie validation complete: ${completedItems}/${totalItems}`);
+                    } else {
+                        console.warn(`⚠️ Movie "${movie.title}" has no CDN data or ID, skipping validation`);
                     }
                 }
             }
             
             // Validate TV shows
             if (localData.tv_shows && localData.tv_shows.length > 0) {
+                console.log('📺 Validating TV shows...');
                 for (const show of localData.tv_shows) {
                     if (show.cdn_data?.id) {
+                        console.log(`📺 Validating TV show: "${show.title}" (ID: ${show.cdn_data.id})`);
+                        
                         // Prepare episodes data for validation
                         const episodes = [];
                         if (show.episodes) {
@@ -89,23 +160,95 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                                 });
                             });
                         }
+                        console.log(`📺 Show has ${episodes.length} episodes to validate`);
                         
-                        const result = await validateContent('tv', show.cdn_data.id, episodes);
+                        const result = await validateContent('tv', show.cdn_data.id, episodes, show.cdn_data);
                         results[`tv_${show.cdn_data.id}`] = result;
+                        completedItems++;
+                        setValidationProgress((completedItems / totalItems) * 100);
+                        console.log(`✓ TV show validation complete: ${completedItems}/${totalItems}`);
+                    } else {
+                        console.warn(`⚠️ TV show "${show.title}" has no CDN data or ID, skipping validation`);
                     }
                 }
             }
+            
+            console.log('🎉 All validations complete!', {
+                totalValidated: Object.keys(results).length,
+                results: results
+            });
+            
         } catch (error) {
-            console.error('Error validating content:', error);
-            message.error('Failed to validate content');
+            console.error('💥 Error during validation process:', error);
+            message.error(`Validation process failed: ${error.message}`);
         }
         
         setValidationResults(results);
         setIsValidating(false);
+        setValidationProgress(100);
+        
+        // Log final summary
+        const totalErrors = Object.values(results).reduce((sum, v) => sum + (v.errors?.length || 0), 0);
+        const totalWarnings = Object.values(results).reduce((sum, v) => sum + (v.warnings?.length || 0), 0);
+        
+        console.log('📋 Validation Summary:', {
+            totalItems: Object.keys(results).length,
+            totalErrors,
+            totalWarnings,
+            canUpload: Object.values(results).filter(v => v.can_upload).length
+        });
+        
+        if (totalErrors > 0) {
+            message.warning(`Validation completed with ${totalErrors} error(s) and ${totalWarnings} warning(s)`);
+        } else if (totalWarnings > 0) {
+            message.info(`Validation completed with ${totalWarnings} warning(s)`);
+        } else {
+            message.success('All content validated successfully!');
+        }
     };
 
     const getValidationKey = (item, type) => {
         return `${type}_${item.cdn_data?.id}`;
+    };
+
+    const getValidationSummary = (validation) => {
+        if (!validation) return { status: 'unknown', count: 0, color: '#d9d9d9' };
+        
+        const errorCount = validation.errors?.length || 0;
+        const warningCount = validation.warnings?.length || 0;
+        const infoCount = validation.info?.length || 0;
+        
+        if (errorCount > 0) {
+            return { 
+                status: 'error', 
+                count: errorCount, 
+                color: '#ff4d4f',
+                icon: <ExclamationCircleOutlined />,
+                text: `${errorCount} error${errorCount > 1 ? 's' : ''}`
+            };
+        }
+        
+        if (warningCount > 0) {
+            return { 
+                status: 'warning', 
+                count: warningCount, 
+                color: '#faad14',
+                icon: <WarningOutlined />,
+                text: `${warningCount} warning${warningCount > 1 ? 's' : ''}`
+            };
+        }
+        
+        if (validation.can_upload) {
+            return { 
+                status: 'success', 
+                count: 0, 
+                color: '#52c41a',
+                icon: <CheckCircleOutlined />,
+                text: 'Ready to upload'
+            };
+        }
+        
+        return { status: 'unknown', count: 0, color: '#d9d9d9' };
     };
 
     const renderValidationStatus = (item, type) => {
@@ -113,65 +256,85 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
         const validation = validationResults[key];
         
         if (!validation || !item.cdn_data?.id) {
-            return null;
+            return (
+                <div style={{ marginTop: '12px' }}>
+                    <Alert
+                        type="info"
+                        showIcon
+                        icon={<ClockCircleOutlined />}
+                        message="Validation Pending"
+                        description={
+                            !item.cdn_data?.id ? 
+                                "No CDN data available - content needs to be matched with database first" :
+                                "Content validation will be performed before upload"
+                        }
+                        style={{ fontSize: '12px' }}
+                    />
+                </div>
+            );
         }
         
-        if (validation.errors && validation.errors.length > 0) {
-            return (
-                <Alert
-                    type="error"
-                    showIcon
-                    icon={<ExclamationCircleOutlined />}
-                    message="Cannot Upload"
-                    description={
-                        <div>
-                            {validation.errors.map((error, idx) => (
-                                <div key={idx}>
-                                    <strong>{error.message}</strong>
-                                    {error.suggestion && <div style={{ fontSize: '12px', marginTop: '4px' }}>{error.suggestion}</div>}
-                                </div>
-                            ))}
+        const summary = getValidationSummary(validation);
+        
+        return (
+            <div style={{ marginTop: '12px' }}>
+                {/* Main status indicator */}
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    padding: '8px 12px', 
+                    backgroundColor: summary.color + '10',
+                    border: `1px solid ${summary.color}30`,
+                    borderRadius: '6px',
+                    marginBottom: '8px'
+                }}>
+                    <span style={{ color: summary.color, fontSize: '16px' }}>
+                        {summary.icon}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 500, color: summary.color }}>
+                            {summary.text}
                         </div>
-                    }
-                    style={{ marginTop: '8px', fontSize: '12px' }}
-                />
-            );
-        }
-        
-        if (validation.warnings && validation.warnings.length > 0) {
-            return (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message="Upload Warnings"
-                    description={
-                        <div>
-                            {validation.warnings.map((warning, idx) => (
-                                <div key={idx}>
-                                    <strong>{warning.message}</strong>
-                                    {warning.suggestion && <div style={{ fontSize: '12px', marginTop: '4px' }}>{warning.suggestion}</div>}
-                                </div>
-                            ))}
+                        {!validation.can_upload && (
+                            <div style={{ fontSize: '12px', color: '#ff4d4f', fontWeight: 500, marginTop: '4px' }}>
+                                ⚠️ Upload blocked - Issues must be resolved
+                            </div>
+                        )}
+                        {/* Debug info */}
+                        <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
+                            Validation ID: {key} | Success: {validation.success?.toString()} | Can Upload: {validation.can_upload?.toString()}
                         </div>
-                    }
-                    style={{ marginTop: '8px', fontSize: '12px' }}
-                />
-            );
-        }
-        
-        if (validation.can_upload) {
-            return (
-                <Alert
-                    type="success"
-                    showIcon
-                    icon={<CheckCircleOutlined />}
-                    message="Ready to Upload"
-                    style={{ marginTop: '8px', fontSize: '12px' }}
-                />
-            );
-        }
-        
-        return null;
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                        {/* View Details Button for errors/warnings */}
+                        {(validation.errors?.length > 0 || validation.warnings?.length > 0) && (
+                            <Tooltip title="View detailed validation report">
+                                <Button
+                                    type="primary"
+                                    size="small"
+                                    icon={<FileTextOutlined />}
+                                    onClick={() => {
+                                        const itemData = type === 'movie' ? 
+                                            localData.movies?.find(m => getValidationKey(m, 'movie') === key) :
+                                            localData.tv_shows?.find(s => getValidationKey(s, 'tv') === key);
+                                        if (itemData) {
+                                            openValidationDetails(itemData, type);
+                                        }
+                                    }}
+                                    style={{
+                                        backgroundColor: validation.errors?.length > 0 ? '#ff4d4f' : '#faad14',
+                                        borderColor: validation.errors?.length > 0 ? '#ff4d4f' : '#faad14'
+                                    }}
+                                >
+                                    Details
+                                </Button>
+                            </Tooltip>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
     };
     
 
@@ -421,6 +584,24 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
         onReviewComplete(filteredData);
     };
 
+    const openValidationDetails = (item, type) => {
+        const key = getValidationKey(item, type);
+        const validation = validationResults[key];
+        
+        if (!validation) return;
+        
+        setSelectedValidationData(validation);
+        setSelectedContentInfo({
+            title: item.title,
+            type: type,
+            id: item.cdn_data?.id,
+            year: item.release_date || item.first_air_date,
+            poster: item.poster_path,
+            overview: item.overview
+        });
+        setValidationDetailsVisible(true);
+    };§
+
     return (
         <div className="review-cards-container">
             <div className="review-header">
@@ -434,13 +615,133 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                             </span>
                         )}
                     </Text>
+                    
+                    {/* Validation Progress */}
+                    {isValidating && (
+                        <div style={{ marginTop: '12px', maxWidth: '400px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <Spin size="small" />
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    Validating content... ({Math.round(validationProgress)}%)
+                                </Text>
+                            </div>
+                            <Progress 
+                                percent={validationProgress} 
+                                showInfo={false} 
+                                size="small"
+                                strokeColor="#1890ff"
+                            />
+                        </div>
+                    )}
                 </div>
                 
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <Tag color="blue">{localData?.movies?.length || 0} Movies</Tag>
-                    <Tag color="green">{localData?.tv_shows?.length || 0} TV Shows</Tag>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Tag color="blue" style={{ fontSize: '12px' }}>
+                        <PlayCircleOutlined style={{ marginRight: '4px' }} />
+                        {localData?.movies?.length || 0} Movies
+                    </Tag>
+                    <Tag color="green" style={{ fontSize: '12px' }}>
+                        <DesktopOutlined style={{ marginRight: '4px' }} />
+                        {localData?.tv_shows?.length || 0} TV Shows
+                    </Tag>
+                    
+                    {/* Validation Summary */}
+                    {Object.keys(validationResults).length > 0 && !isValidating && (
+                        <>
+                            <Divider type="vertical" />
+                            {(() => {
+                                const totalErrors = Object.values(validationResults).reduce((sum, v) => sum + (v.errors?.length || 0), 0);
+                                const totalWarnings = Object.values(validationResults).reduce((sum, v) => sum + (v.warnings?.length || 0), 0);
+                                
+                                return (
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {totalErrors > 0 && (
+                                            <Tag color="red" style={{ fontSize: '11px' }}>
+                                                <ExclamationCircleOutlined style={{ marginRight: '2px' }} />
+                                                {totalErrors} Error{totalErrors > 1 ? 's' : ''}
+                                            </Tag>
+                                        )}
+                                        {totalWarnings > 0 && (
+                                            <Tag color="orange" style={{ fontSize: '11px' }}>
+                                                <WarningOutlined style={{ marginRight: '2px' }} />
+                                                {totalWarnings} Warning{totalWarnings > 1 ? 's' : ''}
+                                            </Tag>
+                                        )}
+                                        {totalErrors === 0 && totalWarnings === 0 && (
+                                            <Tag color="green" style={{ fontSize: '11px' }}>
+                                                <CheckCircleOutlined style={{ marginRight: '2px' }} />
+                                                All Clear
+                                            </Tag>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </>
+                    )}
                 </div>
             </div>
+
+            {/* Validation Summary Alert */}
+            {Object.keys(validationResults).length > 0 && !isValidating && (() => {
+                const totalErrors = Object.values(validationResults).reduce((sum, v) => sum + (v.errors?.length || 0), 0);
+                const totalWarnings = Object.values(validationResults).reduce((sum, v) => sum + (v.warnings?.length || 0), 0);
+                const blockedItems = Object.values(validationResults).filter(v => !v.can_upload).length;
+                const readyItems = Object.values(validationResults).filter(v => v.can_upload).length;
+                
+                if (totalErrors > 0 || totalWarnings > 0) {
+                    return (
+                        <Alert
+                            type={totalErrors > 0 ? "error" : "warning"}
+                            showIcon
+                            message={
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>
+                                        {totalErrors > 0 ? 
+                                            `${blockedItems} item${blockedItems > 1 ? 's' : ''} blocked by validation errors` :
+                                            `${totalWarnings} validation warning${totalWarnings > 1 ? 's' : ''} found`
+                                        }
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px' }}>
+                                        {totalErrors > 0 && (
+                                            <span style={{ color: '#ff4d4f' }}>
+                                                🚫 {totalErrors} error{totalErrors > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                        {totalWarnings > 0 && (
+                                            <span style={{ color: '#faad14' }}>
+                                                ⚠️ {totalWarnings} warning{totalWarnings > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                        <span style={{ color: '#52c41a' }}>
+                                            ✅ {readyItems} ready
+                                        </span>
+                                    </div>
+                                </div>
+                            }
+                            description={
+                                totalErrors > 0 ? 
+                                    "Items with errors cannot be uploaded. Click the 'Details' button on any item to see specific issues and solutions." :
+                                    "Items with warnings can still be uploaded, but you may want to review the issues first."
+                            }
+                            style={{ marginBottom: '20px' }}
+                        />
+                    );
+                }
+                
+                if (readyItems > 0) {
+                    return (
+                        <Alert
+                            type="success"
+                            showIcon
+                            message={`All ${readyItems} item${readyItems > 1 ? 's' : ''} validated successfully!`}
+                            description="No issues found. All content is ready for upload."
+                            style={{ marginBottom: '20px' }}
+                        />
+                    );
+                }
+                
+                return null;
+            })()}
 
             <div className="content-cards">
                 {localData?.movies?.map(renderMovieCard)}
@@ -452,15 +753,36 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                     Back to File Selection
                 </Button>
                 
-                <Button 
-                    type="primary" 
-                    className="continue-button"
-                    onClick={handleContinueToUpload}
-                    disabled={uploadableCount === 0}
-                    loading={isValidating}
-                >
-                    {isValidating ? 'Validating...' : `Continue to Upload (${uploadableCount} items)`}
-                </Button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Validation Status Indicator */}
+                    {isValidating ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#666' }}>
+                            <Spin size="small" />
+                            <span>Validating content...</span>
+                        </div>
+                    ) : Object.keys(validationResults).length > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                            <span style={{ color: '#666' }}>Validation complete</span>
+                        </div>
+                    ) : null}
+                    
+                    <Button 
+                        type="primary" 
+                        className="continue-button"
+                        onClick={handleContinueToUpload}
+                        disabled={uploadableCount === 0 || isValidating}
+                        loading={isValidating}
+                        style={{
+                            backgroundColor: uploadableCount === 0 ? undefined : '#52c41a',
+                            borderColor: uploadableCount === 0 ? undefined : '#52c41a'
+                        }}
+                    >
+                        {isValidating ? 'Validating...' : 
+                         uploadableCount === 0 ? 'No Items Ready' :
+                         `Continue to Upload (${uploadableCount} item${uploadableCount > 1 ? 's' : ''})`}
+                    </Button>
+                </div>
             </div>
 
             <Modal
@@ -502,6 +824,165 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                         <Input placeholder="Action, Drama, Comedy" />
                     </Form.Item>
                 </Form>
+            </Modal>
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ fontSize: '18px' }}>⚠️</div>
+                        <div>
+                            <div style={{ fontSize: '16px', fontWeight: 600 }}>Validation Report</div>
+                            <div style={{ fontSize: '12px', fontWeight: 400, color: '#666' }}>
+                                {selectedContentInfo?.title}
+                            </div>
+                        </div>
+                    </div>
+                }
+                open={validationDetailsVisible}
+                onCancel={() => setValidationDetailsVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setValidationDetailsVisible(false)}>
+                        Close
+                    </Button>
+                ]}
+                width={800}
+            >
+                {selectedValidationData && selectedContentInfo && (
+                    <div>
+                        {/* Content Info */}
+                        <div style={{ 
+                            padding: '16px', 
+                            backgroundColor: '#fafafa', 
+                            borderRadius: '8px',
+                            marginBottom: '20px'
+                        }}>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                                {selectedContentInfo.title}
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#666' }}>
+                                {selectedContentInfo.type === 'movie' ? 'Movie' : 'TV Show'} • 
+                                ID: {selectedContentInfo.id} • 
+                                Year: {selectedContentInfo.year || 'Unknown'}
+                            </div>
+                        </div>
+
+                        {/* Upload Status */}
+                        <div style={{ 
+                            padding: '16px', 
+                            backgroundColor: selectedValidationData.can_upload ? '#f6ffed' : '#fff2f0',
+                            border: `2px solid ${selectedValidationData.can_upload ? '#b7eb8f' : '#ffccc7'}`,
+                            borderRadius: '8px',
+                            marginBottom: '20px'
+                        }}>
+                            <div style={{ 
+                                fontSize: '18px', 
+                                fontWeight: 600, 
+                                color: selectedValidationData.can_upload ? '#52c41a' : '#ff4d4f',
+                                marginBottom: '8px'
+                            }}>
+                                {selectedValidationData.can_upload ? '✅ Ready to Upload' : '❌ Upload Blocked'}
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#666' }}>
+                                {selectedValidationData.can_upload ? 
+                                    'No critical issues found. Content can be uploaded.' : 
+                                    'Issues must be resolved before upload can proceed.'
+                                }
+                            </div>
+                        </div>
+
+                        {/* Critical Errors */}
+                        {selectedValidationData.errors && selectedValidationData.errors.length > 0 && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{ 
+                                    fontSize: '16px', 
+                                    fontWeight: 600, 
+                                    color: '#ff4d4f',
+                                    marginBottom: '12px'
+                                }}>
+                                    🚫 Critical Issues ({selectedValidationData.errors.length})
+                                </div>
+                                {selectedValidationData.errors.map((error, idx) => (
+                                    <div key={idx} style={{ 
+                                        padding: '16px', 
+                                        backgroundColor: '#fff2f0',
+                                        border: '1px solid #ffccc7',
+                                        borderRadius: '8px',
+                                        marginBottom: '12px'
+                                    }}>
+                                        <div style={{ fontWeight: 600, color: '#ff4d4f', marginBottom: '8px' }}>
+                                            {error.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </div>
+                                        <div style={{ marginBottom: '8px', color: '#333' }}>
+                                            {error.message}
+                                        </div>
+                                        {error.suggestion && (
+                                            <div style={{ 
+                                                padding: '12px',
+                                                backgroundColor: '#fff',
+                                                border: '1px solid #d9d9d9',
+                                                borderRadius: '4px',
+                                                fontSize: '13px',
+                                                color: '#666'
+                                            }}>
+                                                <strong>💡 Solution:</strong> {error.suggestion}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Warnings */}
+                        {selectedValidationData.warnings && selectedValidationData.warnings.length > 0 && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{ 
+                                    fontSize: '14px', 
+                                    fontWeight: 600, 
+                                    color: '#faad14',
+                                    marginBottom: '8px'
+                                }}>
+                                    ⚠️ Warnings ({selectedValidationData.warnings.length})
+                                </div>
+                                {selectedValidationData.warnings.map((warning, idx) => (
+                                    <div key={idx} style={{ 
+                                        padding: '12px', 
+                                        backgroundColor: '#fffbe6',
+                                        border: '1px solid #ffe58f',
+                                        borderRadius: '6px',
+                                        marginBottom: '8px'
+                                    }}>
+                                        <div style={{ fontWeight: 500, color: '#333', marginBottom: '4px' }}>
+                                            {warning.message}
+                                        </div>
+                                        {warning.suggestion && (
+                                            <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                                                💡 {warning.suggestion}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* System Info */}
+                        {selectedValidationData.system_checks && (
+                            <div style={{ 
+                                padding: '12px',
+                                backgroundColor: '#fafafa',
+                                borderRadius: '6px',
+                                marginBottom: '16px'
+                            }}>
+                                <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>
+                                    System Status
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>
+                                    Storage: {selectedValidationData.system_checks.disk_space || 'Unknown'} | 
+                                    Content: {selectedValidationData.system_checks.existing_content || 'Unknown'} |
+                                    Files: {selectedValidationData.system_checks.file_validation || 'Unknown'}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </Modal>
         </div>
     );
