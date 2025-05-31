@@ -7,12 +7,18 @@ import '../AddByFile.css';
 
 const { Text, Title } = Typography;
 
-const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
+const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [currentUploadData, setCurrentUploadData] = useState(null);
     const [currentUploadType, setCurrentUploadType] = useState(null); // 'movie' or 'tv_show'
     const navigate = useNavigate();
+
+    // Function to find matching file by filename
+    const findFileByName = (filename) => {
+        if (!selectedFiles || !filename) return null;
+        return selectedFiles.find(file => file.name === filename) || null;
+    };
 
     const handleMovieUpload = (movie) => {
         const transformedMovieData = transformMovieDataForModal(movie);
@@ -30,6 +36,9 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
 
     // Transform parsed movie data to MovieEditModal format
     const transformMovieDataForModal = (movie) => {
+        // Find the actual file object for this movie
+        const movieFile = movie.files && movie.files.length > 0 ? findFileByName(movie.files[0]) : null;
+        
         return {
             id: movie.cdn_data?.id || '',
             title: movie.title || '',
@@ -51,7 +60,7 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
             has_subtitles: movie.has_subtitles || false,
             in_production: false,
             force: false,
-            vid_movie: null,
+            vid_movie: movieFile, // Automatically set the matched file
             // Add file data for reference
             files: movie.files || []
         };
@@ -73,12 +82,15 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
                         ep => ep.episode === episode.episode_number
                     );
                     
+                    // Find the actual file object for this episode
+                    const episodeFile = guessItEpisode?.filename ? findFileByName(guessItEpisode.filename) : null;
+                    
                     return {
                         episodeNumber: episode.episode_number,
                         title: episode.name || `Episode ${episode.episode_number}`,
                         overview: episode.overview || '',
                         has_subtitles: guessItEpisode?.has_subtitles || false,
-                        videoFile: null,
+                        videoFile: episodeFile, // Automatically set the matched file
                         filename: guessItEpisode?.filename || '',
                         // Additional CDN episode data
                         air_date: episode.air_date,
@@ -94,14 +106,19 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
             // Fallback to GuessIt data if CDN seasons are not available
             transformedSeasons = Object.entries(show.episodes || {}).map(([seasonNumber, episodes]) => ({
                 seasonNumber: parseInt(seasonNumber),
-                episodes: episodes.map(episode => ({
-                    episodeNumber: episode.episode,
-                    title: episode.title || `Episode ${episode.episode}`,
-                    overview: episode.overview || '',
-                    has_subtitles: episode.has_subtitles || false,
-                    videoFile: null,
-                    filename: episode.filename
-                }))
+                episodes: episodes.map(episode => {
+                    // Find the actual file object for this episode
+                    const episodeFile = episode.filename ? findFileByName(episode.filename) : null;
+                    
+                    return {
+                        episodeNumber: episode.episode,
+                        title: episode.title || `Episode ${episode.episode}`,
+                        overview: episode.overview || '',
+                        has_subtitles: episode.has_subtitles || false,
+                        videoFile: episodeFile, // Automatically set the matched file
+                        filename: episode.filename
+                    };
+                })
             }));
         }
 
@@ -312,7 +329,7 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
                 <Text style={{ color: '#a0a0a0', fontSize: '14px' }}>
                     <strong>Instructions:</strong><br />
                     • Each item will open in the standard upload form with pre-filled metadata<br />
-                    • Files are not automatically uploaded - you'll need to select and upload them manually<br />
+                    • Files from step 1 are automatically matched and pre-selected<br />
                     • CDN matches (if found) will pre-populate most fields automatically<br />
                     • You can edit any pre-filled information before uploading
                 </Text>

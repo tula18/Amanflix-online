@@ -82,6 +82,7 @@ const AddByFile = () => {
                 return (
                     <PrefilledUpload
                         parsedData={parsedData}
+                        selectedFiles={selectedFiles}
                         onUploadComplete={handleUploadComplete}
                         onBack={() => handleBackToStep(1)}
                     />

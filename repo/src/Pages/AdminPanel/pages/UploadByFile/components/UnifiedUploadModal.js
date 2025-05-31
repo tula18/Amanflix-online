@@ -166,7 +166,13 @@ const UnifiedUploadModal = ({
         newMovieData.revenue = prefilledData.revenue || '';
         newMovieData.status = prefilledData.status || '';
         newMovieData.has_subtitles = prefilledData.has_subtitles || false;
-        newMovieData.vid_movie = prefilledData.file || null;
+        newMovieData.vid_movie = prefilledData.vid_movie || null;
+
+        // If a file was pre-filled, create a preview URL
+        if (prefilledData.vid_movie) {
+            const url = URL.createObjectURL(prefilledData.vid_movie);
+            setVideoPreviewUrl(url);
+        }
 
         setMovieData(newMovieData);
         validateForm(newMovieData, true);
@@ -199,18 +205,34 @@ const UnifiedUploadModal = ({
         if (prefilledData.seasons && Array.isArray(prefilledData.seasons)) {
             console.log("initializing seasons: ", prefilledData.seasons);
             
+            const newEpisodePreviews = {};
+            
             newShowData.seasons = prefilledData.seasons.map(season => ({
                 seasonNumber: season.seasonNumber,
-                episodes: season.episodes.map(episode => ({
-                    episodeNumber: episode.episodeNumber,
-                    title: episode.title || `Episode ${episode.episodeNumber}`,
-                    overview: episode.overview || '',
-                    has_subtitles: episode.has_subtitles || false,
-                    force: episode.force || false,
-                    videoFile: episode.videoFile || null,
-                    filename: episode.filename || '' // Add filename reference
-                }))
+                episodes: season.episodes.map(episode => {
+                    // If episode has a videoFile, create preview URL
+                    if (episode.videoFile) {
+                        const episodeKey = `S${season.seasonNumber}E${episode.episodeNumber}`;
+                        const url = URL.createObjectURL(episode.videoFile);
+                        newEpisodePreviews[episodeKey] = url;
+                    }
+                    
+                    return {
+                        episodeNumber: episode.episodeNumber,
+                        title: episode.title || `Episode ${episode.episodeNumber}`,
+                        overview: episode.overview || '',
+                        has_subtitles: episode.has_subtitles || false,
+                        force: episode.force || false,
+                        videoFile: episode.videoFile || null,
+                        filename: episode.filename || '' // Add filename reference
+                    };
+                })
             }));
+            
+            // Set episode previews if any files were pre-filled
+            if (Object.keys(newEpisodePreviews).length > 0) {
+                setEpisodePreviews(newEpisodePreviews);
+            }
         } else if (prefilledData.episodes && typeof prefilledData.episodes === 'object') {
             // Handle episodes object format like {"1": [episode1, episode2], "2": [episode3]}
             console.log("Processing episodes object format:", prefilledData.episodes);
@@ -226,7 +248,7 @@ const UnifiedUploadModal = ({
                         overview: ep.overview || '',
                         has_subtitles: ep.has_subtitles || false,
                         force: false,
-                        videoFile: null, // Will be set when user uploads files
+                        videoFile: ep.videoFile || null, // Handle pre-filled video files
                         filename: ep.filename || '' // Store filename for reference
                     }))
                 };
@@ -761,6 +783,11 @@ const UnifiedUploadModal = ({
                                 <Upload
                                     id="vid_movie"
                                     name="vid_movie"
+                                    fileList={movieData.vid_movie ? [{
+                                        uid: '-1',
+                                        name: movieData.vid_movie.name,
+                                        status: 'done',
+                                    }] : []}
                                     beforeUpload={(file, fileList) => {
                                         setMovieData({
                                             ...movieData,
@@ -778,7 +805,9 @@ const UnifiedUploadModal = ({
                                         });
                                     }}
                                 >
-                                    <Button id="vid_movie" icon={<UploadOutlined />}>Upload a video</Button>
+                                    <Button id="vid_movie" icon={<UploadOutlined />}>
+                                        {movieData.vid_movie ? 'Change Video File' : 'Upload a video'}
+                                    </Button>
                                 </Upload>
                             </div>
                         </>
@@ -941,6 +970,11 @@ const UnifiedUploadModal = ({
                                                 <Upload
                                                     id={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}
                                                     name={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}
+                                                    fileList={episode.videoFile ? [{
+                                                        uid: `${season.seasonNumber}-${episode.episodeNumber}`,
+                                                        name: episode.videoFile.name,
+                                                        status: 'done',
+                                                    }] : []}
                                                     beforeUpload={(file, fileList) => {
                                                         console.log(`File selected for S${season.seasonNumber}E${episode.episodeNumber}:`, file);
                                                         
@@ -1019,7 +1053,9 @@ const UnifiedUploadModal = ({
                                                         });
                                                     }}
                                                 >
-                                                    <Button icon={<UploadOutlined />}>Upload video for Episode {episode.episodeNumber}</Button>
+                                                    <Button icon={<UploadOutlined />}>
+                                                        {episode.videoFile ? `Change file for Episode ${episode.episodeNumber}` : `Upload video for Episode ${episode.episodeNumber}`}
+                                                    </Button>
                                                 </Upload>
                                                 
                                                 {errors[`S${season.seasonNumber}E${episode.episodeNumber}-file`] && (
