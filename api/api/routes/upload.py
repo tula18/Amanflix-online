@@ -843,8 +843,6 @@ def validate_upload(current_admin):
     """Pre-upload validation endpoint to check if content can be uploaded"""
     data = request.get_json()
     
-    pprint(data, indent=2)
-    
     if not data:
         return jsonify(success=False, message="No data provided"), 400
     
