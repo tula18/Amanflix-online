@@ -60,13 +60,11 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
     // Transform parsed show data to TvShowEditModal format
     const transformShowDataForModal = (show) => {
         // Transform episodes data to the expected format
-        console.log("transforming", show);
         
         let transformedSeasons;
         
         // Prioritize CDN seasons data if available
         if (show.cdn_data?.seasons && Array.isArray(show.cdn_data.seasons)) {
-            console.log("Using CDN seasons data for", show.title);
             transformedSeasons = show.cdn_data.seasons.map(season => ({
                 seasonNumber: season.season_number,
                 episodes: season.episodes?.map(episode => {
@@ -94,7 +92,6 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
             }));
         } else {
             // Fallback to GuessIt data if CDN seasons are not available
-            console.log("Using GuessIt episodes data for", show.title, "- CDN seasons not available");
             transformedSeasons = Object.entries(show.episodes || {}).map(([seasonNumber, episodes]) => ({
                 seasonNumber: parseInt(seasonNumber),
                 episodes: episodes.map(episode => ({

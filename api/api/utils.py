@@ -115,6 +115,13 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
             os.remove(temp_path)
         raise Exception("Video conversion failed: ffmpeg is not installed or not in PATH")
 
+def validate_episode_data(title_data, required_fields= ['title', 'id', 'overview', 'release_date', 'vote_average', 'genres', 'runtime'], season_number=0, episode_number=0):
+    for field in required_fields:
+        if field not in title_data or not title_data[field]:
+            print(f'No {field} Provided For S{season_number}E{episode_number}')
+            return jsonify(message=f'No {field} Provided For Season {season_number} Episode {episode_number}'), 400
+    return None
+
 def validate_title_data(title_data, required_fields= ['title', 'id', 'overview', 'release_date', 'vote_average', 'genres', 'runtime']):
     for field in required_fields:
         if field not in title_data or not title_data[field]:

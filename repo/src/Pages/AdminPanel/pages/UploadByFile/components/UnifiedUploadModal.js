@@ -207,10 +207,34 @@ const UnifiedUploadModal = ({
                     overview: episode.overview || '',
                     has_subtitles: episode.has_subtitles || false,
                     force: episode.force || false,
-                    videoFile: episode.videoFile || null
+                    videoFile: episode.videoFile || null,
+                    filename: episode.filename || '' // Add filename reference
                 }))
             }));
+        } else if (prefilledData.episodes && typeof prefilledData.episodes === 'object') {
+            // Handle episodes object format like {"1": [episode1, episode2], "2": [episode3]}
+            console.log("Processing episodes object format:", prefilledData.episodes);
+            const seasonsMap = {};
+            
+            Object.entries(prefilledData.episodes).forEach(([seasonNumber, episodes]) => {
+                const seasonNum = parseInt(seasonNumber);
+                seasonsMap[seasonNum] = {
+                    seasonNumber: seasonNum,
+                    episodes: episodes.map(ep => ({
+                        episodeNumber: ep.episode,
+                        title: ep.title || `Episode ${ep.episode}`,
+                        overview: ep.overview || '',
+                        has_subtitles: ep.has_subtitles || false,
+                        force: false,
+                        videoFile: null, // Will be set when user uploads files
+                        filename: ep.filename || '' // Store filename for reference
+                    }))
+                };
+            });
+            
+            newShowData.seasons = Object.values(seasonsMap).sort((a, b) => a.seasonNumber - b.seasonNumber);
         } else if (prefilledData.episodes && Array.isArray(prefilledData.episodes)) {
+            // Handle array format for backward compatibility
             const seasonsMap = {};
             prefilledData.episodes.forEach(ep => {
                 if (!seasonsMap[ep.season]) {
@@ -225,7 +249,8 @@ const UnifiedUploadModal = ({
                     overview: ep.overview || '',
                     has_subtitles: ep.has_subtitles || false,
                     force: false,
-                    videoFile: ep.file || null
+                    videoFile: ep.file || null,
+                    filename: ep.filename || ''
                 });
             });
             newShowData.seasons = Object.values(seasonsMap).sort((a, b) => a.seasonNumber - b.seasonNumber);
@@ -239,7 +264,8 @@ const UnifiedUploadModal = ({
                     overview: '',
                     has_subtitles: false,
                     force: false,
-                    videoFile: null
+                    videoFile: null,
+                    filename: ''
                 }]
             }];
         }
@@ -520,9 +546,12 @@ const UnifiedUploadModal = ({
                 let hasFiles = false;
                 showData.seasons.forEach((season) => {
                     season.episodes.forEach((episode) => {
-                        if (episode.videoFile) {
+                        // Check for either uploaded video files OR pre-filled filenames
+                        if (episode.videoFile || (episode.filename && episode.filename.trim() !== '')) {
                             hasFiles = true;
-                            formData.append(`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`, episode.videoFile);
+                            if (episode.videoFile) {
+                                formData.append(`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`, episode.videoFile);
+                            }
                         }
                     });
                 });
@@ -530,7 +559,7 @@ const UnifiedUploadModal = ({
                 if (!hasFiles) {
                     notification.error({
                         message: 'Upload Error',
-                        description: 'Please select at least one video file.',
+                        description: 'Please select at least one video file or ensure pre-filled data contains valid filenames.',
                     });
                     setSaveLoading(false);
                     return;
@@ -544,21 +573,24 @@ const UnifiedUploadModal = ({
                 });
 
                 // Add seasons data
-                formData.append('seasons', JSON.stringify(showData.seasons.map(season => ({
-                    seasonNumber: season.seasonNumber,
+                const seasonsData = showData.seasons.map(season => ({
+                    season_number: season.seasonNumber,
                     episodes: season.episodes.map(episode => ({
-                        episodeNumber: episode.episodeNumber,
+                        episode_number: episode.episodeNumber,
                         title: episode.title,
                         overview: episode.overview,
                         has_subtitles: episode.has_subtitles,
-                        force: episode.force
+                        force: episode.force,
+                        filename: episode.filename // Include filename for pre-filled data
                     }))
-                }))));
+                }));
+                
+                formData.append('seasons', JSON.stringify(seasonsData));
             }
 
             const xhr = new XMLHttpRequest();
             
-            xhr.open('POST', `${API_URL}/api/upload/${type === 'movie' ? 'movies' : 'shows'}`, true);
+            xhr.open('POST', `${API_URL}/api/upload/${type === 'movie' ? 'movie' : 'show'}`, true);
             xhr.setRequestHeader('Authorization', 'Bearer ' + token);
 
             xhr.onload = function() {
@@ -886,6 +918,13 @@ const UnifiedUploadModal = ({
                                                 <label htmlFor={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}>
                                                     {`Episode ${episode.episodeNumber} File`} <span style={{fontSize: "1.1rem", color: 'gold', marginLeft: 5, cursor: 'help'}}>*</span>
                                                 </label>
+                                                
+                                                {/* Display expected filename if available */}
+                                                {episode.filename && (
+                                                    <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#2a304d', borderRadius: '4px', fontSize: '12px', color: '#a0a0a0' }}>
+                                                        <strong>Expected file:</strong> {episode.filename}
+                                                    </div>
+                                                )}
                                                 
                                                 {/* Force upload checkbox */}
                                                 <div className="form-group checkbox" style={{marginBottom: '10px'}}>

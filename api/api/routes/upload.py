@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
-from api.utils import ensure_upload_folder_exists, save_with_progress, validate_title_data, admin_token_required
+from api.utils import ensure_upload_folder_exists, save_with_progress, validate_title_data, validate_episode_data, admin_token_required
 import os
 import subprocess
 import json
@@ -371,6 +371,7 @@ def upload_tvshow(current_admin):
         "networks": tvshow_data.get('networks', None, type=str),
         "status": tvshow_data.get('status', None, type=str)
     }
+    pprint(tvshow_data, indent=2)
 
     existing_show = TVShow.query.filter_by(show_id=tvshow_data['show_id']).first()
     if existing_show and tvshow_data['show_id']:
@@ -436,7 +437,11 @@ def upload_tvshow(current_admin):
 
             episodes_data = season_data.get('episodes')
             for episode_data in episodes_data:
-                error = validate_title_data(episode_data, ['title', 'episode_number', 'overview'])
+                # pprint(episode_data, indent=2)
+                error = validate_episode_data(episode_data, ['title', 'episode_number'], season_data['season_number'], episode_data['episode_number'])
+                # error = validate_title_data(episode_data, ['title', 'episode_number', 'overview'])
+
+                print("there was an error 1")
                 if error:
                     # Clean up all files and database records
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
