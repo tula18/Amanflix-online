@@ -1,6 +1,6 @@
 import { CloseOutlined, UploadOutlined, ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import React, { useState, useEffect, useRef } from "react";
-import { Alert, Progress, Upload, notification, Button, Flex, Tooltip, Popconfirm } from "antd";
+import { Alert, Progress, Upload, notification, Button, Flex, Tooltip, Popconfirm, Image } from "antd";
 import { API_URL } from "../../../../../config";
 import './UnifiedUploadModal.css';
 import FormGroup from "../../../Components/FormGroup/FormGroup";
@@ -661,9 +661,27 @@ const UnifiedUploadModal = ({
                             <FormGroup label="Movie Genres (separated by ', ')" name="genres" value={movieData.genres} onChange={handleChange} error={inputErrors} success={inputSuccess} required />
                             <FormGroup label="Movie Keywords (separated by ', ')" name="keywords" value={movieData.keywords} onChange={handleChange} error={inputErrors} success={inputSuccess} />
                             <FormGroup label="Movie poster path" name="poster_path" value={movieData.poster_path} onChange={handleChange} error={inputErrors} success={inputSuccess} required btnText={showPoster ? "Hide Image" : "Show Image"} btnOnClick={(e) => setShowPoster(!showPoster)} showBtn={inputSuccess.poster_path}/>
-                            {showPoster && (<img src={`${API_URL}/cdn/images${movieData.poster_path}`} style={{marginBottom: 10, borderRadius: 10, height:400}} />)}
+                            {showPoster && (
+                                <Image
+                                    src={`${API_URL}/cdn/images${movieData.poster_path}`}
+                                    alt="Movie Poster"
+                                    style={{marginBottom: 10, borderRadius: 10, height: 400}}
+                                    preview={{
+                                        mask: "Click to preview"
+                                    }}
+                                />
+                            )}
                             <FormGroup label="Movie backdrop path" name="backdrop_path" value={movieData.backdrop_path} onChange={handleChange} error={inputErrors} success={inputSuccess} required btnText={showBackdrop ? "Hide Image" : "Show Image"} btnOnClick={(e) => setShowBackdrop(!showBackdrop)} showBtn={inputSuccess.backdrop_path} />
-                            {showBackdrop && (<img src={`${API_URL}/cdn/images${movieData.backdrop_path}`} style={{marginBottom: 10, borderRadius: 10}} />)}
+                            {showBackdrop && (
+                                <Image
+                                    src={`${API_URL}/cdn/images${movieData.backdrop_path}`}
+                                    alt="Movie Backdrop"
+                                    style={{marginBottom: 10, borderRadius: 10}}
+                                    preview={{
+                                        mask: "Click to preview"
+                                    }}
+                                />
+                            )}
                             <FormGroup label="Movie runtime" name="runtime" type="number" value={movieData.runtime} onChange={handleChange} error={inputErrors} success={inputSuccess} required />
                             <FormGroup label="Production Countries (separated by ', ')" name="production_countries" value={movieData.production_countries} onChange={handleChange} error={inputErrors} success={inputSuccess} />
                             <FormGroup label="Production Companies (separated by ', ')" name="production_companies" value={movieData.production_companies} onChange={handleChange} error={inputErrors} success={inputSuccess} />
@@ -740,9 +758,27 @@ const UnifiedUploadModal = ({
                             <FormGroup label="Show Genres (separated by ', ')" name="genres" value={showData.genres} onChange={handleChange} error={errors} success={success} required />
                             <FormGroup label="Created By" name="created_by" value={showData.created_by} onChange={handleChange} error={errors} success={success} />
                             <FormGroup label="Show poster path" name="poster_path" value={showData.poster_path} onChange={handleChange} error={errors} success={success} required btnText={showPoster ? "Hide Image" : "Show Image"} btnOnClick={(e) => setShowPoster(!showPoster)} showBtn={success.poster_path}/>
-                            {showPoster && (<img src={`${API_URL}/cdn/images${showData.poster_path}`} style={{marginBottom: 10, borderRadius: 10, height:400}} />)}
+                            {showPoster && (
+                                <Image
+                                    src={`${API_URL}/cdn/images${showData.poster_path}`}
+                                    alt="Show Poster"
+                                    style={{marginBottom: 10, borderRadius: 10, height: 400}}
+                                    preview={{
+                                        mask: "Click to preview"
+                                    }}
+                                />
+                            )}
                             <FormGroup label="Show backdrop path" name="backdrop_path" value={showData.backdrop_path} onChange={handleChange} error={errors} success={success} required btnText={showBackdrop ? "Hide Image" : "Show Image"} btnOnClick={(e) => setShowBackdrop(!showBackdrop)} showBtn={success.backdrop_path} />
-                            {showBackdrop && (<img src={`${API_URL}/cdn/images${showData.backdrop_path}`} style={{marginBottom: 10, borderRadius: 10}} />)}
+                            {showBackdrop && (
+                                <Image
+                                    src={`${API_URL}/cdn/images${showData.backdrop_path}`}
+                                    alt="Show Backdrop"
+                                    style={{marginBottom: 10, borderRadius: 10}}
+                                    preview={{
+                                        mask: "Click to preview"
+                                    }}
+                                />
+                            )}
                             <FormGroup label="Production Countries (separated by ', ')" name="production_countries" value={showData.production_countries} onChange={handleChange} error={errors} success={success} />
                             <FormGroup label="Production Companies (separated by ', ')" name="production_companies" value={showData.production_companies} onChange={handleChange} error={errors} success={success} />
                             <FormGroup label="Show spoken languages (separated by ', ')" name="spoken_languages" value={showData.spoken_languages} onChange={handleChange} error={errors} success={success} />
