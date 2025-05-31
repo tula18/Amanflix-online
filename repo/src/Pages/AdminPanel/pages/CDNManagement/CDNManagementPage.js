@@ -54,7 +54,7 @@ const { Dragger } = Upload;
 
 // Update the DynamicValueInput component to properly handle onChange events
 const DynamicValueInput = ({ type, value, onChange }) => {
-  console.log(`Rendering input with type: ${type}, value:`, value);
+  // console.log(`Rendering input with type: ${type}, value:`, value);
   
   // Move this declaration to the top level - outside the switch statement
   const selectRef = useRef(null);
@@ -159,7 +159,7 @@ const DynamicFormItem = ({ name, fieldKey, form, ...rest }) => {
         const type = form.getFieldValue(['properties', name, 'type']) || 'string';
         const value = form.getFieldValue(['properties', name, 'value']);
         
-        console.log(`DynamicFormItem ${name} rendering with type: ${type}, value:`, value);
+        // console.log(`DynamicFormItem ${name} rendering with type: ${type}, value:`, value);
         
         // Return the appropriate input wrapped in Form.Item
         return (
@@ -956,8 +956,8 @@ const convertItemToFormValues = (item) => {
   const properties = [];
   
   for (const [key, value] of Object.entries(item)) {
-    // Skip the core fields we handled separately
-    if (['id', 'title', 'name', 'content_type', 'last_episode_to_air', 'has_image', 'media_type', 'next_episode_to_air', 'dir_type', 'adult'].includes(key)) {
+    // Skip the core fields we handled separately and derived display fields
+    if (['id', 'title', 'name', 'content_type', 'has_image', 'dir_type', 'rating', 'year'].includes(key)) {
       continue;
     }
     
@@ -971,7 +971,6 @@ const convertItemToFormValues = (item) => {
       if (typeof value === 'string' && value.includes('[object Object]')) {
         try {
           // Try to fetch the actual seasons data from API
-          console.log("Detected seasons as string, will try to use proper seasons data");
           type = 'seasons';
           
           // This is a placeholder - in the next step we'll ensure seasons data is loaded properly
@@ -1029,7 +1028,7 @@ const convertItemToFormValues = (item) => {
     });
   }
   
-  return {
+  const result = {
     id,
     title: title || name,
     content_type,
@@ -1037,6 +1036,8 @@ const convertItemToFormValues = (item) => {
     // Preserve original field type for proper handling
     originalTitleField: content_type === 'tv' ? 'name' : 'title'
   };
+  
+  return result;
 };
 
   // Handle form submission for editing content
@@ -1059,21 +1060,27 @@ const convertItemToFormValues = (item) => {
         // Handle special data types
         if (prop.type === 'date' && dayjs.isDayjs(value)) {
           value = value.format('YYYY-MM-DD');
+          apiData[prop.key] = value;
         } else if (prop.type === 'boolean') {
           value = value === true || value === 'true';
+          apiData[prop.key] = value;
         } else if (prop.type === 'number' && typeof value !== 'number') {
           value = Number(value);
+          apiData[prop.key] = value;
         } else if (prop.type === 'array') {
           if (typeof value === 'string') {
             apiData[prop.key] = value;
           } else if (!Array.isArray(value)) {
             apiData[prop.key] = value ? String(value) : '';
+          } else {
+            // Handle actual arrays - convert back to proper format
+            apiData[prop.key] = value;
           }
         } else {
           apiData[prop.key] = value;
         }
       });
-      
+
       // Use the new CDN API endpoint
       const endpoint = `${API_URL}/api/cdn/admin/content/${selectedItem.content_type}/${selectedItem.id}`;
       
