@@ -1033,7 +1033,9 @@ const convertItemToFormValues = (item) => {
     id,
     title: title || name,
     content_type,
-    properties
+    properties,
+    // Preserve original field type for proper handling
+    originalTitleField: content_type === 'tv' ? 'name' : 'title'
   };
 };
 
@@ -1044,9 +1046,11 @@ const convertItemToFormValues = (item) => {
     setEditFormLoading(true);
     try {
       // Convert form values back to API format
-      const apiData = {
-        title: formValues.title,
-      };
+      const apiData = {};
+      
+      // Use the correct field name based on content type
+      const titleField = formValues.originalTitleField || (selectedItem.content_type === 'tv' ? 'name' : 'title');
+      apiData[titleField] = formValues.title;
       
       // Add all properties from the properties array
       formValues.properties.forEach(prop => {

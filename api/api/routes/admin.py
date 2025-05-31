@@ -761,6 +761,11 @@ def update_cdn_content(content_type, new_data, existing_data, merge=True):
             import app
             app.tv_series = new_data if not merge else existing_data
             log_info(f"Updated in-memory tv_series data, new count: {len(app.tv_series)}")
+        
+        # Rebuild derived data structures for search functionality
+        import app
+        app.rebuild_content_indexes()
+        log_info("Rebuilt content indexes after data update")
     
     except Exception as e:
         log_error(f"Error in update_cdn_content for {content_type}: {str(e)}")
@@ -846,6 +851,11 @@ def update_with_images_content(content_type, new_data, existing_with_images):
             import app
             app.tv_series_with_images = existing_with_images
             log_info(f"Updated in-memory tv_series_with_images, new count: {len(app.tv_series_with_images)}")
+        
+        # Rebuild derived data structures for search functionality
+        import app
+        app.rebuild_content_indexes()
+        log_info("Rebuilt content indexes after with_images data update")
     
     except Exception as e:
         log_error(f"Error in update_with_images_content for {content_type}: {str(e)}")
@@ -926,6 +936,9 @@ def update_with_images_for_new_files(filenames):
         # Update in-memory data
         app.movies_with_images = movies_with_images
         app.tv_series_with_images = tv_series_with_images
+        
+        # Rebuild derived data structures for search functionality
+        app.rebuild_content_indexes()
         
         log_success(f"Successfully updated with_images files for newly uploaded images")
         

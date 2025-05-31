@@ -60,17 +60,53 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
     // Transform parsed show data to TvShowEditModal format
     const transformShowDataForModal = (show) => {
         // Transform episodes data to the expected format
-        const transformedSeasons = Object.entries(show.episodes || {}).map(([seasonNumber, episodes]) => ({
-            seasonNumber: parseInt(seasonNumber),
-            episodes: episodes.map(episode => ({
-                episodeNumber: episode.episode,
-                title: episode.title || `Episode ${episode.episode}`,
-                overview: episode.overview || '',
-                has_subtitles: false,
-                videoFile: null,
-                filename: episode.filename
-            }))
-        }));
+        console.log("transforming", show);
+        
+        let transformedSeasons;
+        
+        // Prioritize CDN seasons data if available
+        if (show.cdn_data?.seasons && Array.isArray(show.cdn_data.seasons)) {
+            console.log("Using CDN seasons data for", show.title);
+            transformedSeasons = show.cdn_data.seasons.map(season => ({
+                seasonNumber: season.season_number,
+                episodes: season.episodes?.map(episode => {
+                    // Find corresponding filename from GuessIt data
+                    const guessItEpisode = show.episodes?.[season.season_number]?.find(
+                        ep => ep.episode === episode.episode_number
+                    );
+                    
+                    return {
+                        episodeNumber: episode.episode_number,
+                        title: episode.name || `Episode ${episode.episode_number}`,
+                        overview: episode.overview || '',
+                        has_subtitles: false,
+                        videoFile: null,
+                        filename: guessItEpisode?.filename || '',
+                        // Additional CDN episode data
+                        air_date: episode.air_date,
+                        runtime: episode.runtime,
+                        still_path: episode.still_path,
+                        vote_average: episode.vote_average,
+                        episode_type: episode.episode_type,
+                        production_code: episode.production_code
+                    };
+                }) || []
+            }));
+        } else {
+            // Fallback to GuessIt data if CDN seasons are not available
+            console.log("Using GuessIt episodes data for", show.title, "- CDN seasons not available");
+            transformedSeasons = Object.entries(show.episodes || {}).map(([seasonNumber, episodes]) => ({
+                seasonNumber: parseInt(seasonNumber),
+                episodes: episodes.map(episode => ({
+                    episodeNumber: episode.episode,
+                    title: episode.title || `Episode ${episode.episode}`,
+                    overview: episode.overview || '',
+                    has_subtitles: false,
+                    videoFile: null,
+                    filename: episode.filename
+                }))
+            }));
+        }
 
         return {
             show_id: show.cdn_data?.id || '',

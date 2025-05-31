@@ -55,6 +55,9 @@ def update_cdn_content(current_admin, content_type, content_id):
         else:
             app.tv_series = items
             
+        # Rebuild search indexes after content update
+        app.rebuild_content_indexes()
+            
         # Also update the "with_images" version if needed
         try:
             from cdn.utils import check_images_existence
@@ -163,6 +166,9 @@ def delete_cdn_content(current_admin, content_type, content_id):
             app.movies = items
         else:
             app.tv_series = items
+            
+        # Rebuild search indexes after content deletion
+        app.rebuild_content_indexes()
             
         # Also update the "with_images" version
         try:

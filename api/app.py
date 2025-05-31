@@ -200,6 +200,21 @@ all_items_with_images = movies_with_images + tv_series_with_images
 item_index_with_images = {item['id']: index for index, item in enumerate(all_items)}
 
 log_success(f"Created content index with {Colors.BOLD}{len(item_index)}{Colors.RESET} items")
+
+def rebuild_content_indexes():
+    """Rebuild the search indexes after content data changes."""
+    global all_items, item_index, all_items_with_images, item_index_with_images
+    
+    # Rebuild all_items and its index
+    all_items = movies + tv_series
+    item_index = {item['id']: index for index, item in enumerate(all_items)}
+    
+    # Rebuild all_items_with_images and its index
+    all_items_with_images = movies_with_images + tv_series_with_images
+    item_index_with_images = {item['id']: index for index, item in enumerate(all_items_with_images)}
+    
+    print(f"Rebuilt content indexes: {len(all_items)} total items, {len(all_items_with_images)} with images")
+
 log_section_end()
 
 progresses = {}

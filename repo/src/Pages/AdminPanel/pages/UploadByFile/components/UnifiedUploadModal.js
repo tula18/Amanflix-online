@@ -173,8 +173,8 @@ const UnifiedUploadModal = ({
 
     const initializeTVShowForm = () => {
         const newShowData = { ...showData };
-        
         console.log('Initializing TV Show Form with prefilledData:', prefilledData);
+        console.log('Initializing TV Show Form with newShowData:', newShowData);
         
         // Map prefilled data to show form fields
         newShowData.show_id = prefilledData.show_id || prefilledData.id || '';
@@ -196,6 +196,8 @@ const UnifiedUploadModal = ({
 
         // Initialize seasons from episodes
         if (prefilledData.seasons && Array.isArray(prefilledData.seasons)) {
+            console.log("initializing seasons: ", prefilledData.seasons);
+            
             newShowData.seasons = prefilledData.seasons.map(season => ({
                 seasonNumber: season.seasonNumber,
                 episodes: season.episodes.map(episode => ({
