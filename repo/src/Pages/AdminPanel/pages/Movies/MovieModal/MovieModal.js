@@ -527,15 +527,17 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
                         <label htmlFor="has_subtitles">Has Subtitles:</label>
                         <input
                             type={"checkbox"}
+                            id="has_subtitles"
                             name="has_subtitles"
                             checked={movieData.has_subtitles}
                             onChange={(e) => handleChange(e)}
                         />
                     </div>
                     <div className="form-group checkbox">
-                        <label htmlFor="has_subtitles">In Production:</label>
+                        <label htmlFor="in_production">In Production:</label>
                         <input
                             type={"checkbox"}
+                            id="in_production"
                             className="form-group-checkbox"
                             name="in_production"
                             value={movieData.in_production}
@@ -547,6 +549,7 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
                         <label htmlFor="force">Force Overwrite:</label>
                         <input
                             type={"checkbox"}
+                            id="force"
                             className="form-group-checkbox"
                             name="force"
                             value={movieData.force}

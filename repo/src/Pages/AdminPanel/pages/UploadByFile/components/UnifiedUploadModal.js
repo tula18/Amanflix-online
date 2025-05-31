@@ -694,6 +694,7 @@ const UnifiedUploadModal = ({
                                 <label htmlFor="has_subtitles">Has Subtitles:</label>
                                 <input
                                     type={"checkbox"}
+                                    id="has_subtitles"
                                     name="has_subtitles"
                                     checked={movieData.has_subtitles}
                                     onChange={(e) => handleChange(e)}
@@ -703,6 +704,7 @@ const UnifiedUploadModal = ({
                                 <label htmlFor="in_production">In Production:</label>
                                 <input
                                     type={"checkbox"}
+                                    id="in_production"
                                     className="form-group-checkbox"
                                     name="in_production"
                                     value={movieData.in_production}
@@ -714,6 +716,7 @@ const UnifiedUploadModal = ({
                                 <label htmlFor="force">Force Overwrite:</label>
                                 <input
                                     type={"checkbox"}
+                                    id="force"
                                     className="form-group-checkbox"
                                     name="force"
                                     value={movieData.force}
@@ -724,6 +727,7 @@ const UnifiedUploadModal = ({
                             <div className="form-group">
                                 <label htmlFor="vid_movie">Upload File:</label>
                                 <Upload
+                                    id="vid_movie"
                                     name="vid_movie"
                                     beforeUpload={(file, fileList) => {
                                         setMovieData({
@@ -742,7 +746,7 @@ const UnifiedUploadModal = ({
                                         });
                                     }}
                                 >
-                                    <Button icon={<UploadOutlined />}>Upload a video</Button>
+                                    <Button id="vid_movie" icon={<UploadOutlined />}>Upload a video</Button>
                                 </Upload>
                             </div>
                         </>
@@ -896,6 +900,7 @@ const UnifiedUploadModal = ({
                                                 </div>
                                                 
                                                 <Upload
+                                                    id={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}
                                                     name={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}
                                                     beforeUpload={(file, fileList) => {
                                                         console.log(`File selected for S${season.seasonNumber}E${episode.episodeNumber}:`, file);

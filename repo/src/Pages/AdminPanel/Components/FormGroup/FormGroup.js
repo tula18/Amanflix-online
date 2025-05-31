@@ -24,6 +24,7 @@ const FormGroup = ({ label, name, type = 'text', value, onChange, error, success
                 min={min}
                 step={step}
                 maxLength={maxLength}
+                id={name}
                 name={name}
                 style={style}
                 value={value}
