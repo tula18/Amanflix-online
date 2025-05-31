@@ -777,7 +777,7 @@ def get_current_progress(current_user, content_type, content_id):
                             'runtime': episode.runtime
                         }
         except Exception as e:
-            print(f"Error fetching episode details: {e}")
+            log_error(f"Error fetching episode details: {e}")
             
         response = {
             'content_type': 'tv',

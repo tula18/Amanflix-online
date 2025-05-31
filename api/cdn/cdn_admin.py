@@ -3,6 +3,7 @@ from api.utils import admin_token_required
 import json
 import os
 import traceback
+from utils.logger import log_error, log_success, log_warning
 
 cdn_admin_bp = Blueprint('cdn_admin_bp', __name__, url_prefix='/api/cdn/admin')
 
@@ -94,7 +95,7 @@ def update_cdn_content(current_admin, content_type, content_id):
                     app.tv_series_with_images = with_images_items
         except Exception as e:
             # Log but continue - this is not critical
-            print(f"Warning: Error updating with_images data: {str(e)}")
+            log_error(f"Warning: Error updating with_images data: {str(e)}")
         
         return jsonify({
             "message": f"{content_type.capitalize()} with ID {content_id} updated successfully in CDN",
@@ -103,8 +104,7 @@ def update_cdn_content(current_admin, content_type, content_id):
     
     except Exception as e:
         error_msg = f"Error updating CDN content: {str(e)}"
-        print(error_msg)
-        print(traceback.format_exc())
+        log_error(error_msg)
         return jsonify({"message": error_msg, "error": str(e)}), 500
 
 @cdn_admin_bp.route('/content/<string:content_type>/<int:content_id>', methods=['DELETE'])
@@ -196,7 +196,7 @@ def delete_cdn_content(current_admin, content_type, content_id):
                 app.tv_series_with_images = with_images_items
         except Exception as e:
             # Log but continue - this is not critical
-            print(f"Warning: Error updating with_images data: {str(e)}")
+            log_error(f"Warning: Error updating with_images data: {str(e)}")
         
         # Delete the actual image files
         images_deleted = 0
@@ -207,8 +207,8 @@ def delete_cdn_content(current_admin, content_type, content_id):
                     os.remove(file_path)
                     images_deleted += 1
             except Exception as e:
-                print(f"Warning: Could not delete image file {path}: {str(e)}")
-        
+                log_warning(f"Warning: Could not delete image file {path}: {str(e)}")
+                
         return jsonify({
             "message": f"{content_type.capitalize()} with ID {content_id} deleted successfully from CDN",
             "deleted": True,
@@ -217,6 +217,5 @@ def delete_cdn_content(current_admin, content_type, content_id):
     
     except Exception as e:
         error_msg = f"Error deleting CDN content: {str(e)}"
-        print(error_msg)
-        print(traceback.format_exc())
+        log_error(error_msg)
         return jsonify({"message": error_msg, "error": str(e)}), 500

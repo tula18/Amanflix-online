@@ -26,13 +26,13 @@ def get_video_metadata(video_path):
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"Error running ffprobe: {result.stderr}")
+            log_error(f"Error running ffprobe: {result.stderr}")
             return None
             
         metadata = json.loads(result.stdout)
         return metadata
     except Exception as e:
-        print(f"Error getting video metadata: {str(e)}")
+        log_error(f"Error getting video metadata: {str(e)}")
         return None
 
 def get_video_duration_in_minutes(video_path):
@@ -48,7 +48,7 @@ def get_video_duration_in_minutes(video_path):
         duration_minutes = round(duration_seconds / 60)
         return duration_minutes
     except Exception as e:
-        print(f"Error calculating video duration: {str(e)}")
+        log_error(f"Error calculating video duration: {str(e)}")
         return None
 
 def validate_video_file(file):
@@ -371,7 +371,6 @@ def upload_tvshow(current_admin):
         "networks": tvshow_data.get('networks', None, type=str),
         "status": tvshow_data.get('status', None, type=str)
     }
-    pprint(tvshow_data, indent=2)
 
     existing_show = TVShow.query.filter_by(show_id=tvshow_data['show_id']).first()
     if existing_show and tvshow_data['show_id']:
@@ -437,11 +436,7 @@ def upload_tvshow(current_admin):
 
             episodes_data = season_data.get('episodes')
             for episode_data in episodes_data:
-                # pprint(episode_data, indent=2)
                 error = validate_episode_data(episode_data, ['title', 'episode_number'], season_data['season_number'], episode_data['episode_number'])
-                # error = validate_title_data(episode_data, ['title', 'episode_number', 'overview'])
-
-                print("there was an error 1")
                 if error:
                     # Clean up all files and database records
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
@@ -543,7 +538,7 @@ def cleanup_uploaded_files(file_paths, show_id=None):
             try:
                 os.remove(path)
             except Exception as e:
-                print(f"Error removing file {path}: {str(e)}")
+                log_error(f"Error removing file {path}: {str(e)}")
     
     # Delete database records if show_id is provided
     if show_id:
