@@ -165,6 +165,7 @@ const UnifiedUploadModal = ({
         newMovieData.budget = prefilledData.budget || '';
         newMovieData.revenue = prefilledData.revenue || '';
         newMovieData.status = prefilledData.status || '';
+        newMovieData.has_subtitles = prefilledData.has_subtitles || false;
         newMovieData.vid_movie = prefilledData.file || null;
 
         setMovieData(newMovieData);
@@ -222,7 +223,7 @@ const UnifiedUploadModal = ({
                     episodeNumber: ep.episode,
                     title: ep.title || `Episode ${ep.episode}`,
                     overview: ep.overview || '',
-                    has_subtitles: false,
+                    has_subtitles: ep.has_subtitles || false,
                     force: false,
                     videoFile: ep.file || null
                 });

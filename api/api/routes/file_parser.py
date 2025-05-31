@@ -305,12 +305,20 @@ def parse_single_file(filename):
             log_error(f"Error searching CDN metadata for '{title}': {str(e)}")
             cdn_data = None
         
+        # Detect subtitle indicators in filename
+        has_subtitles = detect_subtitle_indicators(filename)
+        
+        # Also check GuessIt subtitle_language detection
+        if not has_subtitles and guess.get('subtitle_language'):
+            has_subtitles = True
+
         # Build comprehensive result
         result = {
             'filename': filename,
             'content_type': content_type,
             'title': title,
             'parsing_method': parsing_method,
+            'has_subtitles': has_subtitles,
             'parsing_metadata': {
                 'has_hebrew': contains_hebrew(filename),
                 'has_arabic': contains_arabic(filename),
@@ -443,6 +451,7 @@ def group_episodes(parsed_files):
                 'episode': parsed_file.get('episode_number'),
                 'title': parsed_file.get('episode_title', f"Episode {parsed_file.get('episode_number', '')}"),
                 'overview': '',  # Can be filled from CDN data if available
+                'has_subtitles': parsed_file.get('has_subtitles', False),  # Include subtitle detection
                 'parsing_method': method,
                 'quality_info': parsed_file.get('quality_info', {}),
                 'guessit_data': parsed_file['guessit_data']
@@ -584,7 +593,7 @@ def extract_episode_name_from_filename(filename, show_title, season_num, episode
                         # Check if this part looks like an episode title (not quality info)
                         if (len(part) > 3 and 
                             not re.match(r'^[0-9\.\-_]+$', part) and  # Not just numbers/separators
-                            not re.search(r'\b(1080p?|720p?|480p?|4K|UHD|HDR|BluRay|BDRip|DVDRip|WEBRip|HDTV|WEB-DL|WEB)\b', part, re.IGNORECASE) and
+                            not re.search(r'\b(1080p?|720p?|480p?|4K|UHD|HDR|BluRay|BDRip|DVDRip|WEBRip|HDTV|WEB)\b', part, re.IGNORECASE) and
                             not re.search(r'\b(x264|x265|H\.?264|H\.?265|HEVC|AVC|AAC|AC3|DTS|MP3|FLAC)\b', part, re.IGNORECASE) and
                             not re.search(r'\b(INTERNAL|REPACK|PROPER|EXTENDED|UNCUT|DC|DIRECTORS?.CUT)\b', part, re.IGNORECASE) and
                             not re.search(r'\b(YIFY|ETHEL|RARBG|PublicHD|FGT|KILLERS|LOL|DIMENSION|with)\b', part, re.IGNORECASE) and
@@ -624,7 +633,7 @@ def extract_episode_name_from_filename(filename, show_title, season_num, episode
             rf'עונה\s*{season_num}\s*פרק\s*{episode_num}',
             rf'ס0?{season_num}\s*א0?{episode_num}',
             # Quality/source indicators (more comprehensive)
-            r'\b(1080p?|720p?|480p?|4K|UHD|HDR|BluRay|BDRip|DVDRip|WEBRip|HDTV|WEB-DL|WEB)\b',
+            r'\b(1080p?|720p?|480p?|4K|UHD|HDR|BluRay|BDRip|DVDRip|WEBRip|HDTV|WEB)\b',
             r'\b(x264|x265|H\.?264|H\.?265|HEVC|AVC)\b',
             r'\b(AAC|AC3|DTS|MP3|FLAC)\b',
             r'\b(INTERNAL|REPACK|PROPER|EXTENDED|UNCUT|DC|DIRECTORS?.CUT)\b',
@@ -665,3 +674,45 @@ def extract_episode_name_from_filename(filename, show_title, season_num, episode
     except Exception as e:
         log_error(f"Error extracting episode name from '{filename}': {str(e)}")
         return f"Episode {episode_num}"
+
+def detect_subtitle_indicators(filename):
+    """
+    Detect subtitle-related indicators in the filename.
+    Returns True if the filename contains subtitle-related tags.
+    """
+    subtitle_patterns = [
+        r'\bwith[_\-\s]*subtitles?\b',  # with_subtitles, with-subtitles, with subtitles
+        r'\bsub(?:titles?)?\b',         # sub, subs, subtitle, subtitles
+        r'\bcc\b',                      # closed captions
+        r'\bcaptions?\b',               # caption, captions
+        r'\bhardcoded\b',               # hardcoded subs
+        r'\bembedded\b',                # embedded subs
+        r'\bintern(?:al)?\b',           # internal subs
+        r'\bext(?:ernal)?\b',           # external subs
+        r'\b(?:en|eng|english)[_\-\s]*sub',    # english subs
+        r'\b(?:he|heb|hebrew)[_\-\s]*sub',     # hebrew subs
+        r'\b(?:es|spa|spanish)[_\-\s]*sub',    # spanish subs
+        r'\b(?:fr|fre|french)[_\-\s]*sub',     # french subs
+        r'\b(?:de|ger|german)[_\-\s]*sub',     # german subs
+        r'\b(?:it|ita|italian)[_\-\s]*sub',    # italian subs
+        r'\b(?:pt|por|portuguese)[_\-\s]*sub', # portuguese subs
+        r'\b(?:ru|rus|russian)[_\-\s]*sub',    # russian subs
+        r'\b(?:ja|jap|japanese)[_\-\s]*sub',   # japanese subs
+        r'\b(?:ko|kor|korean)[_\-\s]*sub',     # korean subs
+        r'\b(?:zh|chi|chinese)[_\-\s]*sub',    # chinese subs
+        r'\b(?:ar|ara|arabic)[_\-\s]*sub',     # arabic subs
+        r'\bmulti[_\-\s]*sub',          # multi-language subs
+        r'\bdual[_\-\s]*sub',           # dual subs
+        r'\bsrt\b',                     # srt files mentioned
+        r'\bvtt\b',                     # vtt files mentioned
+        r'\bass\b',                     # ass files mentioned
+        r'\bssa\b'                      # ssa files mentioned
+    ]
+    
+    filename_lower = filename.lower()
+    
+    for pattern in subtitle_patterns:
+        if re.search(pattern, filename_lower, re.IGNORECASE):
+            return True
+    
+    return False

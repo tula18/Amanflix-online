@@ -48,7 +48,7 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
             budget: movie.cdn_data?.budget || '',
             revenue: movie.cdn_data?.revenue || '',
             status: movie.cdn_data?.status || '',
-            has_subtitles: false,
+            has_subtitles: movie.has_subtitles || false,
             in_production: false,
             force: false,
             vid_movie: null,
@@ -79,7 +79,7 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
                         episodeNumber: episode.episode_number,
                         title: episode.name || `Episode ${episode.episode_number}`,
                         overview: episode.overview || '',
-                        has_subtitles: false,
+                        has_subtitles: guessItEpisode?.has_subtitles || false,
                         videoFile: null,
                         filename: guessItEpisode?.filename || '',
                         // Additional CDN episode data
@@ -101,7 +101,7 @@ const PrefilledUpload = ({ parsedData, onUploadComplete, onBack }) => {
                     episodeNumber: episode.episode,
                     title: episode.title || `Episode ${episode.episode}`,
                     overview: episode.overview || '',
-                    has_subtitles: false,
+                    has_subtitles: episode.has_subtitles || false,
                     videoFile: null,
                     filename: episode.filename
                 }))
