@@ -246,6 +246,7 @@ const UnifiedUploadModal = ({
 
         console.log('Initialized seasons:', newShowData.seasons);
         setShowData(newShowData);
+        validateForm(newShowData, true);
     };
 
     // Validation functions (from MovieModal)
