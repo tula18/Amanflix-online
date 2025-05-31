@@ -147,19 +147,25 @@ const FileDropper = ({ onFilesSelected, onParseComplete, selectedFiles, isLoadin
                             files: [item.filename] // Convert single filename to files array
                         });
                     } else if (item.content_type === 'tv') {
-                        // Convert episodes array to episodes object grouped by season
-                        const episodesBySeason = {};
+                        // Handle episodes - the API returns episodes as an object grouped by season
+                        let episodesBySeason = {};
                         
-                        item.episodes.forEach(episode => {
-                            const season = episode.season_number || 1;
-                            if (!episodesBySeason[season]) {
-                                episodesBySeason[season] = [];
-                            }
-                            episodesBySeason[season].push({
-                                episode: episode.episode_number,
-                                filename: episode.filename
+                        if (item.episodes && typeof item.episodes === 'object') {
+                            // Episodes are already grouped by season from the API
+                            episodesBySeason = item.episodes;
+                        } else if (Array.isArray(item.episodes)) {
+                            // Fallback: convert episodes array to episodes object grouped by season
+                            item.episodes.forEach(episode => {
+                                const season = episode.season_number || episode.season || 1;
+                                if (!episodesBySeason[season]) {
+                                    episodesBySeason[season] = [];
+                                }
+                                episodesBySeason[season].push({
+                                    episode: episode.episode_number || episode.episode,
+                                    filename: episode.filename
+                                });
                             });
-                        });
+                        }
                         
                         tv_shows.push({
                             ...item,
