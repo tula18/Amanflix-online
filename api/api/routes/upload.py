@@ -69,16 +69,6 @@ def get_file_modified_date(file_path):
         log_error(f"Error getting file modified date for {file_path}: {str(e)}")
         return None
 
-def get_free_disk_space(path='.'):
-    """Get free disk space in bytes"""
-    try:
-        import shutil
-        _, _, free = shutil.disk_usage(path)
-        return free
-    except Exception as e:
-        log_error(f"Error getting disk space: {str(e)}")
-        return None
-
 def validate_video_quality(video_path):
     """Validate video quality parameters"""
     try:
@@ -910,7 +900,7 @@ def update_tvshow(current_admin, show_id):
 
         # Handle seasons - this gets complex as we need to track what's new, changed, or removed
         current_season_ids = {season.id for season in show.seasons}
-        updated_season_ids = set()
+        updated_season_ids = set();
 
         for season_data in seasons_data:
             season_number = season_data['season_number']
@@ -1269,52 +1259,7 @@ def validate_upload(current_admin):
                             'type': 'content_scan_error',
                             'message': error,
                             'suggestion': "Address content scanning issues"
-                        })
-                
-                # Pre-upload space reservation
-                estimated_file_size = content_data.get('estimated_file_size')
-                if not estimated_file_size:
-                    # Provide default estimation based on content type
-                    if content_type == 'movie':
-                        estimated_file_size = 2 * 1024 * 1024 * 1024  # 2GB for movies
-                        log_info(f"💾 No file size provided, using default movie estimation: 2GB")
-                    else:  # TV show
-                        # Estimate based on number of episodes if available
-                        # Check both content_data and main data for episodes
-                        episodes_data = content_data.get('episodes', [])
-                        if not episodes_data:
-                            episodes_data = data.get('episodes', [])
-                        episode_count = len(episodes_data) if episodes_data else 1
-                        estimated_file_size = episode_count * 500 * 1024 * 1024  # 500MB per episode
-                        log_info(f"💾 No file size provided, using default TV show estimation: {episode_count} episodes × 500MB = {estimated_file_size / (1024*1024):.0f}MB")
-                
-                if estimated_file_size:
-                    try:
-                        file_size = int(estimated_file_size)
-                        log_info(f"💾 Checking space reservation for {file_size / (1024*1024):.1f}MB ({file_size} bytes)")
-                        space_warnings, space_errors, reservation_id = reserve_upload_space(file_size, content_id)
-                        for warning in space_warnings:
-                            validation_result['warnings'].append({
-                                'type': 'space_reservation',
-                                'message': warning,
-                                'suggestion': "Monitor disk space during upload"
-                            })
-                        for error in space_errors:
-                            validation_result['errors'].append({
-                                'type': 'space_reservation_error',
-                                'message': error,
-                                'suggestion': "Free up disk space before upload"
-                            })
-                        if reservation_id:
-                            validation_result['space_reservation_id'] = reservation_id
-                    except (ValueError, TypeError):
-                        validation_result['warnings'].append({
-                            'type': 'space_reservation',
-                            'message': "Invalid estimated file size provided",
-                            'suggestion': "Provide valid file size for space reservation"
-                        })
-                
-                # Check for similar titles in database
+                        })                  # Check for similar titles in database
                 title = content_data.get('title', '')
                 if title:
                     log_info(f"🔍 Checking for similar movie titles to: {title}")
@@ -1330,6 +1275,43 @@ def validate_upload(current_admin):
                             'message': f"Similar titles found: {', '.join(similar_titles)}",
                             'suggestion': "Verify this is not a duplicate with different metadata"
                         })
+                
+                # Estimate movie file size for space checking
+                estimated_size = content_data.get('estimated_file_size')
+                if estimated_size:
+                    try:
+                        estimated_size = int(estimated_size)
+                        log_info(f"💾 Movie estimated size: {estimated_size / (1024*1024):.1f}MB")
+                    except (ValueError, TypeError):
+                        estimated_size = 2 * 1024 * 1024 * 1024  # Default 2GB for movies
+                        log_info(f"💾 Invalid movie size provided, using default: 2GB")
+                else:
+                    estimated_size = 2 * 1024 * 1024 * 1024  # Default 2GB for movies
+                    log_info(f"💾 No movie size provided, using default: 2GB")
+                
+                # Check if estimated upload size fits available disk space
+                free_space = get_free_disk_space('uploads')
+                if free_space and estimated_size > free_space * 0.9:  # Leave 10% buffer
+                    validation_result['errors'].append({
+                        'type': 'insufficient_space_for_upload',
+                        'message': f"Estimated upload size ({estimated_size / (1024*1024):.0f}MB) exceeds available disk space ({free_space / (1024*1024):.0f}MB)",
+                        'suggestion': "Free up disk space before uploading the movie"
+                    })
+                    log_warning(f"⚠️ Insufficient space: need {estimated_size / (1024*1024):.0f}MB, have {free_space / (1024*1024):.0f}MB")
+                elif free_space and estimated_size > free_space * 0.7:  # Warn at 70% usage
+                    validation_result['warnings'].append({
+                        'type': 'limited_space_for_upload',
+                        'message': f"Estimated upload size ({estimated_size / (1024*1024):.0f}MB) will use significant disk space ({free_space / (1024*1024):.0f}MB available)",
+                        'suggestion': "Monitor disk space during movie upload"
+                    })
+                    log_info(f"⚠️ Limited space warning: uploading {estimated_size / (1024*1024):.0f}MB to {free_space / (1024*1024):.0f}MB available")
+                
+                # Add size estimation info
+                validation_result['info'].append({
+                    'type': 'estimated_upload_size',
+                    'message': f"Estimated movie upload size: {estimated_size / (1024*1024):.0f}MB",
+                    'suggestion': "Actual file size may vary"
+                })
             else:
                 log_info(f"📋 No content metadata provided for movie ID {content_id}")
         
@@ -1548,23 +1530,31 @@ def validate_upload(current_admin):
                     total_estimated_size = episode_count * 500 * 1024 * 1024  # 500MB per episode
                     log_info(f"💾 No episode sizes provided, using default: {episode_count} episodes × 500MB = {total_estimated_size / (1024*1024):.0f}MB")
                 
+                # Check if estimated upload size fits available disk space
                 if total_estimated_size > 0:
-                    log_info(f"💾 Checking space reservation for {total_estimated_size / (1024*1024):.1f}MB total")
-                    space_warnings, space_errors, reservation_id = reserve_upload_space(total_estimated_size, content_id)
-                    for warning in space_warnings:
-                        validation_result['warnings'].append({
-                            'type': 'space_reservation',
-                            'message': warning,
-                            'suggestion': "Monitor disk space during episode uploads"
-                        })
-                    for error in space_errors:
+                    log_info(f"💾 Estimated upload size: {total_estimated_size / (1024*1024):.1f}MB")
+                    free_space = get_free_disk_space('uploads')
+                    if free_space and total_estimated_size > free_space * 0.9:  # Leave 10% buffer
                         validation_result['errors'].append({
-                            'type': 'space_reservation_error',
-                            'message': error,
+                            'type': 'insufficient_space_for_upload',
+                            'message': f"Estimated upload size ({total_estimated_size / (1024*1024):.0f}MB) exceeds available disk space ({free_space / (1024*1024):.0f}MB)",
                             'suggestion': "Free up disk space before uploading episodes"
                         })
-                    if reservation_id:
-                        validation_result['space_reservation_id'] = reservation_id
+                        log_warning(f"⚠️ Insufficient space: need {total_estimated_size / (1024*1024):.0f}MB, have {free_space / (1024*1024):.0f}MB")
+                    elif free_space and total_estimated_size > free_space * 0.7:  # Warn at 70% usage
+                        validation_result['warnings'].append({
+                            'type': 'limited_space_for_upload',
+                            'message': f"Estimated upload size ({total_estimated_size / (1024*1024):.0f}MB) will use significant disk space ({free_space / (1024*1024):.0f}MB available)",
+                            'suggestion': "Monitor disk space during episode uploads"
+                        })
+                        log_info(f"⚠️ Limited space warning: uploading {total_estimated_size / (1024*1024):.0f}MB to {free_space / (1024*1024):.0f}MB available")
+                    
+                    # Add size estimation info
+                    validation_result['info'].append({
+                        'type': 'estimated_upload_size',
+                        'message': f"Estimated total upload size: {total_estimated_size / (1024*1024):.0f}MB for {max(len(episodes_data), len(content_episodes))} episodes",
+                        'suggestion': "Actual file sizes may vary"
+                    })
                 
                 # Check for similar titles in database
                 title = content_data.get('title', '')
@@ -2178,67 +2168,6 @@ def validate_content_categorization(content_data, content_type):
         errors.append(f"Content categorization failed: {str(e)}")
     
     return warnings, errors
-
-def reserve_upload_space(file_size_bytes, content_id=None):
-    """Reserve disk space before upload to prevent partial uploads"""
-    import tempfile
-    from datetime import datetime
-    
-    warnings = []
-    errors = []
-    
-    try:
-        # Get available disk space
-        upload_dir = 'uploads'
-        free_space = get_free_disk_space(upload_dir)
-        
-        if free_space is None:
-            warnings.append("Could not determine available disk space")
-            return warnings, errors, None
-        
-        # Add 20% buffer for safety
-        required_space = file_size_bytes * 1.2
-        
-        if free_space < required_space:
-            free_gb = free_space / (1024**3)
-            required_gb = required_space / (1024**3)
-            errors.append(f"Insufficient disk space. Available: {free_gb:.1f}GB, Required: {required_gb:.1f}GB")
-            return warnings, errors, None
-        
-        # Create a temporary reservation file
-        reservation_id = f"reservation_{content_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        reservation_path = os.path.join(tempfile.gettempdir(), reservation_id)
-        
-        try:
-            # Create a small marker file instead of reserving actual space
-            with open(reservation_path, 'w') as f:
-                f.write(f"Space reservation for content {content_id}: {file_size_bytes} bytes")
-            
-            warnings.append(f"Reserved {file_size_bytes / (1024**2):.1f}MB disk space")
-            return warnings, errors, reservation_id
-            
-        except Exception as e:
-            warnings.append(f"Could not create space reservation: {str(e)}")
-            return warnings, errors, None
-    
-    except Exception as e:
-        errors.append(f"Space reservation failed: {str(e)}")
-        return warnings, errors, None
-
-def release_upload_space_reservation(reservation_id):
-    """Release reserved upload space"""
-    import tempfile
-    
-    if not reservation_id:
-        return
-    
-    try:
-        reservation_path = os.path.join(tempfile.gettempdir(), reservation_id)
-        if os.path.exists(reservation_path):
-            os.remove(reservation_path)
-            log_info(f"Released space reservation: {reservation_id}")
-    except Exception as e:
-        log_warning(f"Could not release space reservation {reservation_id}: {str(e)}")
 
 def get_free_disk_space(path):
     """Get free disk space in bytes for the given path"""

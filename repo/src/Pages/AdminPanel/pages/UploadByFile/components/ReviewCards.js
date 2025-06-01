@@ -6,7 +6,7 @@ import {
 import { 
     EditOutlined, PlayCircleOutlined, DesktopOutlined, ExclamationCircleOutlined, 
     CheckCircleOutlined, WarningOutlined, InfoCircleOutlined, ClockCircleOutlined,
-    DatabaseOutlined, FileTextOutlined, SafetyCertificateOutlined,
+    FileTextOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { API_URL } from '../../../../../config';
 

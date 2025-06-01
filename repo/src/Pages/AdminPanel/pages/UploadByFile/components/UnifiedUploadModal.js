@@ -50,7 +50,9 @@ const UnifiedUploadModal = ({
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            return await response.json();
+            const result = await response.json();
+            
+            return result;
         } catch (error) {
             console.error('Validation error:', error);
             return {
@@ -128,6 +130,29 @@ const UnifiedUploadModal = ({
             }
         }
     }, [isVisible, prefilledData, type]);
+
+    // Cleanup when component unmounts or modal closes
+    useEffect(() => {
+        return () => {
+            // Cleanup any object URLs when component unmounts
+            if (videoPreviewUrl) {
+                URL.revokeObjectURL(videoPreviewUrl);
+            }
+            Object.values(episodePreviews).forEach(url => {
+                URL.revokeObjectURL(url);
+            });
+        };
+    }, []);
+
+    // Close modal when not visible (unless upload is in progress)
+    useEffect(() => {
+        if (!isVisible && !saveLoading) {
+            // Reset form state when modal closes
+            setProgress(0);
+            setRemainingTime(0);
+            setUploadSpeed(0);
+        }
+    }, [isVisible, saveLoading]);
 
     // Handle escape key and click outside
     useEffect(() => {
