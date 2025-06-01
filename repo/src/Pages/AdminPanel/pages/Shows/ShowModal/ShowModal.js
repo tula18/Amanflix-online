@@ -391,14 +391,51 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
     
         setErrors(newErrors);
         return isValid;
-    };
-    
-    const handleSubmit = async (e) => {
+    };    const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('handle1', showData)
         
         if (!validateForm()) {
             return;
+        }
+        
+        // Pre-upload validation
+        if (showData.show_id) {
+            // Prepare episodes data for validation
+            const episodes = [];
+            showData.seasons.forEach(season => {
+                season.episodes.forEach(episode => {
+                    if (episode.videoFile || episode.filename) {
+                        episodes.push({
+                            season_number: season.seasonNumber,
+                            episode_number: episode.episodeNumber
+                        });
+                    }
+                });
+            });
+            
+            const validationResult = await validateUpload('tv', showData.show_id, episodes);
+            
+            // Check validation result
+            if (validationResult && !validationResult.can_upload) {
+                const errorMessages = validationResult.errors.map(error => error.message).join('\n');
+                notification.error({
+                    message: 'Upload Blocked',
+                    description: errorMessages,
+                    duration: 8,
+                });
+                return;
+            }
+
+            // Show warnings if any
+            if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                notification.warning({
+                    message: 'Upload Warnings',
+                    description: warningMessages,
+                    duration: 6,
+                });
+            }
         }
     
         setSaveLoading(true);
@@ -609,6 +646,43 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
     const [remainingTime, setRemainingTime] = useState("calculating...");
     const [timeStart, setTimeStart] = useState(null);
 
+    // Validation function for upload pre-check
+    const validateUpload = async (contentType, contentId, episodes = null) => {
+        try {
+            const payload = {
+                content_type: contentType,
+                content_id: contentId
+            };
+            
+            if (episodes) {
+                payload.episodes = episodes;
+            }
+            
+            const response = await fetch(`${API_URL}/api/upload/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Validation error:', error);
+            return {
+                success: false,
+                can_upload: true, // Default to allowing upload if validation fails
+                errors: [],
+                warnings: []
+            };
+        }
+    };
+    
     return (
         <div className={`modal`} id="movieModal">
             <div className={`modal-content`}>

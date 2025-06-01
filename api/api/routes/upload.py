@@ -1190,8 +1190,7 @@ def validate_upload(current_admin):
                         'message': warning,
                         'suggestion': "Verify genre classification"
                     })
-                
-                # Validate runtime
+                  # Validate runtime
                 runtime = content_data.get('runtime')
                 runtime_warnings = validate_runtime(runtime, 'movie')
                 for warning in runtime_warnings:
@@ -1200,6 +1199,120 @@ def validate_upload(current_admin):
                         'message': warning,
                         'suggestion': "Verify runtime information"
                     })
+                
+                # NEW VALIDATIONS
+                
+                # Validate release date
+                release_date = content_data.get('release_date')
+                if release_date:
+                    log_info(f"📅 Validating release date for movie ID {content_id}: {release_date}")
+                    date_warnings, date_errors = validate_release_date(release_date, 'movie')
+                    for warning in date_warnings:
+                        validation_result['warnings'].append({
+                            'type': 'release_date_warning',
+                            'message': warning,
+                            'suggestion': "Verify the release date is correct"
+                        })
+                    for error in date_errors:
+                        validation_result['errors'].append({
+                            'type': 'release_date_error',
+                            'message': error,
+                            'suggestion': "Correct the release date format or value"
+                        })
+                
+                # Validate poster and backdrop images
+                poster_path = content_data.get('poster_path')
+                backdrop_path = content_data.get('backdrop_path')
+                if poster_path or backdrop_path:
+                    log_info(f"🖼️ Validating poster/backdrop for movie ID {content_id}")
+                    image_warnings, image_errors = validate_thumbnail_poster_local(poster_path, backdrop_path, 'movie', content_id)
+                    for warning in image_warnings:
+                        validation_result['warnings'].append({
+                            'type': 'image_validation_warning',
+                            'message': warning,
+                            'suggestion': "Check image files and paths"
+                        })
+                    for error in image_errors:
+                        validation_result['errors'].append({
+                            'type': 'image_validation_error',
+                            'message': error,
+                            'suggestion': "Fix image file issues"
+                        })
+                
+                # Content categorization
+                log_info(f"🏷️ Analyzing content categorization for movie ID {content_id}")
+                cat_warnings, cat_errors = validate_content_categorization(content_data, 'movie')
+                for warning in cat_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'categorization',
+                        'message': warning,
+                        'suggestion': "Review content categorization"
+                    })
+                for error in cat_errors:
+                    validation_result['errors'].append({
+                        'type': 'categorization_error',
+                        'message': error,
+                        'suggestion': "Fix categorization issues"
+                    })
+                
+                # Content scanning (if video file exists)
+                if os.path.exists(video_filepath):
+                    log_info(f"🔍 Performing content scanning for movie ID {content_id}")
+                    scan_warnings, scan_errors = validate_content_scanning(video_filepath)
+                    for warning in scan_warnings:                        validation_result['warnings'].append({
+                            'type': 'content_scan_warning',
+                            'message': warning,
+                            'suggestion': "Review content scan results"
+                        })
+                    for error in scan_errors:
+                        validation_result['errors'].append({
+                            'type': 'content_scan_error',
+                            'message': error,
+                            'suggestion': "Address content scanning issues"
+                        })
+                
+                # Pre-upload space reservation
+                estimated_file_size = content_data.get('estimated_file_size')
+                if not estimated_file_size:
+                    # Provide default estimation based on content type
+                    if content_type == 'movie':
+                        estimated_file_size = 2 * 1024 * 1024 * 1024  # 2GB for movies
+                        log_info(f"💾 No file size provided, using default movie estimation: 2GB")
+                    else:  # TV show
+                        # Estimate based on number of episodes if available
+                        # Check both content_data and main data for episodes
+                        episodes_data = content_data.get('episodes', [])
+                        if not episodes_data:
+                            episodes_data = data.get('episodes', [])
+                        episode_count = len(episodes_data) if episodes_data else 1
+                        estimated_file_size = episode_count * 500 * 1024 * 1024  # 500MB per episode
+                        log_info(f"💾 No file size provided, using default TV show estimation: {episode_count} episodes × 500MB = {estimated_file_size / (1024*1024):.0f}MB")
+                
+                if estimated_file_size:
+                    try:
+                        file_size = int(estimated_file_size)
+                        log_info(f"💾 Checking space reservation for {file_size / (1024*1024):.1f}MB ({file_size} bytes)")
+                        space_warnings, space_errors, reservation_id = reserve_upload_space(file_size, content_id)
+                        for warning in space_warnings:
+                            validation_result['warnings'].append({
+                                'type': 'space_reservation',
+                                'message': warning,
+                                'suggestion': "Monitor disk space during upload"
+                            })
+                        for error in space_errors:
+                            validation_result['errors'].append({
+                                'type': 'space_reservation_error',
+                                'message': error,
+                                'suggestion': "Free up disk space before upload"
+                            })
+                        if reservation_id:
+                            validation_result['space_reservation_id'] = reservation_id
+                    except (ValueError, TypeError):
+                        validation_result['warnings'].append({
+                            'type': 'space_reservation',
+                            'message': "Invalid estimated file size provided",
+                            'suggestion': "Provide valid file size for space reservation"
+                        })
                 
                 # Check for similar titles in database
                 title = content_data.get('title', '')
@@ -1294,8 +1407,7 @@ def validate_upload(current_admin):
                     })
             else:
                 log_info(f"📺 No episodes data provided for TV show ID {content_id}")
-            
-            # Content metadata validation for TV shows
+              # Content metadata validation for TV shows
             if content_data:
                 log_info(f"📋 Validating content metadata for TV show ID {content_id}")
                 # Validate languages
@@ -1315,6 +1427,144 @@ def validate_upload(current_admin):
                         'message': warning,
                         'suggestion': "Verify TV show genre classification"
                     })
+                
+                # NEW VALIDATIONS FOR TV SHOWS
+                
+                # Validate release date (first_air_date for TV shows)
+                first_air_date = content_data.get('first_air_date') or content_data.get('release_date')
+                if first_air_date:
+                    log_info(f"📅 Validating first air date for TV show ID {content_id}: {first_air_date}")
+                    date_warnings, date_errors = validate_release_date(first_air_date, 'tv')
+                    for warning in date_warnings:
+                        validation_result['warnings'].append({
+                            'type': 'release_date_warning',
+                            'message': warning,
+                            'suggestion': "Verify the first air date is correct"
+                        })
+                    for error in date_errors:
+                        validation_result['errors'].append({
+                            'type': 'release_date_error',
+                            'message': error,
+                            'suggestion': "Correct the first air date format or value"
+                        })
+                
+                # Validate season/episode numbering
+                if episodes_data:
+                    log_info(f"🔢 Validating season/episode numbering for TV show ID {content_id}")
+                    numbering_warnings, numbering_errors = validate_season_episode_numbering(content_data, episodes_data)
+                    for warning in numbering_warnings:
+                        validation_result['warnings'].append({
+                            'type': 'episode_numbering_warning',
+                            'message': warning,
+                            'suggestion': "Review episode numbering for consistency"
+                        })
+                    for error in numbering_errors:
+                        validation_result['errors'].append({
+                            'type': 'episode_numbering_error',
+                            'message': error,
+                            'suggestion': "Fix episode numbering issues"
+                        })
+                
+                # Validate poster and backdrop images
+                poster_path = content_data.get('poster_path')
+                backdrop_path = content_data.get('backdrop_path')
+                if poster_path or backdrop_path:
+                    log_info(f"🖼️ Validating poster/backdrop for TV show ID {content_id}")
+                    image_warnings, image_errors = validate_thumbnail_poster_local(poster_path, backdrop_path, 'tv', content_id)
+                    for warning in image_warnings:
+                        validation_result['warnings'].append({
+                            'type': 'image_validation_warning',
+                            'message': warning,
+                            'suggestion': "Check image files and paths"
+                        })
+                    for error in image_errors:
+                        validation_result['errors'].append({
+                            'type': 'image_validation_error',
+                            'message': error,
+                            'suggestion': "Fix image file issues"
+                        })
+                
+                # Content categorization
+                log_info(f"🏷️ Analyzing content categorization for TV show ID {content_id}")
+                cat_warnings, cat_errors = validate_content_categorization(content_data, 'tv')
+                for warning in cat_warnings:
+                    validation_result['warnings'].append({
+                        'type': 'categorization',
+                        'message': warning,
+                        'suggestion': "Review content categorization"
+                    })
+                for error in cat_errors:
+                    validation_result['errors'].append({
+                        'type': 'categorization_error',
+                        'message': error,
+                        'suggestion': "Fix categorization issues"
+                    })
+                
+                # Content scanning for episode files
+                if episodes_data:
+                    log_info(f"🔍 Performing content scanning for TV show episodes")
+                    for episode_data in episodes_data:
+                        season_num = episode_data.get('season_number')
+                        episode_num = episode_data.get('episode_number')
+                        if season_num and episode_num:
+                            episode_filename = f"{content_id}S{season_num:02d}E{episode_num:02d}.mp4"
+                            episode_filepath = os.path.join('uploads', episode_filename)
+                            
+                            if os.path.exists(episode_filepath):
+                                scan_warnings, scan_errors = validate_content_scanning(episode_filepath)
+                                for warning in scan_warnings:
+                                    validation_result['warnings'].append({
+                                        'type': 'content_scan_warning',
+                                        'message': f"Episode S{season_num}E{episode_num}: {warning}",
+                                        'suggestion': "Review episode content scan results"
+                                    })
+                                for error in scan_errors:
+                                    validation_result['errors'].append({
+                                        'type': 'content_scan_error',
+                                        'message': f"Episode S{season_num}E{episode_num}: {error}",
+                                        'suggestion': "Address episode content scanning issues"
+                                    })
+                
+                # Pre-upload space reservation for episodes
+                total_estimated_size = 0
+                # Get episodes from content_data as well as the validation episodes_data
+                content_episodes = content_data.get('episodes', [])
+                all_episodes = episodes_data + content_episodes  # Combine both sources
+                
+                for episode_data in all_episodes:
+                    estimated_size = episode_data.get('estimated_file_size')
+                    if estimated_size:
+                        try:
+                            total_estimated_size += int(estimated_size)
+                            log_info(f"💾 Added episode size: {int(estimated_size) / (1024*1024):.1f}MB")
+                        except (ValueError, TypeError):
+                            pass
+                
+                # If no file sizes provided, use default estimation
+                if total_estimated_size == 0:
+                    episode_count = max(len(episodes_data), len(content_episodes))
+                    if episode_count == 0:
+                        episode_count = 1  # Default to at least 1 episode
+                    total_estimated_size = episode_count * 500 * 1024 * 1024  # 500MB per episode
+                    log_info(f"💾 No episode sizes provided, using default: {episode_count} episodes × 500MB = {total_estimated_size / (1024*1024):.0f}MB")
+                
+                if total_estimated_size > 0:
+                    log_info(f"💾 Checking space reservation for {total_estimated_size / (1024*1024):.1f}MB total")
+                    space_warnings, space_errors, reservation_id = reserve_upload_space(total_estimated_size, content_id)
+                    for warning in space_warnings:
+                        validation_result['warnings'].append({
+                            'type': 'space_reservation',
+                            'message': warning,
+                            'suggestion': "Monitor disk space during episode uploads"
+                        })
+                    for error in space_errors:
+                        validation_result['errors'].append({
+                            'type': 'space_reservation_error',
+                            'message': error,
+                            'suggestion': "Free up disk space before uploading episodes"
+                        })
+                    if reservation_id:
+                        validation_result['space_reservation_id'] = reservation_id
                 
                 # Check for similar titles in database
                 title = content_data.get('title', '')
@@ -1522,3 +1772,492 @@ def test_validation(current_admin):
     except Exception as e:
         log_error(f"💥 Test validation error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+def validate_release_date(release_date, content_type):
+    """Validate release date for movies and TV shows"""
+    from datetime import datetime, date
+    
+    warnings = []
+    errors = []
+    
+    if not release_date:
+        warnings.append(f"No release date provided for {content_type}")
+        return warnings, errors
+    
+    try:
+        # Parse the date string
+        if isinstance(release_date, str):
+            # Try different date formats
+            date_formats = ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%Y/%m/%d', '%d/%m/%Y', '%m/%d/%Y']
+            parsed_date = None
+            
+            for fmt in date_formats:
+                try:
+                    parsed_date = datetime.strptime(release_date, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            
+            if not parsed_date:
+                errors.append(f"Invalid date format: {release_date}. Use YYYY-MM-DD format")
+                return warnings, errors
+        elif isinstance(release_date, datetime):
+            parsed_date = release_date.date()
+        elif isinstance(release_date, date):
+            parsed_date = release_date
+        else:
+            errors.append("Invalid date type provided")
+            return warnings, errors
+        
+        current_date = date.today()
+        
+        # Check if date is too far in the future
+        if parsed_date > current_date:
+            # Allow up to 2 years in the future for announced content
+            max_future_date = date(current_date.year + 2, current_date.month, current_date.day)
+            if parsed_date > max_future_date:
+                warnings.append(f"Release date is very far in the future: {parsed_date}")
+            else:
+                warnings.append(f"Future release date: {parsed_date}")
+        
+        # Check if date is too old without proper context
+        if content_type == 'movie':
+            # Movies before 1888 (first motion picture) are suspicious
+            if parsed_date.year < 1888:
+                errors.append(f"Release date too early for a movie: {parsed_date}")
+            elif parsed_date.year < 1920:
+                warnings.append(f"Very early movie date: {parsed_date}. Verify if this is a historical film")
+        elif content_type == 'tv':
+            # TV shows before 1928 (first TV broadcast) are suspicious
+            if parsed_date.year < 1928:
+                errors.append(f"Release date too early for a TV show: {parsed_date}")
+            elif parsed_date.year < 1950:
+                warnings.append(f"Very early TV show date: {parsed_date}. Verify if this is correct")
+        
+        # Check for common date errors (year typos)
+        if parsed_date.year > current_date.year + 10:
+            warnings.append(f"Release year {parsed_date.year} seems too far in future")
+        
+    except Exception as e:
+        errors.append(f"Error validating release date: {str(e)}")
+    
+    return warnings, errors
+
+def validate_season_episode_numbering(show_data, episodes_data):
+    """Validate TV show season and episode numbering for consistency"""
+    warnings = []
+    errors = []
+    
+    if not episodes_data:
+        warnings.append("No episode data provided for validation")
+        return warnings, errors
+    
+    try:
+        # Group episodes by season
+        seasons = {}
+        for episode in episodes_data:
+            season_num = episode.get('season_number')
+            episode_num = episode.get('episode_number')
+            
+            if season_num is None or episode_num is None:
+                errors.append("Missing season or episode number in episode data")
+                continue
+            
+            if season_num not in seasons:
+                seasons[season_num] = []
+            seasons[season_num].append(episode_num)
+        
+        # Validate each season
+        for season_num, episode_numbers in seasons.items():
+            # Check for negative numbers
+            if season_num < 0:
+                errors.append(f"Invalid season number: {season_num} (cannot be negative)")
+            if any(ep < 1 for ep in episode_numbers):
+                errors.append(f"Invalid episode numbers in season {season_num} (episodes must start from 1)")
+            
+            # Check for duplicates
+            duplicates = set()
+            seen = set()
+            for ep_num in episode_numbers:
+                if ep_num in seen:
+                    duplicates.add(ep_num)
+                seen.add(ep_num)
+            
+            if duplicates:
+                errors.append(f"Duplicate episodes in season {season_num}: {sorted(duplicates)}")
+            
+            # Check for gaps in episode numbering
+            sorted_episodes = sorted(episode_numbers)
+            if sorted_episodes:
+                expected_episodes = list(range(1, max(sorted_episodes) + 1))
+                missing_episodes = set(expected_episodes) - set(sorted_episodes)
+                if missing_episodes:
+                    warnings.append(f"Missing episodes in season {season_num}: {sorted(missing_episodes)}")
+                
+                # Check for unusual episode counts
+                episode_count = len(sorted_episodes)
+                if episode_count > 50:
+                    warnings.append(f"Season {season_num} has unusually many episodes: {episode_count}")
+                elif episode_count == 1:
+                    warnings.append(f"Season {season_num} has only one episode (special/pilot?)")
+        
+        # Check season numbering
+        season_numbers = sorted(seasons.keys())
+        if season_numbers:
+            # Check if seasons start from 0 or 1
+            if min(season_numbers) == 0:
+                warnings.append("Season numbering starts from 0 (some shows use this for specials)")
+            elif min(season_numbers) > 1:
+                missing_seasons = list(range(1, min(season_numbers)))
+                warnings.append(f"Missing earlier seasons: {missing_seasons}")
+            
+            # Check for gaps in season numbering
+            for i in range(len(season_numbers) - 1):
+                current_season = season_numbers[i]
+                next_season = season_numbers[i + 1]
+                if next_season != current_season + 1:
+                    gap = list(range(current_season + 1, next_season))
+                    warnings.append(f"Gap in season numbering: missing seasons {gap}")
+        
+    except Exception as e:
+        errors.append(f"Error validating season/episode numbering: {str(e)}")
+    
+    return warnings, errors
+
+def validate_thumbnail_poster_local(poster_path, backdrop_path, content_type, content_id):
+    """Validate poster and backdrop images exist in local folders"""
+    warnings = []
+    errors = []
+    
+    def validate_local_image(image_path, image_type):
+        """Helper function to validate a single local image"""
+        local_warnings = []
+        local_errors = []
+        
+        if not image_path:
+            local_warnings.append(f"No {image_type} path provided")
+            return local_warnings, local_errors
+        
+        try:
+            # Check if it's a URL (starts with http) - we'll handle URLs differently
+            if image_path.startswith('http'):
+                local_warnings.append(f"{image_type} is a URL, not a local file")
+                return local_warnings, local_errors
+              # Check for common image folders - use both relative and absolute paths
+            possible_folders = [
+                'cdn/posters_combined', 
+                os.path.join(os.getcwd(), 'cdn/posters_combined'),
+            ]
+            
+            image_found = False
+            checked_paths = []
+            for folder in possible_folders:
+                # Handle paths that start with '/' by removing the leading slash
+                clean_image_path = image_path.lstrip('/')
+                full_path = os.path.join(folder, clean_image_path)
+                checked_paths.append(full_path)
+                
+                if os.path.exists(full_path):
+                    image_found = True
+                    log_info(f"✅ Found {image_type} at: {full_path}")
+                    
+                    # Check file size
+                    try:
+                        file_size = os.path.getsize(full_path)
+                        if file_size == 0:
+                            local_errors.append(f"{image_type} file is empty: {full_path}")
+                        elif file_size < 1024:  # Less than 1KB
+                            local_warnings.append(f"{image_type} file is very small: {file_size} bytes")
+                        elif file_size > 10 * 1024 * 1024:  # Greater than 10MB
+                            local_warnings.append(f"{image_type} file is very large: {file_size / (1024*1024):.1f} MB")
+                    except OSError as e:
+                        local_warnings.append(f"Could not check {image_type} file size: {str(e)}")
+                    
+                    # Try to validate image format using file extension
+                    valid_extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+                    if not any(full_path.lower().endswith(ext) for ext in valid_extensions):
+                        local_warnings.append(f"{image_type} doesn't have a standard image extension")
+            
+                    break
+            
+            if not image_found:
+                # Check if the path itself exists (might be absolute path)
+                if os.path.exists(image_path):
+                    local_warnings.append(f"{image_type} found at absolute path: {image_path}")
+                else:
+                    local_errors.append(f"{image_type} file not found in any expected folder: {image_path}")
+                    local_errors.append(f"Checked folders: {', '.join(possible_folders)}")
+        
+        except Exception as e:
+            local_errors.append(f"Error validating {image_type}: {str(e)}")
+        
+        return local_warnings, local_errors
+    
+    # Validate poster
+    poster_warnings, poster_errors = validate_local_image(poster_path, "poster")
+    warnings.extend(poster_warnings)
+    errors.extend(poster_errors)
+    
+    # Validate backdrop
+    backdrop_warnings, backdrop_errors = validate_local_image(backdrop_path, "backdrop")
+    warnings.extend(backdrop_warnings)
+    errors.extend(backdrop_errors)
+    
+    return warnings, errors
+
+def validate_content_scanning(file_path):
+    """Basic content scanning for security and appropriateness"""
+    import hashlib
+    
+    warnings = []
+    errors = []
+    
+    if not file_path or not os.path.exists(file_path):
+        errors.append("File not found for content scanning")
+        return warnings, errors
+    
+    try:
+        # File type detection using basic methods
+        try:
+            # Try to use python-magic if available
+            import magic
+            file_type = magic.from_file(file_path, mime=True)
+            if not file_type.startswith('video/'):
+                errors.append(f"File is not a video file: {file_type}")
+                return warnings, errors
+        except ImportError:
+            # Fallback to file extension check
+            video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v']
+            if not any(file_path.lower().endswith(ext) for ext in video_extensions):
+                warnings.append("Could not verify file type (python-magic not available)")
+        except Exception as e:
+            warnings.append(f"Could not detect file type: {str(e)}")
+        
+        # File size check
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            errors.append("File is empty")
+            return warnings, errors
+        elif file_size < 1024 * 1024:  # Less than 1MB
+            warnings.append("File is suspiciously small for a video")
+        elif file_size > 100 * 1024 * 1024 * 1024:  # Greater than 100GB
+            warnings.append("File is extremely large")
+        
+        # Basic security scanning (file extension check)
+        dangerous_extensions = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.msi']
+        if any(file_path.lower().endswith(ext) for ext in dangerous_extensions):
+            errors.append("File has dangerous extension")
+        
+        # Calculate file hash for duplicate detection
+        try:
+            hasher = hashlib.md5()
+            with open(file_path, 'rb') as f:
+                # Read first 64KB for quick hash (for large files)
+                chunk = f.read(65536)
+                hasher.update(chunk)
+            file_hash = hasher.hexdigest()
+            log_info(f"File hash (first 64KB): {file_hash}")
+            
+        except Exception as e:
+            warnings.append(f"Could not calculate file hash: {str(e)}")
+        
+        # Basic metadata extraction for content analysis
+        try:
+            metadata = get_video_metadata(file_path)
+            if metadata:
+                # Check for suspicious metadata
+                format_info = metadata.get('format', {})
+                
+                # Check duration
+                duration = format_info.get('duration')
+                if duration:
+                    duration_seconds = float(duration)
+                    if duration_seconds < 60:  # Less than 1 minute
+                        warnings.append("Video is very short")
+                    elif duration_seconds > 8 * 60 * 60:  # More than 8 hours
+                        warnings.append("Video is unusually long")
+                
+                # Check for multiple video streams
+                video_streams = [s for s in metadata.get('streams', []) if s.get('codec_type') == 'video']
+                if len(video_streams) > 1:
+                    warnings.append("Multiple video streams detected")
+                
+                # Check for suspicious metadata tags
+                suspicious_tags = ['copyright', 'encrypted', 'drm', 'protection']
+                tags = format_info.get('tags', {})
+                if isinstance(tags, dict):
+                    for key, value in tags.items():
+                        if any(tag in str(key).lower() or tag in str(value).lower() for tag in suspicious_tags):
+                            warnings.append(f"Suspicious metadata tag found: {key}={value}")
+            
+        except Exception as e:
+            warnings.append(f"Could not analyze video metadata: {str(e)}")
+    
+    except Exception as e:
+        errors.append(f"Content scanning failed: {str(e)}")
+    
+    return warnings, errors
+
+def validate_content_categorization(content_data, content_type):
+    """Automatic content categorization and validation"""
+    warnings = []
+    errors = []
+    
+    try:
+        title = content_data.get('title', '').lower()
+        overview = content_data.get('overview', '').lower()
+        genres = content_data.get('genres', [])
+        
+        # Convert genres to list if it's a string
+        if isinstance(genres, str):
+            genres = [g.strip().lower() for g in genres.split(',')]
+        elif isinstance(genres, list):
+            genres = [g.lower() if isinstance(g, str) else str(g).lower() for g in genres]
+        
+        # Define category keywords
+        category_keywords = {
+            'animated': ['animation', 'cartoon', 'anime', 'animated'],
+            'documentary': ['documentary', 'biography', 'true story', 'based on true'],
+            'horror': ['horror', 'scary', 'haunted', 'zombie', 'vampire', 'ghost'],
+            'comedy': ['comedy', 'funny', 'humor', 'laugh', 'comic'],
+            'action': ['action', 'fight', 'battle', 'war', 'combat', 'martial arts'],
+            'romance': ['romance', 'love', 'romantic', 'wedding', 'relationship'],
+            'sci-fi': ['science fiction', 'sci-fi', 'space', 'alien', 'future', 'robot'],
+            'fantasy': ['fantasy', 'magic', 'wizard', 'dragon', 'supernatural'],
+            'thriller': ['thriller', 'suspense', 'mystery', 'detective', 'crime'],
+            'family': ['family', 'kids', 'children', 'disney', 'pixar'],
+            'adult': ['adult', 'mature', 'explicit', 'rated r', '18+']
+        }
+        
+        # Analyze title and overview for category hints
+        text_to_analyze = f"{title} {overview}"
+        detected_categories = []
+        
+        for category, keywords in category_keywords.items():
+            if any(keyword in text_to_analyze for keyword in keywords):
+                detected_categories.append(category)
+        
+        # Check genre consistency
+        genre_inconsistencies = []
+        if 'animated' in detected_categories and not any('animation' in g for g in genres):
+            genre_inconsistencies.append("Content appears animated but animation genre not listed")
+        
+        if 'documentary' in detected_categories and not any('documentary' in g for g in genres):
+            genre_inconsistencies.append("Content appears to be documentary but genre not listed")
+        
+        if 'horror' in detected_categories and not any('horror' in g for g in genres):
+            genre_inconsistencies.append("Content appears to be horror but genre not listed")
+        
+        # Content type validation
+        if content_type == 'movie':
+            # Check if this might be a TV show episode
+            episode_indicators = ['episode', 'season', 'part', 'chapter', 's01e', 's1e', 'ep']
+            if any(indicator in title for indicator in episode_indicators):
+                warnings.append("Title suggests this might be an episode, not a movie")
+        
+        elif content_type == 'tv':
+            # Check if this might be a movie
+            movie_indicators = ['the movie', 'feature film', 'theatrical release']
+            if any(indicator in title for indicator in movie_indicators):
+                warnings.append("Title suggests this might be a movie, not a TV episode")
+        
+        # Language detection (basic)
+        non_english_indicators = ['subtitled', 'dubbed', 'foreign', 'international']
+        if any(indicator in overview for indicator in non_english_indicators):
+            warnings.append("Content may be non-English language")
+        
+        # Suggest content categorization
+        if detected_categories:
+            warnings.append(f"Detected content categories: {', '.join(detected_categories)}")
+        
+        if genre_inconsistencies:
+            for inconsistency in genre_inconsistencies:
+                warnings.append(f"Genre inconsistency: {inconsistency}")
+        
+    except Exception as e:
+        errors.append(f"Content categorization failed: {str(e)}")
+    
+    return warnings, errors
+
+def reserve_upload_space(file_size_bytes, content_id=None):
+    """Reserve disk space before upload to prevent partial uploads"""
+    import tempfile
+    from datetime import datetime
+    
+    warnings = []
+    errors = []
+    
+    try:
+        # Get available disk space
+        upload_dir = 'uploads'
+        free_space = get_free_disk_space(upload_dir)
+        
+        if free_space is None:
+            warnings.append("Could not determine available disk space")
+            return warnings, errors, None
+        
+        # Add 20% buffer for safety
+        required_space = file_size_bytes * 1.2
+        
+        if free_space < required_space:
+            free_gb = free_space / (1024**3)
+            required_gb = required_space / (1024**3)
+            errors.append(f"Insufficient disk space. Available: {free_gb:.1f}GB, Required: {required_gb:.1f}GB")
+            return warnings, errors, None
+        
+        # Create a temporary reservation file
+        reservation_id = f"reservation_{content_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        reservation_path = os.path.join(tempfile.gettempdir(), reservation_id)
+        
+        try:
+            # Create a small marker file instead of reserving actual space
+            with open(reservation_path, 'w') as f:
+                f.write(f"Space reservation for content {content_id}: {file_size_bytes} bytes")
+            
+            warnings.append(f"Reserved {file_size_bytes / (1024**2):.1f}MB disk space")
+            return warnings, errors, reservation_id
+            
+        except Exception as e:
+            warnings.append(f"Could not create space reservation: {str(e)}")
+            return warnings, errors, None
+    
+    except Exception as e:
+        errors.append(f"Space reservation failed: {str(e)}")
+        return warnings, errors, None
+
+def release_upload_space_reservation(reservation_id):
+    """Release reserved upload space"""
+    import tempfile
+    
+    if not reservation_id:
+        return
+    
+    try:
+        reservation_path = os.path.join(tempfile.gettempdir(), reservation_id)
+        if os.path.exists(reservation_path):
+            os.remove(reservation_path)
+            log_info(f"Released space reservation: {reservation_id}")
+    except Exception as e:
+        log_warning(f"Could not release space reservation {reservation_id}: {str(e)}")
+
+def get_free_disk_space(path):
+    """Get free disk space in bytes for the given path"""
+    try:
+        # Try statvfs (Unix/Linux/macOS)
+        statvfs = os.statvfs(path)
+        return statvfs.f_frsize * statvfs.f_bavail
+    except (AttributeError, OSError):
+        # Fallback for systems without statvfs
+        try:
+            import shutil
+            total, used, free = shutil.disk_usage(path)
+            return free
+        except Exception:
+            return None
+
+def get_file_size(file_path):
+    """Get file size in bytes"""
+    try:
+        return os.path.getsize(file_path)
+    except OSError:
+        return None

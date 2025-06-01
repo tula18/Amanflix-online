@@ -28,6 +28,50 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
     const [selectedValidationData, setSelectedValidationData] = useState(null);
     const [selectedContentInfo, setSelectedContentInfo] = useState(null);
     console.log(parsedData);
+
+    // Helper function to estimate file sizes
+    const estimateFileSize = (files) => {
+        if (!files || !Array.isArray(files)) return null;
+        
+        // Sum up all file sizes
+        const totalSize = files.reduce((sum, file) => {
+            // If file object has size property, use it; otherwise estimate based on filename
+            if (file && typeof file === 'object' && file.size) {
+                return sum + file.size;
+            }
+            // Fallback estimation based on typical video file sizes
+            // Average movie: ~2GB, Average TV episode: ~500MB
+            return sum + (2 * 1024 * 1024 * 1024); // 2GB default
+        }, 0);
+        
+        return totalSize;
+    };
+
+    // Helper function to get file size for movies
+    const getMovieFileSize = (movie) => {
+        if (movie.files && movie.files.length > 0) {
+            return estimateFileSize(movie.files);
+        }
+        // Default estimation for movies without file size info
+        return 2 * 1024 * 1024 * 1024; // 2GB
+    };
+
+    // Helper function to get file size for TV shows
+    const getTVShowFileSize = (show) => {
+        let totalSize = 0;
+        let episodeCount = 0;
+        
+        if (show.episodes) {
+            Object.keys(show.episodes).forEach(seasonNum => {
+                episodeCount += show.episodes[seasonNum].length;
+            });
+        }
+        
+        // Estimate 500MB per episode
+        totalSize = episodeCount * 500 * 1024 * 1024;
+        
+        return totalSize || (500 * 1024 * 1024); // Default 500MB if no episodes
+    };
     
     // Validate content on component mount and when data changes
     useEffect(() => {
@@ -130,7 +174,14 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                 for (const movie of localData.movies) {
                     if (movie.cdn_data?.id) {
                         console.log(`🎬 Validating movie: "${movie.title}" (ID: ${movie.cdn_data.id})`);
-                        const result = await validateContent('movie', movie.cdn_data.id, null, movie.cdn_data);
+                        
+                        // Prepare content data with estimated file size
+                        const movieContentData = {
+                            ...movie.cdn_data,
+                            estimated_file_size: getMovieFileSize(movie)
+                        };
+                        
+                        const result = await validateContent('movie', movie.cdn_data.id, null, movieContentData);
                         results[`movie_${movie.cdn_data.id}`] = result;
                         completedItems++;
                         setValidationProgress((completedItems / totalItems) * 100);
@@ -162,7 +213,14 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                         }
                         console.log(`📺 Show has ${episodes.length} episodes to validate`);
                         
-                        const result = await validateContent('tv', show.cdn_data.id, episodes, show.cdn_data);
+                        // Prepare content data with estimated file size
+                        const showContentData = {
+                            ...show.cdn_data,
+                            estimated_file_size: getTVShowFileSize(show),
+                            episodes: episodes
+                        };
+                        
+                        const result = await validateContent('tv', show.cdn_data.id, episodes, showContentData);
                         results[`tv_${show.cdn_data.id}`] = result;
                         completedItems++;
                         setValidationProgress((completedItems / totalItems) * 100);
