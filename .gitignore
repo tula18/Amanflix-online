@@ -16,8 +16,41 @@ api/migrations/
 api/migrations/*
 .DS_Store
 *.DS_Store
+
+# Python cache files and directories
 __pycache__/
+*/__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+amanflix_env/
+
 amanflix-data-downloader/node_modules
 amanflix-data-downloader/build
