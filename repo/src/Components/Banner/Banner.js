@@ -300,6 +300,9 @@ function Banner() {
             return '';
         }
     }
+      if (isLoading || !movie || Object.keys(movie).length === 0) {
+      return <LoadingBanner />;
+    }
 
     const title = movie.media_type === 'tv' ? movie.name : movie.title
 
@@ -314,9 +317,6 @@ function Banner() {
         return `${hours}h ${remainingMinutes}m`;
     }
 
-    if (isLoading ) {
-        return <LoadingBanner />;
-      }
 
     return (
         <div className='banner' style={{backgroundImage: `url('${API_URL}/cdn/images/${movie.backdrop_path}')`}}>
