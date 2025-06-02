@@ -44,7 +44,8 @@ def _setup_file_logger():
     general_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'amanflix.log'),
         maxBytes=10485760,  # 10MB
-        backupCount=10
+        backupCount=10,
+        encoding='utf-8'
     )
     general_handler.setLevel(logging.INFO)
     general_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
@@ -62,7 +63,8 @@ def _setup_file_logger():
     api_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'api_requests.log'),
         maxBytes=10485760,  # 10MB
-        backupCount=10
+        backupCount=10,
+        encoding='utf-8'
     )
     api_handler.setLevel(logging.INFO)
     api_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
@@ -73,10 +75,16 @@ def _setup_file_logger():
 # Initialize loggers
 logger, api_logger = _setup_file_logger()
 
-# Helper function to strip ANSI color codes for file logging
+# Helper function to strip ANSI color codes and replace Unicode characters for file logging
 def _strip_ansi_codes(text):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
+    # Remove ANSI color codes
+    clean_text = ansi_escape.sub('', text)
+    # Replace Unicode tree characters with ASCII alternatives
+    clean_text = clean_text.replace('└─', '|_').replace('├─', '|-').replace('│', '|')
+    clean_text = clean_text.replace('┌', '+').replace('┐', '+').replace('└', '+').replace('┘', '+')
+    clean_text = clean_text.replace('─', '-').replace('═', '=').replace('║', '|').replace('╚', '+').replace('╗', '+').replace('╔', '+').replace('╝', '+')
+    return clean_text
 
 def get_caller_info():
     """Get caller filename and line number"""

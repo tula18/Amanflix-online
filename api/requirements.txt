@@ -1,5 +1,20 @@
-flask_sqlalchemy
-flask
-flask_cors
-tqdm
+# Core Flask Framework
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-CORS==4.0.1
+Flask-Bcrypt
+Flask-Migrate
+
+# Database
+SQLAlchemy==2.0.31
+
+# Authentication & Security
+PyJWT
+
+# Utilities
+tqdm==4.66.4
+colorama==0.4.6
+chardet==5.2.0
 guessit
+Werkzeug
+psutil

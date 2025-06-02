@@ -102,11 +102,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///amanflix_db.db'
 db.init_app(app)
 migrate = Migrate(app, db)
 
-database_path = 'database'
 bcrypt = Bcrypt(app)
 
 log_step("Registering endpoints")
-log_substep("CDN endpoints: movies, tv, search, cdn")
+log_substep("CDN endpoints: movies, tv, search, cdn, admin")
 # CDN ENDPOINTS register
 app.register_blueprint(movie_cdn_bp)
 app.register_blueprint(tv_cdn_bp)
@@ -114,7 +113,7 @@ app.register_blueprint(search_cdn_bp)
 app.register_blueprint(cdn_bp)
 app.register_blueprint(cdn_admin_bp)
 
-log_substep("API endpoints: auth, uploads, streams, etc.")
+log_substep("API endpoints: upload, stream, movies, shows, auth, admin, search, bug reports, mylist, upload requests, watch history, notifications, analytics, file parser")
 # API ENDPOINTS register
 app.register_blueprint(upload_bp)
 app.register_blueprint(stream_bp)
@@ -134,49 +133,106 @@ log_section_end()
 
 # Content catalog loading with improved progress indicators
 log_section("CONTENT CATALOG")
+
+def check_cdn_structure():
+    """Check if all required CDN directories and files exist."""
+    required_dirs = ['cdn/files', 'cdn/posters_combined']
+    required_files = [
+        'cdn/files/movies_little_clean.json',
+        'cdn/files/tv_little_clean.json', 
+        'cdn/files/movies_with_images.json',
+        'cdn/files/tv_with_images.json'
+    ]
+    
+    missing_dirs = []
+    missing_files = []
+    
+    # Check directories
+    for dir_path in required_dirs:
+        if not os.path.exists(dir_path):
+            missing_dirs.append(dir_path)
+    
+    # Check files (only if directories exist)
+    if not missing_dirs:
+        for file_path in required_files:
+            if not os.path.exists(file_path):
+                missing_files.append(file_path)
+    
+    return missing_dirs, missing_files
+
+def exit_with_cdn_error(missing_dirs, missing_files):
+    """Exit the application with a clear error message about missing CDN structure."""
+    print(f"\n{Colors.RED}┌{'─' * 70}┐")
+    print(f"│{Colors.BOLD} ❌ CRITICAL ERROR: Required CDN structure is missing{Colors.RED}{' ' * 17}│")
+    print(f"└{'─' * 70}┘{Colors.RESET}")
+    print(f"\n{Colors.RED}The application cannot start without the required CDN directories and files.{Colors.RESET}")
+    
+    if missing_dirs:
+        print(f"\n{Colors.YELLOW}Missing directories:{Colors.RESET}")
+        for dir_path in missing_dirs:
+            print(f"  ❌ {dir_path}")
+    
+    if missing_files:
+        print(f"\n{Colors.YELLOW}Missing files:{Colors.RESET}")
+        for file_path in missing_files:
+            print(f"  ❌ {file_path}")
+    
+    print(f"\n{Colors.CYAN}To fix this issue:{Colors.RESET}")
+    print(f"1. Create the missing directories manually")
+    print(f"2. Add the JSON files")
+    print(f"3. Or run the setup script: setup.bat (Windows) or setup.sh (Linux/macOS)")
+    print(f"\n{Colors.RED}Application terminated.{Colors.RESET}\n")
+    sys.exit(1)
+
+# Check CDN structure before proceeding
+log_step("Verifying CDN structure")
+missing_dirs, missing_files = check_cdn_structure()
+
+if missing_dirs or missing_files:
+    exit_with_cdn_error(missing_dirs, missing_files)
+
+log_success("CDN structure verified successfully")
 log_step("Loading content databases")
 
-# Modify your existing load functions to use the new logging utilities
-def load_movies_db():
-    db_path = os.path.join(database_path, "movies.json")
-    os.makedirs(database_path, exist_ok=True)
-    if (os.path.exists(db_path)):
-        try:
-            with open(db_path, 'r') as f:
-                log_success(f"Loaded movies database from {db_path}")
-                return json.load(f)
-        except json.decoder.JSONDecodeError:
-            log_error("Movie database file corrupted, using empty database")
-            return []
-    else:
-        log_warning(f"Movie database file not found, creating new database at {db_path}")
+def load_data(file_path, media_type):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        for item in tqdm(data, desc=f"Loading {media_type} data"):
+            item['media_type'] = media_type
+            item['dir_type'] = 'cdn'
+        return data
+    except FileNotFoundError:
+        log_warning(f"File not found: {file_path} - returning empty list")
+        return []
+    except json.JSONDecodeError as e:
+        log_warning(f"Invalid JSON in {file_path}: {e} - returning empty list")
+        return []
+    except Exception as e:
+        log_warning(f"Error loading {file_path}: {e} - returning empty list")
         return []
 
-def save_movies_db(db):
-    print(f"{Colors.YELLOW}Saving database{Colors.RESET}")
-    db_path = os.path.join(database_path, "movies.json")
-    with open(db_path, 'w') as f:
-        json.dump(db, f)
-
-def load_data(file_path, media_type):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    for item in tqdm(data, desc=f"Loading {media_type} data"):
-        item['media_type'] = media_type
-        item['dir_type'] = 'cdn'
-    return data
-
 def load_only_images_data(file_path, media_type):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    all_items = []
-    for item in tqdm(data, desc=f"Loading {media_type} with images"):
-        item['media_type'] = media_type
-        poster_path = item.get('poster_path', '').replace("/", "")
-        backdrop_path = item.get('backdrop_path', '').replace("/", "")
-        if poster_path and os.path.exists(os.path.join('cdn/posters_combined', poster_path)) and backdrop_path and os.path.exists(os.path.join('cdn/posters_combined', backdrop_path)):
-            all_items.append(item)
-    return all_items
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        all_items = []
+        for item in tqdm(data, desc=f"Loading {media_type} with images"):
+            item['media_type'] = media_type
+            poster_path = item.get('poster_path', '').replace("/", "")
+            backdrop_path = item.get('backdrop_path', '').replace("/", "")
+            if poster_path and os.path.exists(os.path.join('cdn/posters_combined', poster_path)) and backdrop_path and os.path.exists(os.path.join('cdn/posters_combined', backdrop_path)):
+                all_items.append(item)
+        return all_items
+    except FileNotFoundError:
+        log_warning(f"File not found: {file_path} - returning empty list")
+        return []
+    except json.JSONDecodeError as e:
+        log_warning(f"Invalid JSON in {file_path}: {e} - returning empty list")
+        return []
+    except Exception as e:
+        log_warning(f"Error loading {file_path}: {e} - returning empty list")
+        return []
 
 # Loading content with better progress display
 movies = load_data('cdn/files/movies_little_clean.json', 'movie')
@@ -190,8 +246,6 @@ log_success(f"Movies with images loaded: {Colors.BOLD}{len(movies_with_images)}{
 
 tv_series_with_images = load_data('cdn/files/tv_with_images.json', 'tv')
 log_success(f"TV shows with images loaded: {Colors.BOLD}{len(tv_series_with_images)}{Colors.RESET} titles")
-
-movies_db = load_movies_db()
 
 all_items = movies + tv_series
 item_index = {item['id']: index for index, item in enumerate(all_items)}
