@@ -10,18 +10,26 @@ def register():
     from app import bcrypt
     data = request.form.to_dict()
 
-    if data['username'] == '' or data['password'] == '' or data['email'] == '':
-        return {'message': 'password or username or email are blank'}, 400
+    # Check required fields (email is optional)
+    if data.get('username', '') == '' or data.get('password', '') == '':
+        return {'message': 'Username and password are required'}, 400
 
     # Check if the user already exists in the database
     existing_user_by_username = User.query.filter_by(username=data['username']).first()
-    existing_user_by_email = User.query.filter_by(email=data['email']).first()
+    
+    # Only check email uniqueness if email is provided
+    existing_user_by_email = None
+    if data.get('email'):
+        existing_user_by_email = User.query.filter_by(email=data['email']).first()
 
     if existing_user_by_username or existing_user_by_email:
         return {'message': 'User already exists'}, 400
 
     hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-    new_user = User(username=data['username'], email=data['email'], password=hashed_password)
+    
+    # Create user with optional email
+    email = data.get('email') if data.get('email') else None
+    new_user = User(username=data['username'], email=email, password=hashed_password)
 
     db.session.add(new_user)
     db.session.commit()

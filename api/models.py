@@ -6,7 +6,7 @@ db = SQLAlchemy()
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)  # Changed to nullable=True
     password = db.Column(db.String(200), nullable=False)
     is_banned = db.Column(db.Boolean, default=False)
     ban_reason = db.Column(db.String(200), nullable=True)

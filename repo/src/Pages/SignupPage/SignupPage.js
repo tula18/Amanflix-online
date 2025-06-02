@@ -26,13 +26,9 @@ const Signup = () => {
       setCallErrMsg(state.message)
     }
   }, [state])
-  
+
   const validateInputs = (name, value) => {
     let errorMessage = '';
-    setInputErrors((prevSuccess) => ({
-      ...prevSuccess,
-      [name]: errorMessage
-    }));
     
     switch (name) {
       case "username":
@@ -41,63 +37,70 @@ const Signup = () => {
         }
         break;
       case "email":
-        const pattern = /^[\w._%+-]+@services\.idf$/i;
-        if (!pattern.test(value)) {
-          errorMessage = 'Invaid Email (T123456@services.idf)';
+        // Only validate email if it's provided (email is optional)
+        if (value && value.trim() !== '') {
+          const pattern = /^[\w._%+-]+@services\.idf$/i;
+          if (!pattern.test(value)) {
+            errorMessage = 'Invalid Email (T123456@services.idf)';
+          }
         }
         break;
       case "password":
         if (!value) {
           errorMessage = 'Password cannot be empty';
-        } else if (!value || value.length < 8) {
+        } else if (value.length < 8) {
           errorMessage = 'Password should be at least 8 characters';
         }
+        console.log(`Password validation: value="${value}", length=${value.length}, error="${errorMessage}"`);
         break;
       default:
         break;
     }
-    setInputErrors((prevSuccess) => ({
-      ...prevSuccess,
-      [name]: errorMessage
-    }));
+    console.log(`Validating ${name} with value: ${value}, error: ${errorMessage}`);
+    setInputErrors((prevErrors) => {
+      const newErrors = {
+        ...prevErrors,
+        [name]: errorMessage
+      };
+      console.log(`Updated inputErrors for ${name}:`, newErrors);
+      return newErrors;
+    });
     return { isValid: errorMessage === '', error: errorMessage };
   }
 
   const validateForm = () => {
-    const newInputErrors = { ...inputErrors };
+    const newInputErrors = {};
     let FormisValid = true;
     const data = {
       username: username,
-      email: email,
       password: password,
     }
+    
+    if (email && email.trim() !== '') {
+      data.email = email;
+    }
+    
     for (const key in data) {
       const validationResult = validateInputs(key, data[key]);
       if (!validationResult.isValid) {
         newInputErrors[key] = validationResult.error
         FormisValid = false;
+      } else {
+        newInputErrors[key] = ''; // Clear any existing errors
       }
     }
 
-    setInputErrors(newInputErrors);
     return FormisValid
   }
 
   const getUsernameValue = (e) => {
-    const { name, value } = e.target;
-    validateInputs(name, value)
     setUsername(e.target.value)
   }
 
   const getEmailValue = (e) => {
-    const { name, value } = e.target;
-    validateInputs(name, value)
     setEmail(e.target.value)
   }
-
   const getPasswordValue = (e) => {
-    // const { name, value } = e.target;
-    // validateInputs(name, value)
     setPassword(e.target.value)
   }
   
@@ -112,7 +115,10 @@ const Signup = () => {
       setLoading(true)
       const data = new FormData();
       data.append('username', username)
-      data.append('email', email)
+      // Only include email if it's provided (since it's optional)
+      if (email && email.trim() !== '') {
+        data.append('email', email)
+      }
       data.append('password', password)
       try {
         const res = await fetch(`${API_URL}/api/auth/register`, {
@@ -140,7 +146,7 @@ const Signup = () => {
       }
     } else {
       setCallErr(true)
-      setCallErrMsg('Please fill in all the fields!')
+      setCallErrMsg('Please fill in the required fields!')
     }
     setLoading(false)
   }
@@ -164,10 +170,9 @@ const Signup = () => {
         <div className='login__container'>
           <form className='signup__content'>
             <div className='login__head'><h1>Sign Up</h1></div>
-            <div className='login__inputs' onKeyDown={handleKeyPress}>
-              <FormGroup label={"Username"} name={"username"} value={username} onChange={getUsernameValue} error={inputErrors} required />
-              <FormGroup label={"Email (T123456@services.idf)"} name={"email"} value={email} onChange={getEmailValue} error={inputErrors} required />
-              <PasswordFormGroup label={'Password'} name="password" value={password} onChange={getPasswordValue} required />
+            <div className='login__inputs' onKeyDown={handleKeyPress}>              <FormGroup label={"Username"} name={"username"} value={username} onChange={getUsernameValue} error={inputErrors} required />
+              <FormGroup label={"Email (T123456@services.idf) - Optional"} name={"email"} value={email} onChange={getEmailValue} error={inputErrors} />
+              <PasswordFormGroup label={'Password'} name="password" value={password} onChange={getPasswordValue} error={inputErrors} required />
               <p className='login__errorMessage'>{errorMessage}</p>
               <button className='login__button' onClick={handleSubmit}>{loading ? 'Loading...' : 'Sign Up'}</button>
             </div>

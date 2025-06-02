@@ -15,6 +15,10 @@
     transition: all 0.3s ease, left 0.3s ease, font-size 0.3s ease, color 0.3s ease;
 }
 
+.form-group input {
+    background: #333 !important;
+}
+
 .placeholder-label_active {
     display: flex;
 }
