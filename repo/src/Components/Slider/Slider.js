@@ -34,6 +34,7 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [movies_fetch, setMovies] = useState([]);
+    const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchTitles = async () => {
@@ -59,6 +60,7 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
         }
       } catch (error) {
         console.error('Error fetching titles:', error);
+        setError("Something went wrong. Please check your connection and try again.");
       } finally {
         setIsLoading(false);
       }
@@ -208,18 +210,38 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
       }
     }
 
+    if (isLoading) {
+        return (
+          <div className="slider continue-watching-slider-wrapper">
+            <div className="loading-slider-title"></div>
+            <Carousel disableWindowSizeListener itemsToShow={5} className="my-carousel" breakPoints={breakPoints}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <span key={i}>
+                    <LoadingCard key={i} />
+                  </span>
+                ))}
+            </Carousel>
+          </div>
+        );
+    }
+
+    if (!isLoading && !error && movies_fetch.length === 0) {
+        return null;
+    }
+
     return (
         <div className="slider">
           <h1 className={`slider-title ${(category.trim() !== '' || redirect !== null) ? "slider-title_link" : ""} `} onClick={navigateToCategory}>{title}</h1>
-            {isLoading ? (
-              <Carousel disableWindowSizeListener itemsToShow={5} className="my-carousel" breakPoints={breakPoints}>
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <span key={i}>
-                      <LoadingCard key={i} />
-                    </span>
-                  ))}
-              </Carousel>
-            ) : (
+            {error && <div className="continue-watching-error">{error}</div>}
+            
+            {!isLoading && !error && movies_fetch.length === 0 && (
+                <div className="continue-watching-empty">
+                    <p>Theres no Titles to show!</p>
+                    <p className="empty-suggestion">Check back later for new {mediaType === 'movies' ? 'movies' : 'shows'}</p>
+                </div>
+            )}
+
+            {!isLoading && !error && movies_fetch.length > 0 && (
               <Carousel disableWindowSizeListener itemsToShow={5} className="my-carousel" breakPoints={breakPoints}>
                   {movies_fetch.map((movie, idx) => {
                     const progressPercentage = getProgressPercentage(movie);
@@ -257,7 +279,7 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
                       </span>
                     );
                   })}
-                  {(category.trim() !== '' || redirect !== null) && (
+                  {(category.trim() !== '' || redirect !== null) && (!isLoading && !error && movies_fetch.length > 0) && (
                     <button className="button3" onClick={navigateToCategory}>
                         <ShowMoreCard/>
                     </button>

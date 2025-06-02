@@ -168,7 +168,8 @@ const HomePage = () => {
     <div className='homePageContainer'>
       <Banner />
       <ContinueWatchingSlider />
-      {/* <MovieSlider title="Uploaded Movies" apiUrl={`${API_URL}/cdn/movies?per_page=10&order=desc`} category='uploaded'/> */}
+      <MovieSlider title="Uploaded Movies" apiUrl={`${API_URL}/api/movies?per_page=10&order=desc`} category='uploaded' mediaType='movies'/>
+      <MovieSlider title="Uploaded Shows" apiUrl={`${API_URL}/api/shows?per_page=10&order=desc`} category='uploaded' mediaType='shows'/>
       <MovieSlider title="Random Movies" apiUrl={`${API_URL}/cdn/movies/random?min_rating=8.9&with_images=true&per_page=10`} category='random'/>
       <MovieSlider title="Random Tv Shows" apiUrl={`${API_URL}/cdn/tv/random?min_rating=8.9&with_images=true&per_page=10`} category='random' mediaType='shows'/>
       <MovieSlider title="Movies" apiUrl={`${API_URL}/cdn/movies?per_page=10&include_watch_history=true`} redirect={"/movies"}/>

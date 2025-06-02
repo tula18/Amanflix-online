@@ -225,7 +225,10 @@ const ContinueWatchingSlider = () => {
             episode: item.watch_history.episode_number,
             isNext: false
         };
-    };
+    };    // Hide the entire slider if there are no titles to show
+    if (!isLoading && !error && continueWatching.length === 0) {
+        return null;
+    }
 
     return (
         <div className="slider continue-watching-slider-wrapper">
