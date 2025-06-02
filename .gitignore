@@ -19,4 +19,5 @@ api/migrations/*
 __pycache__/
 *.py[cod]
 *$py.class
-amanflix-data-downloader
+amanflix-data-downloader/node_modules
+amanflix-data-downloader/build

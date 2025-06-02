@@ -1,0 +1,1012 @@
+/* Refined Color Variables - Enhanced Palette */
+:root {
+  --primary: #e50914;
+  --primary-dark: #b30710;
+  --primary-light: #ff3b3b;
+  --secondary: #0072d2;
+  --secondary-dark: #00508f;
+  --secondary-light: #4e9fde;
+  --bg-dark: #0f0f0f;
+  --bg-dark-accent: #171717;
+  --bg-card: #1c1c1c;
+  --bg-card-hover: #252525;
+  --text-light: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-tertiary: #8c8c8c;
+  --border-color: #333333;
+  --success: #2ecc71;
+  --success-dark: #27ae60;
+  --warning: #f39c12;
+  --warning-dark: #e67e22;
+  --danger: #e74c3c;
+  --danger-dark: #c0392b;
+  --card-shadow: 0 6px 12px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --card-hover-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 3px 6px rgba(0, 0, 0, 0.2);
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+}
+
+/* General Styles Refinements */
+body {
+  margin: 0;
+  background: linear-gradient(160deg, #121212 0%, #080808 100%);
+  color: var(--text-light);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  padding-bottom: 60px;
+  position: relative;
+  overflow-x: hidden;
+  min-height: 100vh;
+  font-weight: 300;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+}
+
+h1 {
+  color: var(--primary);
+  margin: 35px 0;
+  font-size: 2.8rem;
+  letter-spacing: -0.8px;
+  font-weight: 800;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  display: inline-block;
+  position: relative;
+}
+
+h1::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(to right, var(--primary), var(--primary-light));
+  border-radius: 2px;
+}
+
+/* Enhanced Form Elements */
+input[type="text"] {
+  width: 320px;
+  padding: 14px 18px;
+  margin: 0;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  color: #333;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(229, 9, 20, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Refined Form Layout */
+.submit-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 35px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Enhanced Buttons */
+button {
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 110px;
+  letter-spacing: 0.3px;
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+button:hover::before {
+  opacity: 1;
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Button Variants with Improved Visual Styles */
+.submit-form button {
+  background: linear-gradient(to bottom, var(--primary), var(--primary-dark));
+  color: white;
+}
+
+.submit-form button:disabled {
+  background: linear-gradient(to bottom, #bd3c41, #a33238);
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.fetch-all-button {
+  background: linear-gradient(to bottom, var(--success), var(--success-dark)) !important;
+}
+
+.fetch-all-button:hover {
+  background: linear-gradient(to bottom, #32dd7e, #28ba67) !important;
+}
+
+.clear-button {
+  background: linear-gradient(to bottom, var(--danger), var(--danger-dark)) !important;
+}
+
+/* Update Movie Card and Grid Styles */
+
+/* Constrain movie grid width */
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-gap: 16px;
+  padding: 15px 0;
+  max-width: 900px; /* Match the search container width */
+  margin: 0 auto; /* Center the grid */
+}
+
+/* Make sure the movie-grid container doesn't overflow on mobile */
+@media (max-width: 940px) {
+  .movie-grid {
+    max-width: calc(100% - 40px); /* Allow for some padding */
+    margin: 0 20px;
+  }
+}
+
+/* Fixed Height Movie Card */
+.movie-card {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  height: 250px; /* Changed from 330px to 250px */
+  max-height: 250px; /* Changed from 330px to 250px */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Image container with adjusted height */
+.image-container {
+  height: 180px; /* Reduced from 250px */
+  overflow: hidden;
+  position: relative;
+}
+
+.movie-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensure image covers area without distortion */
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.movie-card:hover img {
+  transform: scale(1.05);
+}
+
+.movie-card.selected {
+  box-shadow: 0 0 0 2px #e50914;
+}
+
+/* Info section with adjusted height */
+.movie-info {
+  padding: 8px; /* Reduced padding from 12px */
+  background-color: #333;
+  flex: 1;
+  overflow: hidden; /* Prevent overflow */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-height: 70px; /* Reduced from 80px */
+}
+
+.movie-title {
+  margin: 0 0 4px 0; /* Reduced bottom margin */
+  font-size: 13px; /* Slightly smaller font */
+  font-weight: 600;
+  color: white;
+  line-height: 1.2; /* Tighter line height */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-box-orient: vertical;
+}
+
+/* Fix media type badge position */
+.media-type-badge {
+  position: absolute;
+  bottom: 10px; /* Position from top instead of bottom */
+  left: 10px;
+  padding: 3px 6px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 10px;
+  border-radius: 3px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  z-index: 1;
+}
+
+/* Ensure selected badge is properly positioned */
+.selected-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px; /* Slightly smaller */
+  height: 20px; /* Slightly smaller */
+  background-color: #e50914;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* For larger screens */
+@media (min-width: 768px) {
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+/* For smaller mobile screens */
+@media (max-width: 480px) {
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-gap: 12px;
+  }
+  
+  .movie-title {
+    font-size: 14px;
+  }
+  
+  .movie-info {
+    padding: 8px;
+  }
+  
+  .movie-meta {
+    font-size: 12px;
+  }
+}
+
+/* Add these styles to your existing App.css */
+.data-type-selector {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin: 0; /* Remove margin-bottom that was causing misalignment */
+}
+
+.data-type-selector label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 10px 18px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+.data-type-selector label:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.data-type-selector input {
+  cursor: pointer;
+}
+
+.selected-count {
+  text-align: center;
+  color: white;
+  margin: 10px 0;
+  background-color: rgba(0,0,0,0.3);
+  padding: 8px;
+  border-radius: 0 0 8px 8px;
+  margin-top: -12px;
+  font-weight: 500;
+}
+
+.selected-count p {
+  margin: 0;
+  color: var(--text-light);
+}
+
+/* Add these at the end of your CSS file */
+
+/* Ant Design Customization */
+.ant-modal-content {
+  background-color: #1a1a1a;
+  color: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ant-modal-header {
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #333;
+  padding: 20px 24px;
+}
+
+.ant-modal-title {
+  color: white !important;
+}
+
+.ant-modal-body {
+  padding: 24px;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid #333;
+  padding: 16px 24px;
+}
+
+.ant-select-selection-item,
+.ant-select-item-option-content {
+  color: #333;
+}
+
+
+.ant-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ant-checkbox-group-item {
+  width: calc(33.33% - 8px);
+  margin: 0 !important;
+}
+
+/* Also fix any Ant Design inputs that might have the same issue */
+.ant-input,
+.ant-select-selection-search-input {
+  color: #333 !important; /* Force text color for ant design components */
+}
+
+/* For the modal inputs */
+.ant-modal .ant-input {
+  color: #333;
+  background-color: #fff;
+}
+
+.ant-input, .ant-select {
+  background-color: #333 !important;
+  color: white !important;
+  border-color: #444 !important;
+}
+
+.ant-input:focus, .ant-select-focused {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+}
+
+.ant-select-item-option-selected {
+  background-color: rgba(229, 9, 20, 0.2) !important;
+}
+
+.ant-select-item {
+  color: #333 !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+/* Add these at the end of your CSS file */
+
+/* Preview Styling */
+.preview-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-container::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.preview-container::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
+.preview-container {
+  line-height: 1.5;
+}
+
+/* JSON syntax highlighting (basic) */
+.preview-container .key {
+  color: #ff6b6b;
+}
+
+.preview-container .string {
+  color: #a3be8c;
+}
+
+.preview-container .number {
+  color: #88c0d0;
+}
+
+.preview-container .boolean {
+  color: #b48ead;
+}
+
+/* Add this to your existing preview styles */
+.preview-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+/* Filter panel styles */
+.filter-panel {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background-color: #222;
+  border-radius: 8px;
+}
+
+/* Stats panel styles */
+.stats-panel {
+  background: linear-gradient(135deg, rgba(31, 31, 31, 0.8), rgba(15, 15, 15, 0.8));
+  padding: 28px;
+  border-radius: 12px;
+  margin: 35px auto;
+  max-width: 800px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stats-panel h3 {
+  margin-top: 0;
+  color: var(--text-light);
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+  position: relative;
+  display: inline-block;
+}
+
+.stats-panel h3:after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background-color: var(--primary);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 20px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 18px;
+  background: linear-gradient(to bottom, var(--bg-card), var(--bg-card-hover));
+  border-radius: 10px;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.stat-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: bold;
+  background: linear-gradient(to right, var(--primary), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* Selection actions */
+.selection-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* Add this to your CSS file */
+.download-warning {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: rgba(250, 173, 20, 0.1);
+  border-left: 3px solid #faad14;
+  color: #faad14;
+  border-radius: 2px;
+}
+
+/* Add this to your existing styles */
+.media-type-badge {
+  position: absolute;
+  left: 10px;
+  padding: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  border-radius: 3px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+
+/* Add with your other styled messages */
+.info-note {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: rgba(24, 144, 255, 0.1);
+  border-left: 3px solid #1890ff;
+  color: #1890ff;
+  border-radius: 2px;
+}
+
+/* Fetch All Button */
+.fetch-all-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.fetch-all-button:hover {
+  background-color: #45a049;
+}
+
+.fetch-all-button:disabled {
+  background-color: #94d797;
+  cursor: not-allowed;
+}
+
+/* Add these styles */
+.filter-options {
+  margin: 0; /* Remove vertical margins */
+  display: flex;
+  align-items: center;
+}
+
+.filter-options label {
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px 18px;
+  background: linear-gradient(to bottom, rgba(35, 35, 35, 0.8), rgba(25, 25, 25, 0.9));
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.filter-options label:hover {
+  background: linear-gradient(to bottom, rgba(45, 45, 45, 0.9), rgba(35, 35, 35, 0.95));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.filter-options label::before {
+  content: '🔞';
+  font-size: 13px;
+  margin-right: 2px;
+}
+
+/* Custom checkbox styling */
+.filter-options input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  margin: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.filter-options input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+}
+
+.filter-options input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  display: block;
+}
+
+.filter-options input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.4);
+}
+
+/* Active state glow effect */
+.filter-options input[type="checkbox"]:checked ~ span {
+  color: white;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Add these styles */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  position: relative;
+}
+
+.settings-button {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  color: white !important;
+}
+
+.settings-button:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+}
+
+.search-container {
+  max-width: 900px;
+  margin: 0 auto 30px;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center; /* Add this to vertically align children */
+  gap: 16px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.actions {
+  margin-top: 8px;
+}
+
+/* Add responsive improvements */
+@media (max-width: 768px) {
+  .submit-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  input[type="text"] {
+    width: 100%;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .app-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .settings-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-gap: 15px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+/* Add this new loading animation */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Enhanced Type Selector - Simplified */
+.data-type-selector {
+  display: flex;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px;
+  border-radius: 30px;
+  position: relative;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* The slider background - absolute positioning with transition */
+.data-type-selector::after {
+  content: '';
+  position: absolute;
+  width: calc(50% - 12px);
+  height: calc(100% - 8px);
+  background: linear-gradient(to bottom, var(--primary), var(--primary-dark));
+  border-radius: 24px;
+  box-shadow: 0 2px 6px rgba(229, 9, 20, 0.4);
+  z-index: 1;
+  top: 4px;
+  left: 4px;
+  transition: transform 0.3s ease;
+}
+
+/* Move slider when TV is checked */
+.data-type-selector input[value="tv"]:checked ~ label:last-of-type::after {
+  transform: translateX(110px);
+}
+
+/* Explicit TV selection - this is the key fix */
+#tv-option:checked ~ .data-type-selector::after {
+  transform: translateX(110px);
+}
+
+/* Fixed visible labels */
+.data-type-selector label {
+  position: relative;
+  z-index: 2;
+  min-width: 110px;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  border-radius: 24px;
+  color: var(--text-secondary);
+}
+
+/* Hidden inputs */
+.data-type-selector input {
+  position: absolute;
+  opacity: 0;
+}
+
+/* Active label styles */
+.data-type-selector input:checked + span {
+  color: white;
+}
+
+/* Add these classes for JavaScript-based toggle */
+.data-type-selector.tv-selected::after {
+  transform: translateX(125px);
+}
+
+.data-type-selector.movie-selected::after {
+  transform: translateX(0);
+}
+
+/* Advanced Filters */
+.advanced-filters {
+  background: linear-gradient(to bottom, rgba(35, 35, 35, 0.8), rgba(25, 25, 25, 0.9));
+  padding: 0;
+  margin: 0;
+  border-radius: 8px;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-out;
+  opacity: 0;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.advanced-filters.visible {
+  padding: 20px;
+  margin: 10px 0 20px;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.filter-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-row > div {
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-row label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.slider-container {
+  padding: 6px 10px;
+}
+
+.filter-toggle-button {
+  background: linear-gradient(to bottom, rgba(35, 35, 35, 0.8), rgba(25, 25, 25, 0.9));
+  color: var(--text-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.filter-toggle-button:hover {
+  background: linear-gradient(to bottom, rgba(45, 45, 45, 0.9), rgba(35, 35, 35, 0.95));
+  transform: translateY(-1px);
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.filter-notice {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: rgba(0, 114, 210, 0.1);
+  border-left: 3px solid var(--secondary);
+  color: var(--text-secondary);
+  border-radius: 2px;
+  font-size: 20px;
+}
+
+/* Add this to make the grid layout work properly with infinite scroll */
+.movie-grid-container {
+  max-width: 900px; /* Match your other container widths */
+  margin: 0 auto;
+}
+
+/* Improved mobile responsiveness */
+@media (max-width: 480px) {
+  .movie-card {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .form-row input[type="text"] {
+    margin-bottom: 10px;
+  }
+  
+  .filter-row {
+    flex-direction: column;
+  }
+  
+  .filter-actions {
+    justify-content: space-between;
+    margin-top: 15px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
