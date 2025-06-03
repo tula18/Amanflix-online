@@ -198,9 +198,40 @@ const ManageAdminProfile = () => {
             console.error('Error validating token:', error);
             setMessage(error.error);
         } finally {
-            setSaveLoading(false);
-        }
+            setSaveLoading(false);        }
     }
+
+    // Get current admin ID to prevent self-disable
+    const getCurrentAdminId = () => {
+        return JSON.parse(localStorage.getItem('admin_info'))?.id || null;
+    };
+
+    const handleToggleStatus = async () => {
+        try {
+            const action = user.disabled ? 'enable' : 'disable';
+            const endpoint = `${API_URL}/api/admin/${action}/${user.id}`;
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Update the user state with the new status
+                setUser(prev => ({ ...prev, disabled: !prev.disabled }));
+                setMessage(data.message);
+            } else {
+                setMessage(data.message || 'An error occurred');
+            }
+        } catch (error) {
+            console.error('Error toggling admin status:', error);
+            setMessage('Error toggling admin status. Please try again.');
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -288,9 +319,25 @@ const ManageAdminProfile = () => {
                         <Button type="primary" icon="left" />
                     </FloatButton>
                 </Tooltip>
-            </div>
-            <div className="profile__form__wrapper sidebar_profile__form__wrapper">
-                <h2>Manage {user.username}'s' Account</h2>
+            </div>            <div className="profile__form__wrapper sidebar_profile__form__wrapper">
+                <h2>
+                    Manage {user.username}'s Account
+                    {user.disabled !== undefined && (
+                        <span 
+                            style={{
+                                marginLeft: '10px',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 'normal',
+                                backgroundColor: user.disabled ? '#ff4d4f' : '#52c41a',
+                                color: 'white'
+                            }}
+                        >
+                            {user.disabled ? '🔒 DISABLED' : '🔓 ACTIVE'}
+                        </span>
+                    )}
+                </h2>
                 <div className="divider"/>
                 <div className="profile__form">
                     <div className="form_content">
@@ -371,9 +418,22 @@ const ManageAdminProfile = () => {
                         </div>
                     </div>
                     <div>
-                        <div className="divider"/>
-                        <div className="profile-form_buttons">
+                        <div className="divider"/>                        <div className="profile-form_buttons">
                             <button className="profile_save_btn" onClick={handleUpdate} disabled={saveLoading}>{saveLoading ? 'Saving' : "Save"}</button>
+                            {currentUserRole === 'superadmin' && (
+                                <button 
+                                    className={user.disabled ? "profile_enable_btn" : "profile_disable_btn"} 
+                                    onClick={handleToggleStatus}
+                                    disabled={user.id === getCurrentAdminId()}
+                                    style={{
+                                        backgroundColor: user.disabled ? '#52c41a' : '#fa8c16',
+                                        borderColor: user.disabled ? '#52c41a' : '#fa8c16',
+                                        color: 'white'
+                                    }}
+                                >
+                                    {user.disabled ? 'Enable Account' : 'Disable Account'}
+                                </button>
+                            )}
                             <button className="profile_delete_btn" onClick={handleModalOpen} >Delete Account</button>
                         </div>
                     </div>

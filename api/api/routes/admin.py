@@ -67,6 +67,11 @@ def admin_login():
         log_warning(f"Failed admin login attempt for username: {username}")
         return jsonify({'message': 'Login failed! Check your credentials.'}), 401
 
+    # Check if admin account is disabled
+    if admin.disabled:
+        log_warning(f"Disabled admin attempted login: {username}")
+        return jsonify({'message': 'Your admin account has been disabled. Please contact a superadmin.'}), 403
+
     token = generate_admin_token(admin.id, admin.role)
     log_success(f"Admin login successful: {username} ({admin.role})")
 
@@ -270,6 +275,60 @@ def delete_admin(current_admin, admin_id):
     db.session.delete(admin_to_delete)
     db.session.commit()
     return jsonify({'message': f'Admin {admin_to_delete.username} deleted successfully.'})
+
+@admin_bp.route('/disable/<int:admin_id>', methods=['POST'])
+@admin_token_required('superadmin')
+def disable_admin(current_admin, admin_id):
+    admin_to_disable = Admin.query.get(admin_id)
+    
+    if not admin_to_disable:
+        return jsonify({'message': f'Admin with ID {admin_id} not found'}), 404
+    
+    # Only superadmins can disable other admins
+    if current_admin.role != 'superadmin':
+        return jsonify({'message': 'Only superadmins can disable admin accounts.'}), 403
+    
+    # Prevent disabling self
+    if current_admin.id == admin_id:
+        return jsonify({'message': 'You cannot disable your own account.'}), 400
+    
+    # Check if admin is already disabled
+    if admin_to_disable.disabled:
+        return jsonify({'message': f'Admin {admin_to_disable.username} is already disabled.'}), 400
+    
+    # Safety check: prevent disabling the last active superadmin
+    if admin_to_disable.role == 'superadmin':
+        active_superadmins = Admin.query.filter_by(role='superadmin', disabled=False).count()
+        if active_superadmins <= 1:
+            return jsonify({'message': 'Cannot disable the last active superadmin account.'}), 400
+    
+    admin_to_disable.disabled = True
+    db.session.commit()
+    
+    log_warning(f"Admin {admin_to_disable.username} ({admin_to_disable.role}) disabled by superadmin {current_admin.username}")
+    return jsonify({'message': f'Admin {admin_to_disable.username} has been disabled successfully.'})
+
+@admin_bp.route('/enable/<int:admin_id>', methods=['POST'])
+@admin_token_required('superadmin')
+def enable_admin(current_admin, admin_id):
+    admin_to_enable = Admin.query.get(admin_id)
+    
+    if not admin_to_enable:
+        return jsonify({'message': f'Admin with ID {admin_id} not found'}), 404
+    
+    # Only superadmins can enable other admins
+    if current_admin.role != 'superadmin':
+        return jsonify({'message': 'Only superadmins can enable admin accounts.'}), 403
+    
+    # Check if admin is already enabled
+    if not admin_to_enable.disabled:
+        return jsonify({'message': f'Admin {admin_to_enable.username} is already enabled.'}), 400
+    
+    admin_to_enable.disabled = False
+    db.session.commit()
+    
+    log_success(f"Admin {admin_to_enable.username} ({admin_to_enable.role}) enabled by superadmin {current_admin.username}")
+    return jsonify({'message': f'Admin {admin_to_enable.username} has been enabled successfully.'})
 
 @admin_bp.route('/list', methods=['GET'])
 @admin_token_required('moderator')

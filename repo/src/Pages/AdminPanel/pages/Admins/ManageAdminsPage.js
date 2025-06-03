@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Table, Input, Button, Tag, Space, Tooltip, Flex } from "antd";
 import { API_URL } from "../../../../config";
 import {  FaEye, FaEyeSlash } from "react-icons/fa6";
-import { CrownOutlined, DeleteOutlined, SearchOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
+import { CrownOutlined, DeleteOutlined, SearchOutlined, TeamOutlined, UserOutlined, LockOutlined, UnlockOutlined } from "@ant-design/icons";
 import './ManageAdminsPage.css'
 import PasswordFormGroup from "../../Components/FormGroup/PasswordFormGroup";
 
@@ -240,14 +240,47 @@ const ManageAdmins = () => {
     // eslint-disable-next-line no-unused-vars
     const [searchTerm, setSearchTerm] = useState('');
     // eslint-disable-next-line no-unused-vars
-    const [searchedColumn, setSearchedColumn] = useState('');
-    const [showModal, setShowModal] = useState(false)
-    const [showCreateModal, setCreateShowModal] = useState(false)
+    const [searchedColumn, setSearchedColumn] = useState('');    const [showModal, setShowModal] = useState(false);
+    const [showCreateModal, setCreateShowModal] = useState(false);
     const [loadingUsers, setLoadingUsers] = useState(false);
-    const [selectedUser, setSelectedUser] = useState('')
+    const [selectedUser, setSelectedUser] = useState('');
     const navigate = useNavigate();
 
     const searchInput = useRef(null);
+
+    // Get current admin ID from token or state (you may need to adjust this based on your app structure)
+    const getCurrentAdminId = () => {
+        // This should return the current admin's ID to prevent self-disable
+        // You may need to implement this based on how you store current admin info
+        return JSON.parse(localStorage.getItem('admin_info'))?.id || null;
+    };
+
+    const toggleAdminStatus = async (admin) => {
+        try {
+            const action = admin.disabled ? 'enable' : 'disable';
+            const endpoint = `${API_URL}/api/admin/${action}/${admin.id}`;
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Refresh the admin list
+                getUsers();
+                alert(data.message);
+            } else {
+                alert(data.message || 'An error occurred');
+            }
+        } catch (error) {
+            console.error('Error toggling admin status:', error);
+            alert('Error toggling admin status. Please try again.');
+        }
+    };
 
     function formatDateTime(dateTime, showTime = false) {
         const date = new Date(dateTime);
@@ -400,7 +433,23 @@ const ManageAdmins = () => {
                         </Tag>
 
                 </>
-            )
+            )        },
+        {
+            title: 'Status',
+            dataIndex: 'disabled',
+            key: 'disabled',
+            render: (_, { disabled }) => (
+                <Tooltip title={disabled ? "Account is disabled" : "Account is active"}>
+                    <Tag color={disabled ? 'red' : 'green'} icon={disabled ? <LockOutlined /> : <UnlockOutlined />}>
+                        {disabled ? "DISABLED" : "ACTIVE"}
+                    </Tag>
+                </Tooltip>
+            ),
+            filters: [
+                { text: 'Active', value: false },
+                { text: 'Disabled', value: true },
+            ],
+            onFilter: (value, record) => record.disabled === value,
         },
         {
             title: 'Created at',
@@ -417,10 +466,19 @@ const ManageAdmins = () => {
         },
         {
             title: 'Action',
-            dataIndex: 'action',
-            render: (_, record) => (
+            dataIndex: 'action',            render: (_, record) => (
                 <Flex justify={"center"} gap="small">
-                    <Tooltip title="Delete User">
+                    {window.currentUserRole === 'superadmin' && (
+                        <Tooltip title={record.disabled ? "Enable Admin" : "Disable Admin"}>
+                            <Button 
+                                icon={record.disabled ? <UnlockOutlined /> : <LockOutlined />} 
+                                style={{ borderColor: record.disabled ? "green" : "orange", color: record.disabled ? "green" : "orange" }}
+                                onClick={() => toggleAdminStatus(record)}
+                                disabled={record.id === getCurrentAdminId()}
+                            />
+                        </Tooltip>
+                    )}
+                    <Tooltip title="Delete Admin">
                         <Button icon={<DeleteOutlined/>} danger onClick={() => handleModalOpen(record, setShowModal)}/>
                     </Tooltip>
                 </Flex>

@@ -198,6 +198,10 @@ def admin_token_required(required_role):
                 if not current_admin:
                     return jsonify({'message': 'Admin not found.', "error_reason": "admin_not_exist"}), 404
 
+                # Check if admin account is disabled
+                if current_admin.disabled:
+                    return jsonify({'message': 'Admin account has been disabled. Please contact a superadmin.', "error_reason": "admin_account_disabled"}), 403
+
                 if BlacklistToken.query.filter_by(token=token).one_or_none():
                     return jsonify({'message': 'Token has been blacklisted!', "error_reason": "admin_logged_out"}), 403
 
