@@ -1,0 +1,6 @@
+username,email,password,role
+john_admin,john@amanflix.com,SecurePass123!,admin
+jane_moderator,jane@amanflix.com,StrongPass456!,moderator
+mike_superadmin,mike@amanflix.com,PowerPass789!,superadmin
+sarah_mod,sarah@company.com,SafePass321!,moderator
+alex_admin,alex@example.com,MightyPass654!,admin

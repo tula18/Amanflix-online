@@ -35,6 +35,7 @@ class Admin(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), nullable=False)
+    disabled = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=db.func.now())
 
@@ -47,6 +48,7 @@ class Admin(db.Model):
             'username': self.username,
             'email': self.email,
             'role': self.role,
+            'disabled': self.disabled,
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
