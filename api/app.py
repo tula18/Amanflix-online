@@ -9,7 +9,7 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
-from models import db, Movie, TVShow, Season, Episode
+from models import db, Movie, TVShow, Season, Episode, Admin
 from tqdm import tqdm
 from api.utils import check_ffmpeg_available, setup_request_logging
 # Import the logger functions instead of redefining them
@@ -22,6 +22,7 @@ from cdn.tv_cdn import tv_cdn_bp
 from cdn.search_cdn import search_cdn_bp
 from cdn.cdn import cdn_bp
 from cdn.cdn_admin import cdn_admin_bp
+from cdn.discovery_cdn import discovery_cdn_bp
 
 # API ENDPOINTS
 from api.routes.upload import upload_bp
@@ -38,6 +39,7 @@ from api.routes.watch_history import watch_history_bp
 from api.routes.notifications import notifications_bp
 from api.routes.analytics import analytics_bp
 from api.routes.file_parser import file_parser_bp
+from api.routes.discovery import discovery_bp
 
 # Print server header with version and timestamp
 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -105,15 +107,16 @@ migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 
 log_step("Registering endpoints")
-log_substep("CDN endpoints: movies, tv, search, cdn, admin")
+log_substep("CDN endpoints: movies, tv, search, cdn, admin, discovery")
 # CDN ENDPOINTS register
 app.register_blueprint(movie_cdn_bp)
 app.register_blueprint(tv_cdn_bp)
 app.register_blueprint(search_cdn_bp)
 app.register_blueprint(cdn_bp)
 app.register_blueprint(cdn_admin_bp)
+app.register_blueprint(discovery_cdn_bp)
 
-log_substep("API endpoints: upload, stream, movies, shows, auth, admin, search, bug reports, mylist, upload requests, watch history, notifications, analytics, file parser")
+log_substep("API endpoints: upload, stream, movies, shows, auth, admin, search, bug reports, mylist, upload requests, watch history, notifications, analytics, file parser, discovery")
 # API ENDPOINTS register
 app.register_blueprint(upload_bp)
 app.register_blueprint(stream_bp)
@@ -129,6 +132,7 @@ app.register_blueprint(watch_history_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(file_parser_bp)
+app.register_blueprint(discovery_bp)
 log_section_end()
 
 # Content catalog loading with improved progress indicators
@@ -321,10 +325,36 @@ def service_unavailable_error(error):
 # def handle_exception(error):
 #     return jsonify(error=str(error)), 500
 
-# Create tables
-with app.app_context():
-    db.create_all()
-
 if __name__ == '__main__':
+    # Create tables
+    with app.app_context():
+        db.create_all()
+
+    # Check for superadmin after database initialization
+    log_section("SUPERADMIN VERIFICATION")
+    with app.app_context():
+        superadmin = Admin.query.filter_by(role='superadmin').first()
+        
+        if not superadmin:
+            log_error("No superadmin found in the database!")
+            log_banner("CRITICAL: NO SUPERADMIN DETECTED", "Application cannot start without a superadmin account", "error")
+            
+            print(f"{Colors.RED}┌{'─' * 70}┐")
+            print(f"│{Colors.BOLD} ❌ CRITICAL ERROR: No superadmin account found{Colors.RED}{' ' * 23}│")
+            print(f"└{'─' * 70}┘{Colors.RESET}")
+            print(f"\n{Colors.RED}The application requires at least one superadmin account to function properly.{Colors.RESET}")
+            print(f"\n{Colors.CYAN}To create a superadmin account:{Colors.RESET}")
+            print(f"1. Run: {Colors.YELLOW}python create_superadmin.py{Colors.RESET}")
+            print(f"2. Follow the prompts to create your superadmin account")
+            print(f"3. Restart the application")
+            print(f"\n{Colors.RED}Application terminated.{Colors.RESET}\n")
+            
+            log_error("Application terminated due to missing superadmin account")
+            log_section_end()
+            sys.exit(1)
+        else:
+            log_success(f"Superadmin verification passed: {Colors.BOLD}{superadmin.username}{Colors.RESET}")
+            log_section_end()
+    
     app.run(debug=True, host='0.0.0.0', port=5001)
     # For production set host to machine ip

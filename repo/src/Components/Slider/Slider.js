@@ -57,6 +57,8 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
         if (res.ok) {
           const data = await res.json();
           setMovies(data);
+          console.log(`${title}: `, data);
+          
         }
       } catch (error) {
         console.error('Error fetching titles:', error);

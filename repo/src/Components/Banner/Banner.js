@@ -47,16 +47,61 @@ function Banner() {
     useEffect(() => {
       const fetchData = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/movies/random?per_page=1`);
-            const data = await response.json();
-            setMovies(data[0]);
+            // Try API discovery endpoint first
+            const response = await fetch(`${API_URL}/api/discovery/random?per_page=1`);
             
-            // If we have a movie and user is logged in, fetch watch history
-            if (data[0] && localStorage.getItem('token')) {
-                fetchWatchHistory(data[0]);
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Check if we got valid content
+                if (data && data.length > 0 && data[0]) {
+                    console.log("api not zero");
+                    
+                    setMovies(data[0]);
+                    
+                    // If we have content and user is logged in, fetch watch history
+                    if (localStorage.getItem('token')) {
+                        fetchWatchHistory(data[0]);
+                    }
+                    setIsLoading(false);
+                    return;
+                }
             }
+            
+            // Fallback to CDN discovery endpoint
+            console.log('API discovery failed or returned no content, falling back to CDN');
+            const cdnResponse = await fetch(`${API_URL}/cdn/discovery/random?per_page=1&with_images=true`);
+            
+            if (cdnResponse.ok) {
+                const cdnData = await cdnResponse.json();
+                
+                if (cdnData && cdnData.length > 0 && cdnData[0]) {
+                    setMovies(cdnData[0]);
+                } else {
+                    console.error('No content available from both API and CDN');
+                }
+            } else {
+                console.error('Both API and CDN discovery endpoints failed');
+            }
+            
         } catch (error) {
             console.error('Error in fetch:', error);
+            
+            // Try CDN as fallback on any error
+            try {
+                console.log('Trying CDN discovery as fallback due to error');
+                const cdnResponse = await fetch(`${API_URL}/cdn/discovery/random?per_page=1&with_images`);
+                
+                if (cdnResponse.ok) {
+                    const cdnData = await cdnResponse.json();
+                    
+                    if (cdnData && cdnData.length > 0 && cdnData[0]) {
+                        setMovies(cdnData[0]);
+                    }
+                }
+            } catch (cdnError) {
+                console.error('CDN fallback also failed:', cdnError);
+            }
         }
         setIsLoading(false);
       };

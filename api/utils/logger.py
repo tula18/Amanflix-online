@@ -228,6 +228,91 @@ def log_fancy(text, log_level="info"):
     else:  # Default to info
         logger.info(plain_text)
 
+def _get_display_width(text):
+    """Calculate the display width of text, accounting for emojis and wide characters
+    
+    Args:
+        text: The text to measure
+        
+    Returns:
+        int: The display width of the text
+    """
+    import unicodedata
+    
+    width = 0
+    i = 0
+    while i < len(text):
+        char = text[i]
+        code_point = ord(char)
+        
+        # Handle emoji sequences and combining characters
+        if code_point == 0x200D:  # Zero Width Joiner (used in emoji sequences)
+            # Skip ZWJ, it doesn't add width
+            i += 1
+            continue
+        elif 0x1F1E6 <= code_point <= 0x1F1FF:  # Regional indicator symbols (flags)
+            width += 2
+            i += 1
+            continue
+        elif 0x1F600 <= code_point <= 0x1F64F:  # Emoticons
+            width += 2
+            i += 1
+            continue
+        elif 0x1F300 <= code_point <= 0x1F5FF:  # Misc Symbols and Pictographs
+            width += 2
+            i += 1
+            continue
+        elif 0x1F680 <= code_point <= 0x1F6FF:  # Transport and Map Symbols
+            width += 2
+            i += 1
+            continue
+        elif 0x1F700 <= code_point <= 0x1F77F:  # Alchemical Symbols
+            width += 2
+            i += 1
+            continue
+        elif 0x1F780 <= code_point <= 0x1F7FF:  # Geometric Shapes Extended
+            width += 2
+            i += 1
+            continue
+        elif 0x1F800 <= code_point <= 0x1F8FF:  # Supplemental Arrows-C
+            width += 2
+            i += 1
+            continue
+        elif 0x1F900 <= code_point <= 0x1F9FF:  # Supplemental Symbols and Pictographs
+            width += 2
+            i += 1
+            continue
+        elif 0x1FA00 <= code_point <= 0x1FA6F:  # Chess Symbols
+            width += 2
+            i += 1
+            continue
+        elif 0x1FA70 <= code_point <= 0x1FAFF:  # Symbols and Pictographs Extended-A
+            width += 2
+            i += 1
+            continue
+        elif 0x2600 <= code_point <= 0x26FF:  # Miscellaneous Symbols (includes ✅, ⚠️)
+            width += 2
+            i += 1
+            continue
+        elif 0x2700 <= code_point <= 0x27BF:  # Dingbats
+            width += 2
+            i += 1
+            continue
+        elif unicodedata.combining(char):  # Combining characters (don't add width)
+            i += 1
+            continue
+        else:
+            # Use East Asian Width property for other characters
+            eaw = unicodedata.east_asian_width(char)
+            if eaw in ('F', 'W'):  # Fullwidth or Wide
+                width += 2
+            else:  # Narrow, Half-width, Neutral, Ambiguous
+                width += 1
+        
+        i += 1
+    
+    return width
+
 def log_banner(title, content=None, style="info"):
     """Print and log a banner with title and optional content
     
@@ -245,14 +330,20 @@ def log_banner(title, content=None, style="info"):
     }
     border_color = colors.get(style, Colors.BLUE)
     
-    # Create the banner
-    width = 52
+    # Calculate width based on the largest text content using display width
+    texts_to_measure = [title]
+    if content:
+        texts_to_measure.append(content)
+    
+    # Find the longest text and add padding (minimum width of 40, extra padding of 4)
+    max_text_width = max(_get_display_width(text) for text in texts_to_measure)
+    width = max(max_text_width + 4, 40)  # 4 for padding (2 spaces + 2 for borders)      # Create the banner
     banner = f"\n{Colors.BOLD}{border_color}┌{'─' * width}┐{Colors.RESET}\n"
-    banner += f"{Colors.BOLD}{border_color}│ {Colors.WHITE}{title}{border_color}{' ' * (width - len(title) - 1)}│{Colors.RESET}\n"
+    banner += f"{Colors.BOLD}{border_color}│ {Colors.WHITE}{title}{border_color}{' ' * (width - _get_display_width(title) - 2)} │{Colors.RESET}\n"
     
     # Add content if provided
     if content:
-        banner += f"{Colors.BOLD}{border_color}│ {Colors.WHITE}{content}{border_color}{' ' * (width - len(content) - 1)}│{Colors.RESET}\n"
+        banner += f"{Colors.BOLD}{border_color}│ {Colors.WHITE}{content}{border_color}{' ' * (width - _get_display_width(content) - 2)} │{Colors.RESET}\n"
     
     # Close the banner
     banner += f"{Colors.BOLD}{border_color}└{'─' * width}┘{Colors.RESET}\n"
