@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import hashlib
+import subprocess
 from datetime import datetime, timedelta
 from io import StringIO
 from models import db, Admin
@@ -362,6 +363,7 @@ def display_menu():
     print(f"{Colors.MAGENTA}12.{Colors.RESET} Create Database Backup")
     print(f"{Colors.WHITE}13.{Colors.RESET} System Health Check")
     print(f"{Colors.GREEN}14.{Colors.RESET} Quick Setup Wizard")
+    print(f"{Colors.CYAN}15.{Colors.RESET} Database Migration Management")
     
     print(f"\n{Colors.GRAY}0.{Colors.RESET} Exit")
     print()
@@ -1170,6 +1172,381 @@ def quick_setup_wizard():
         log_section_end()
         return False
 
+def run_database_migration():
+    """Run database migrations using Flask-Migrate."""
+    log_section("DATABASE MIGRATION")
+    
+    try:
+        log_step("Database Migration Options")
+        print(f"\n{Colors.BOLD}{Colors.WHITE}Migration Options:{Colors.RESET}")
+        print(f"{Colors.GREEN}1.{Colors.RESET} Initialize Migration Repository (First Time Setup)")
+        print(f"{Colors.BLUE}2.{Colors.RESET} Generate New Migration")
+        print(f"{Colors.YELLOW}3.{Colors.RESET} Apply Migrations (Upgrade Database)")
+        print(f"{Colors.CYAN}4.{Colors.RESET} Show Current Migration Status")
+        print(f"{Colors.MAGENTA}5.{Colors.RESET} Show Migration History")
+        print(f"{Colors.RED}6.{Colors.RESET} Downgrade Database (Previous Migration)")
+        print(f"{Colors.GRAY}7.{Colors.RESET} Cleanup Migration Backups")
+        print(f"{Colors.YELLOW}8.{Colors.RESET} Back to Main Menu")
+        
+        choice = get_secure_input("Select migration operation (1-8): ", allow_empty=True)
+        
+        if choice == '1':
+            return initialize_migration_repo()
+        elif choice == '2':
+            return generate_migration()
+        elif choice == '3':
+            return apply_migrations()
+        elif choice == '4':
+            return show_migration_status()
+        elif choice == '5':
+            return show_migration_history()
+        elif choice == '6':
+            return downgrade_database()
+        elif choice == '7':
+            return cleanup_migration_backups()
+        elif choice == '8':
+            return True
+        else:
+            log_error("Invalid choice. Please select 1-8.")
+            return False
+            
+    except Exception as e:
+        log_error(f"Migration menu failed: {e}")
+        return False
+    finally:
+        log_section_end()
+
+def initialize_migration_repo():
+    """Initialize Flask-Migrate repository."""
+    try:
+        log_step("Initializing migration repository...")
+        
+        # Check if migrations directory already exists
+        if os.path.exists('migrations'):
+            log_warning("Migration repository already exists.")
+            choice = get_secure_input("Reinitialize? This will remove existing migration history (y/N): ").lower()
+            if choice != 'y':
+                return True
+            
+            # Create backup directory in backups folder
+            os.makedirs(CONFIG['BACKUP_DIR'], exist_ok=True)
+            backup_dir = os.path.join(CONFIG['BACKUP_DIR'], f"migrations_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+            shutil.move('migrations', backup_dir)
+            log_info(f"Existing migrations backed up to: {backup_dir}")
+        
+        # Run flask db init
+        result = subprocess.run(['flask', 'db', 'init'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            log_success("Migration repository initialized successfully!")
+            log_info("You can now generate migrations with option 2.")
+            return True
+        else:
+            log_error(f"Failed to initialize migration repository:")
+            log_error(result.stderr)
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to initialize migration repository: {e}")
+        return False
+
+def generate_migration():
+    """Generate a new migration."""
+    try:
+        log_step("Generating new migration...")
+        
+        # Check if migrations directory exists
+        if not os.path.exists('migrations'):
+            log_error("Migration repository not initialized. Please run option 1 first.")
+            return False
+        
+        # Get migration message
+        message = get_secure_input("Enter migration message (optional): ", allow_empty=True)
+        if not message:
+            message = f"Auto-generated migration {datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Run flask db migrate
+        cmd = ['flask', 'db', 'migrate', '-m', message]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            log_success(f"Migration generated successfully: {message}")
+            log_info("Review the migration file in migrations/versions/ before applying.")
+            log_info("Use option 3 to apply the migration to the database.")
+            return True
+        else:
+            log_error(f"Failed to generate migration:")
+            log_error(result.stderr)
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to generate migration: {e}")
+        return False
+
+def apply_migrations():
+    """Apply pending migrations to the database."""
+    try:
+        log_step("Applying database migrations...")
+        
+        # Check if migrations directory exists
+        if not os.path.exists('migrations'):
+            log_error("Migration repository not initialized. Please run option 1 first.")
+            return False
+        
+        # Create backup before migration
+        log_substep("Creating database backup before migration...")
+        backup_path = create_backup()
+        if backup_path:
+            log_success(f"Backup created: {backup_path}")
+        
+        # Show current status first
+        log_substep("Checking migration status...")
+        status_result = subprocess.run(['flask', 'db', 'current'], 
+                                     capture_output=True, text=True, cwd=os.getcwd())
+        
+        if status_result.returncode == 0:
+            current_revision = status_result.stdout.strip()
+            if current_revision:
+                log_info(f"Current database revision: {current_revision}")
+            else:
+                log_info("Database is not versioned yet.")
+        
+        # Confirm migration
+        log_warning("This will modify your database structure.")
+        confirm = get_secure_input("Continue with migration? (y/N): ").lower()
+        if confirm != 'y':
+            log_info("Migration cancelled.")
+            return True
+        
+        # Run flask db upgrade
+        result = subprocess.run(['flask', 'db', 'upgrade'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            log_success("Database migrations applied successfully!")
+            log_info("Database schema is now up to date.")
+            return True
+        else:
+            log_error(f"Failed to apply migrations:")
+            log_error(result.stderr)
+            log_warning("Database may be in an inconsistent state.")
+            if backup_path:
+                log_info(f"Restore from backup if needed: {backup_path}")
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to apply migrations: {e}")
+        return False
+
+def show_migration_status():
+    """Show current migration status."""
+    try:
+        log_step("Checking migration status...")
+        
+        # Check if migrations directory exists
+        if not os.path.exists('migrations'):
+            log_error("Migration repository not initialized. Please run option 1 first.")
+            return False
+        
+        # Get current revision
+        current_result = subprocess.run(['flask', 'db', 'current'], 
+                                      capture_output=True, text=True, cwd=os.getcwd())
+        
+        # Get head revision
+        heads_result = subprocess.run(['flask', 'db', 'heads'], 
+                                    capture_output=True, text=True, cwd=os.getcwd())
+        
+        if current_result.returncode == 0 and heads_result.returncode == 0:
+            current_revision = current_result.stdout.strip()
+            head_revision = heads_result.stdout.strip()
+            
+            print(f"\n{Colors.BOLD}{Colors.WHITE}Migration Status:{Colors.RESET}")
+            print(f"{Colors.CYAN}Current Database Revision:{Colors.RESET} {current_revision if current_revision else 'None (not versioned)'}")
+            print(f"{Colors.CYAN}Latest Available Revision:{Colors.RESET} {head_revision if head_revision else 'None'}")
+            
+            if current_revision == head_revision:
+                log_success("✅ Database is up to date!")
+            elif not current_revision:
+                log_warning("⚠️  Database is not versioned. Run migrations to version it.")
+            else:
+                log_warning("⚠️  Database needs migration. There are pending migrations.")
+            
+            return True
+        else:
+            log_error("Failed to check migration status.")
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to check migration status: {e}")
+        return False
+
+def show_migration_history():
+    """Show migration history."""
+    try:
+        log_step("Showing migration history...")
+        
+        # Check if migrations directory exists
+        if not os.path.exists('migrations'):
+            log_error("Migration repository not initialized. Please run option 1 first.")
+            return False
+        
+        # Run flask db history
+        result = subprocess.run(['flask', 'db', 'history'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            if result.stdout.strip():
+                print(f"\n{Colors.BOLD}{Colors.WHITE}Migration History:{Colors.RESET}")
+                print(result.stdout)
+            else:
+                log_info("No migration history found.")
+            return True
+        else:
+            log_error(f"Failed to get migration history:")
+            log_error(result.stderr)
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to get migration history: {e}")
+        return False
+
+def downgrade_database():
+    """Downgrade database to previous migration."""
+    try:
+        log_step("Database downgrade...")
+        
+        # Check if migrations directory exists
+        if not os.path.exists('migrations'):
+            log_error("Migration repository not initialized. Please run option 1 first.")
+            return False
+        
+        # Show current status
+        show_migration_status()
+        
+        # Get downgrade target
+        target = get_secure_input("Enter target revision (or 'previous' for one step back): ", allow_empty=True)
+        if not target:
+            target = '-1'  # One step back
+        elif target.lower() == 'previous':
+            target = '-1'
+        
+        # Create backup before downgrade
+        log_substep("Creating database backup before downgrade...")
+        backup_path = create_backup()
+        if backup_path:
+            log_success(f"Backup created: {backup_path}")
+        
+        # Confirm downgrade
+        log_warning("This will modify your database structure and may result in data loss.")
+        confirm = get_secure_input("Continue with downgrade? (y/N): ").lower()
+        if confirm != 'y':
+            log_info("Downgrade cancelled.")
+            return True
+        
+        # Run flask db downgrade
+        result = subprocess.run(['flask', 'db', 'downgrade', target], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            log_success("Database downgrade completed successfully!")
+            return True
+        else:
+            log_error(f"Failed to downgrade database:")
+            log_error(result.stderr)
+            log_warning("Database may be in an inconsistent state.")
+            if backup_path:
+                log_info(f"Restore from backup if needed: {backup_path}")
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to downgrade database: {e}")
+        return False
+
+def cleanup_migration_backups():
+    """Clean up any old migration backup directories."""
+    try:
+        log_step("Cleaning up migration backup directories...")
+        
+        # Look for migration backup directories in current directory
+        current_dir_backups = [d for d in os.listdir('.') if d.startswith('migrations_backup_')]
+        
+        # Look for migration backup directories in backups folder
+        backup_dir_backups = []
+        if os.path.exists(CONFIG['BACKUP_DIR']):
+            backup_dir_backups = [d for d in os.listdir(CONFIG['BACKUP_DIR']) if d.startswith('migrations_backup_')]
+        
+        total_backups = len(current_dir_backups) + len(backup_dir_backups)
+        
+        if total_backups == 0:
+            log_info("No migration backup directories found.")
+            return True
+        
+        log_info(f"Found {total_backups} migration backup directories:")
+        
+        # List current directory backups
+        for backup in current_dir_backups:
+            log_info(f"  - {backup} (in current directory)")
+        
+        # List backups directory backups
+        for backup in backup_dir_backups:
+            log_info(f"  - {backup} (in backups directory)")
+        
+        # Ask user what to do
+        print(f"\n{Colors.YELLOW}Cleanup Options:{Colors.RESET}")
+        print("1. Remove all migration backups")
+        print("2. Keep backups (no action)")
+        print("3. Move current directory backups to backups folder")
+        
+        choice = get_secure_input("Select cleanup option (1-3): ", allow_empty=True)
+        
+        if choice == '1':
+            # Remove all backups
+            removed_count = 0
+            for backup in current_dir_backups:
+                try:
+                    shutil.rmtree(backup)
+                    log_info(f"Removed: {backup}")
+                    removed_count += 1
+                except Exception as e:
+                    log_error(f"Failed to remove {backup}: {e}")
+            
+            for backup in backup_dir_backups:
+                try:
+                    backup_path = os.path.join(CONFIG['BACKUP_DIR'], backup)
+                    shutil.rmtree(backup_path)
+                    log_info(f"Removed: {backup_path}")
+                    removed_count += 1
+                except Exception as e:
+                    log_error(f"Failed to remove {backup_path}: {e}")
+            
+            log_success(f"Removed {removed_count} migration backup directories.")
+            
+        elif choice == '3':
+            # Move current directory backups to backups folder
+            os.makedirs(CONFIG['BACKUP_DIR'], exist_ok=True)
+            moved_count = 0
+            
+            for backup in current_dir_backups:
+                try:
+                    dest_path = os.path.join(CONFIG['BACKUP_DIR'], backup)
+                    shutil.move(backup, dest_path)
+                    log_info(f"Moved {backup} to {dest_path}")
+                    moved_count += 1
+                except Exception as e:
+                    log_error(f"Failed to move {backup}: {e}")
+            
+            log_success(f"Moved {moved_count} migration backup directories to backups folder.")
+        
+        else:
+            log_info("No cleanup performed.")
+        
+        return True
+        
+    except Exception as e:
+        log_error(f"Failed to cleanup migration backups: {e}")
+        return False
+
 def main():
     """Main application loop."""
     try:        
@@ -1183,7 +1560,7 @@ def main():
         while True:
             with app.app_context():
                 display_menu()                
-                choice = get_secure_input("Enter your choice (0-14): ", allow_empty=True)
+                choice = get_secure_input("Enter your choice (0-15): ", allow_empty=True)
             
             if not choice:
                 continue
@@ -1217,6 +1594,8 @@ def main():
                     system_health_check()
                 elif choice == '14':
                     quick_setup_wizard()
+                elif choice == '15':
+                    run_database_migration()
                 elif choice == '0':
                     log_banner("👋 GOODBYE", "Thank you for using Amanflix Admin Manager!", "info")
                     break
