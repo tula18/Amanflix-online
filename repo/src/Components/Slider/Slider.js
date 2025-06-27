@@ -244,7 +244,7 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
             )}
 
             {!isLoading && !error && movies_fetch.length > 0 && (
-              <Carousel disableWindowSizeListener itemsToShow={5} className="my-carousel" breakPoints={breakPoints}>
+              <Carousel disableWindowSizeListener itemsToShow={5} className="my-carousel" breakPoints={breakPoints} showEmptySlots>
                   {movies_fetch.map((movie, idx) => {
                     const progressPercentage = getProgressPercentage(movie);
                     const episodeInfo = getEpisodeInfo(movie);
