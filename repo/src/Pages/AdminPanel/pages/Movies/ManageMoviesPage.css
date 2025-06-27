@@ -8,3 +8,7 @@
     padding: 0;
     margin: 0;
 }
+
+.Movies_search_select .ant-select-selection-item {
+    color: black !important;
+}

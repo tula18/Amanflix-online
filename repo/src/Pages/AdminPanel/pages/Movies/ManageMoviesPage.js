@@ -232,7 +232,7 @@ const ManageMovies = () => {
                 <h1>Manage Movies</h1>
                 <h2>{movies.length} Movies</h2>
                 <Flex gap={"5px"}>
-                    <Select defaultValue={"cdn"} onChange={(val) => {
+                    <Select className="Movies_search_select" defaultValue={"cdn"} onChange={(val) => {
                         setFetchType(val)
                         setQuery('')
                         }}>

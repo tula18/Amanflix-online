@@ -218,7 +218,7 @@ const ManageShows = () => {
             <Flex justify={"space-between"} align="center" style={{marginTop: "20px", marginBottom: "20px"}}>
                 <h1>Manage Shows</h1>
                 <Flex gap={"5px"}>
-                    <Select defaultValue={"cdn"} onChange={(val) => {
+                    <Select className="Movies_search_select" defaultValue={"cdn"} onChange={(val) => {
                         setFetchType(val)
                         setQuery('')
                         }}>

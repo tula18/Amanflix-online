@@ -6,7 +6,7 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
     // Guard clause to handle undefined movie objects
     // if (!movie) return null;
 
-    const [imgSrc, setImgSrc] = useState(`${API_URL}/cdn/images/${movie.backdrop_path}`);
+    const [imgSrc, setImgSrc] = useState(`${API_URL}/cdn/images${movie.backdrop_path}`);
     const [imageFailed, setImageFailed] = useState(false);
     // eslint-disable-next-line 
     const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +19,7 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     // When the image is in the viewport, fetch and set the image source
-                    setImgSrc(`${API_URL}/cdn/images/${movie.backdrop_path}`);
+                    setImgSrc(`${API_URL}/cdn/images${movie.backdrop_path}`);
                     observer.unobserve(imgRef.current);
                     setIsLoading(false); // Set loading state to false
                 }
@@ -36,7 +36,7 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
     }, [movie]);
 
     useEffect(() => {
-        setImgSrc(`${API_URL}/cdn/images/${movie.backdrop_path}`)
+        setImgSrc(`${API_URL}/cdn/images${movie.backdrop_path}`)
         setImageFailed(false)
         setIsLoading(true)
     }, [movie])

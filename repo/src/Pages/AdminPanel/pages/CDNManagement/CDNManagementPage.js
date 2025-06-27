@@ -330,6 +330,7 @@ const CdnManagementPage = () => {
       <div style={{ padding: 8 }} className="cdn-table-filter-dropdown">
         <Input
           ref={searchInput}
+          className="cdn_search_input"
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
           onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}

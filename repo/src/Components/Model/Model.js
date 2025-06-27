@@ -20,6 +20,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
   const [askUpload, setAskUpload] = useState(false)
   const [similarTitles, setSimilarTitles] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [checkVideoExistLoading, SetcheckVideoExistLoading] = useState(true);
   const [isFirstRender, setIsFirstRender] = useState(true);
   // eslint-disable-next-line no-unused-vars
   const [showFullList, setShowFullList] = useState(false);
@@ -43,7 +44,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
     const checkInMyList = async () => {
       const formData = new FormData();
       formData.append('content_type', movie.media_type);
-      formData.append('content_id', movie.id);
+      formData.append('content_id', movie.id || movie.show_id);
   
       try {
         const response = await fetch(API_URL+'/api/mylist/check', {
@@ -69,7 +70,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
     const checkInAskUpload = async () => {
       const formData = new FormData();
       formData.append('content_type', movie.media_type);
-      formData.append('content_id', movie.id);
+      formData.append('content_id', movie.id || movie.show_id);
   
       try {
         const response = await fetch(API_URL+'/api/uploadRequest/check', {
@@ -121,7 +122,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
       }
       
       const response = await fetch(
-        `${API_URL}/cdn/${movie.media_type === 'movie' ? 'movies' : 'tv'}/${movie.id}/similar?with_images=true&include_watch_history=true`, 
+        `${API_URL}/cdn/${movie.media_type === 'movie' ? 'movies' : 'tv'}/${movie.id || movie.show_id}/similar?with_images=true&include_watch_history=true`, 
         options
       );
       
@@ -141,25 +142,29 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
 
   const checkVideoExist = async () => {
     try {
+      SetcheckVideoExistLoading(true);
       // Skip if we've already checked this movie
-      if (checkedMovieIds[movie.id]) {
-        setVidExist(checkedMovieIds[movie.id]);
+      if (checkedMovieIds[movie.id || movie.show_id]) {
+        setVidExist(checkedMovieIds[movie.id || movie.show_id]);
+        SetcheckVideoExistLoading(false);
         return;
       }
       
       const mediaEndpoint = movie.media_type === 'tv' ? 'shows' : 'movies';
-      const res = await fetch(`${API_URL}/api/${mediaEndpoint}/${movie.id}/check`);
+      const res = await fetch(`${API_URL}/api/${mediaEndpoint}/${movie.id || movie.show_id}/check`);
       const json = await res.json();
       
       // Cache the result
       setCheckedMovieIds(prev => ({
         ...prev,
-        [movie.id]: json
+        [movie.id || movie.show_id]: json
       }));
       
       setVidExist(json);
     } catch (error) {
       message.error(`Couldn't check video: ${String(error)}`);
+    } finally {
+      SetcheckVideoExistLoading(false);
     }
   }
 
@@ -169,7 +174,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
       if (!token) return; // Not logged in, no watch history
       
       const mediaType = movie.media_type || 'movie';
-      const contentId = movie.id;
+      const contentId = movie.id || movie.show_id;
       
       // Use the new /current endpoint to get comprehensive watch data
       const response = await fetch(`${API_URL}/api/watch-history/current/${mediaType}/${contentId}`, {
@@ -208,7 +213,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
 
   const fetchEpisodeDetails = async (seasonNumber, episodeNumber) => {
     try {
-      const response = await fetch(`${API_URL}/api/shows/${movie.id}/season/${seasonNumber}/episode/${episodeNumber}`);
+      const response = await fetch(`${API_URL}/api/shows/${movie.id || movie.show_id}/season/${seasonNumber}/episode/${episodeNumber}`);
       
       if (!response.ok) return;
       
@@ -280,11 +285,11 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
         if (!token) {
           // No token, play first episode
           message.info("Sign in to save your viewing progress", 5);
-          navigate(`/watch/t-${movie.id}-1-1`);
+          navigate(`/watch/t-${movie.id || movie.show_id}-1-1`);
           return;
         }
         
-        const response = await fetch(`${API_URL}/api/watch-history/next-episode/${movie.id}`, {
+        const response = await fetch(`${API_URL}/api/watch-history/next-episode/${movie.id || movie.show_id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -301,15 +306,15 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
           if (data.episode_id) {
             navigate(`/watch/${data.episode_id}${timestampParam}`);
           } else {
-            navigate(`/watch/t-${movie.id}-${data.season_number}-${data.episode_number}${timestampParam}`);
+            navigate(`/watch/t-${movie.id || movie.show_id}-${data.season_number}-${data.episode_number}${timestampParam}`);
           }
         } else {
           // Fallback to first episode
-          navigate(`/watch/t-${movie.id}-1-1`);
+          navigate(`/watch/t-${movie.id || movie.show_id}-1-1`);
         }
       } catch (error) {
         console.error('Error fetching next episode:', error);
-        navigate(`/watch/t-${movie.id}-1-1`); // Fallback to first episode
+        navigate(`/watch/t-${movie.id || movie.show_id}-1-1`); // Fallback to first episode
       }
     } else {
       
@@ -318,7 +323,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
       // For movies, check if completed and add timestamp=0 parameter if so
       const isCompleted = watchHistory && watchHistory.is_completed;
       const timestampParam = isCompleted ? '?timestamp=0' : '';
-      navigate(`/watch/m-${movie.id}${timestampParam}`);
+      navigate(`/watch/m-${movie.id || movie.show_id}${timestampParam}`);
     }
   };
 
@@ -326,7 +331,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
     setAskUpload(!askUpload)
     const formData = new FormData();
     formData.append('content_type', movie.media_type);
-    formData.append('content_id', movie.id);
+    formData.append('content_id', movie.id || movie.show_id);
 
     try {
       const url = `${API_URL}/api/uploadRequest/${inList ? 'delete' : 'add'}`
@@ -362,7 +367,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
     setInList(!inList);
     const formData = new FormData();
     formData.append('content_type', movie.media_type);
-    formData.append('content_id', movie.id);
+    formData.append('content_id', movie.id || movie.show_id);
 
     try {
       const url = `${API_URL}/api/mylist/${inList ? 'delete' : 'add'}`
@@ -466,9 +471,13 @@ if (!minutes && minutes !== 0) return 'Unknown';
               </>
             )}
 
-            
+                        
             <div className="button-group">
-              {mediaType === 'tv' ? (
+              {checkVideoExistLoading ? (
+                <button className="play-button_skeleton" disabled>
+                    <div className="spinner-border"></div>
+                </button>
+              ) : mediaType === 'tv' ? (
                 vidExist.exist ? (
                   <button className="play-button" onClick={() => handlePlay(movie)}>
                     <FaPlay style={{ fontSize: 15, paddingRight: 10 }} />
@@ -481,7 +490,7 @@ if (!minutes && minutes !== 0) return 'Unknown';
                     ) : (
                       'Play'
                     )}
-                    </button>
+                  </button>
                 ) : (
                   <button className='ask_button' onClick={toggleAskUpload}>
                     {!askUpload ? (<PlusCircleOutlined style={{ fontSize: 25, paddingRight: 10 }} />) : (<CheckCircleFilled style={{ fontSize: 25, paddingRight: 10 }} />)}
@@ -559,7 +568,7 @@ if (!minutes && minutes !== 0) return 'Unknown';
         {mediaType === 'tv' && vidExist.exist && (
           <div className='more-like-this'>
             <hr className='separator' />
-            <EpisodeSelector showId={movie.id} onEpisodeSelect={handleEpisodeSelect} />
+            <EpisodeSelector showId={movie.id || movie.show_id} onEpisodeSelect={handleEpisodeSelect} />
           </div>
         )}
         <hr className='separator' />

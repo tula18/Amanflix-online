@@ -115,7 +115,7 @@ function App() {
               body: JSON.stringify({ session_id: sessionId })
             });
           }
-        }, 60000); // Every minute
+        }, 300000); // Every minute
         
         // Set up event handler to end session when user leaves
         const handleBeforeUnload = async () => {

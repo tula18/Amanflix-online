@@ -5,7 +5,7 @@ import os
 import re
 import concurrent.futures
 from utils.logger import log_info, log_error, log_success
-from cdn.search_cdn import _perform_search
+from cdn.search_cdn import _perform_search, _perform_search_with_images
 
 file_parser_bp = Blueprint('file_parser_bp', __name__, url_prefix='/api/uploads')
 
@@ -186,7 +186,7 @@ def search_cdn_metadata(title, content_type, year=None):
         media_type = 'movies' if content_type == 'movie' else 'tv'
         
         # Perform search with high max results to get best match
-        results = _perform_search(
+        results = _perform_search_with_images(
             query=title,
             genre='',
             min_rating=0,
@@ -549,9 +549,22 @@ def parse_files(current_admin):
         log_success(f"Parsed {len(filenames)} files: {success_count} successful, {error_count} errors")
         log_info(f"Content breakdown: {tv_shows_count} TV shows ({total_episodes} episodes), {movies_count} movies")
         log_info(f"Parsing methods: Hebrew={parsing_stats['hebrew']}, GuessIt={parsing_stats['guessit']}, Fallback={parsing_stats['guessit_fallback']}")
+        print(grouped_results)
+
+        def make_json_serializable(obj):
+            if isinstance(obj, dict):
+                return {key: make_json_serializable(value) for key, value in obj.items()}
+            elif isinstance(obj, list):
+                return [make_json_serializable(item) for item in obj]
+            elif hasattr(obj, '__dict__'):
+                return {key: make_json_serializable(value) for key, value in obj.__dict__.items()}
+            elif hasattr(obj, 'name'):  # for objects with a 'name' attribute, like languages
+                return obj.name
+            else:
+                return obj
         
         return jsonify({
-            'results': grouped_results,
+            'results': [make_json_serializable(item) for item in grouped_results],
             'stats': {
                 'total_files': len(filenames),
                 'successful': success_count,

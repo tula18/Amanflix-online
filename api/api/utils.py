@@ -293,6 +293,8 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
         content_id=content_id,
         content_type=content_type
     )
+
+    log_info(f"Querying watch history for user {current_user.id}, content {content_id}, type {content_type}")
     
     if content_type == 'tv' and season_number and episode_number:
         # If specific episode requested, get that one
@@ -304,9 +306,12 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
         # If no specific episode requested, get the last watched one
         query = query.order_by(desc(WatchHistory.last_watched))
     
+    log_info(f"Query: {query}")
+
     watch_history = query.first()
     
     if not watch_history:
+        log_info(f"No watch history found for user {current_user.id}, content {content_id}, type {content_type}")
         return None
         
     # Base response
@@ -391,38 +396,6 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
                             break
                     
                     finished_show = all_completed
-            else:
-                # For shows not in database, check CDN data
-                from app import tv_series, item_index
-                if content_id in item_index:
-                    show_info = tv_series[item_index[content_id]]
-                    num_seasons = show_info.get('number_of_seasons', 0)
-                    num_episodes = show_info.get('number_of_episodes', 0)
-                    
-                    if watch_history.season_number == num_seasons:
-                        # Approximate if this might be the last episode
-                        if num_episodes > 0:
-                            avg_episodes_per_season = num_episodes / num_seasons
-                            if watch_history.episode_number >= avg_episodes_per_season * 0.9:  # If we're at 90% of average
-                                last_episode = True
-                        else:
-                            # Typical season lengths
-                            if watch_history.episode_number >= 10:  # Assume most seasons have around 10-13 episodes
-                                last_episode = True
-                    
-                    # Check if user has watched most episodes
-                    if last_episode and watch_history.is_completed:
-                        # Count completed episodes for this show
-                        completed_count = WatchHistory.query.filter_by(
-                            user_id=current_user.id,
-                            content_id=content_id,
-                            content_type='tv',
-                            is_completed=True
-                        ).count()
-                        
-                        # If user has watched at least 90% of episodes, consider show finished
-                        if num_episodes > 0 and completed_count >= num_episodes * 0.9:
-                            finished_show = True
             
             response['last_episode'] = last_episode
             response['finished_show'] = finished_show
@@ -448,6 +421,9 @@ def setup_request_logging(app):
     import logging
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
+
+    # Define excluded paths
+    excluded_paths = ['/images/', '/stream/']
     
     @app.before_request
     def before_request():
@@ -484,43 +460,44 @@ def setup_request_logging(app):
                             user_id = current_user.id
                 except Exception as e:
                     log_error(f"Error decoding token: {e}")
-            
-            # Log to UserActivity table
-            try:
-                from models import UserActivity, db
-                
-                # Extract request details but limit size to prevent DB overload
-                query_params = None
-                if request.query_string:
-                    query_dict = {k: v for k, v in request.args.items()}
-                    query_params = json.dumps(query_dict)[:255]  # Limit size
-                
-                # Create activity record
-                activity = UserActivity(
-                    session_id=session_id,
-                    user_id=user_id,
-                    endpoint=request.endpoint or "unknown",
-                    method=request.method,
-                    path=request.path[:255],  # Limit size
-                    query_params=query_params,
-                    referrer=request.referrer[:255] if request.referrer else None,
-                    timestamp=datetime.utcnow(),
-                    response_time_ms=duration,
-                    status_code=response.status_code
-                )
-                
-                db.session.add(activity)
-                db.session.commit()
-            except Exception as e:
-                log_error(f"Error logging activity: {e}")
-                # Don't let logging failures affect the response
-                pass
-            
+
             # Get client IP
             ip = request.remote_addr
             
             # Format log message
             log_api(request.method, request.path, response.status_code, user_id, ip, duration)
+            
+            # Log to UserActivity table
+            # if not any(excluded_path in request.path for excluded_path in excluded_paths):
+            #     try:
+            #         from models import UserActivity, db
+                    
+            #         # Extract request details but limit size to prevent DB overload
+            #         query_params = None
+            #         if request.query_string:
+            #             query_dict = {k: v for k, v in request.args.items()}
+            #             query_params = json.dumps(query_dict)[:255]  # Limit size
+                        
+            #         # Create activity record
+            #         activity = UserActivity(
+            #             session_id=session_id,
+            #             user_id=user_id,
+            #             endpoint=request.endpoint or "unknown",
+            #             method=request.method,
+            #             path=request.path[:255],  # Limit size
+            #             query_params=query_params,
+            #             referrer=request.referrer[:255] if request.referrer else None,
+            #             timestamp=datetime.utcnow(),
+            #             response_time_ms=duration,
+            #             status_code=response.status_code
+            #         )
+                    
+            #         db.session.add(activity)
+            #         db.session.commit()
+            #     except Exception as e:
+            #         log_error(f"Error logging activity: {e}")
+            #         # Don't let logging failures affect the response
+            #         pass
             
         return response
         

@@ -67,12 +67,24 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
     const modalContentRef = useRef(null);
 
     // Validation function for upload pre-check
-    const validateUpload = async (contentType, contentId) => {
+    const validateUpload = async (contentType, contentId, episodes = null, contentData = null) => {
         try {
+            const token = localStorage.getItem('admin_token');
             const payload = {
                 content_type: contentType,
-                content_id: contentId
+                content_id: contentId,
+                validation_type: 'upload'
             };
+            
+            if (episodes) {
+                payload.episodes = episodes;
+            }
+            
+            if (contentData) {
+                payload.content_data = contentData;
+            }
+            
+            console.log(`🔍 Validating ${contentType} ID ${contentId}:`, payload);
             
             const response = await fetch(`${API_URL}/api/upload/validate`, {
                 method: 'POST',
@@ -83,18 +95,50 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
                 body: JSON.stringify(payload)
             });
             
+            console.log(`📡 Validation response status: ${response.status}`);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error(`❌ Validation failed for ${contentType} ID ${contentId}:`, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorText
+                });
+                
+                return {
+                    success: false,
+                    can_upload: false,
+                    errors: [{ 
+                        type: 'validation_request_failed', 
+                        message: `Validation request failed: ${response.status} ${response.statusText}`,
+                        details: { status: response.status, error: errorText }
+                    }],
+                    warnings: [],
+                    info: []
+                };
             }
             
-            return await response.json();
+            const result = await response.json();
+            console.log(`✅ Validation result for ${contentType} ID ${contentId}:`, result);
+            
+            return result;
         } catch (error) {
-            console.error('Validation error:', error);
+            console.error(`💥 Validation error for ${contentType} ID ${contentId}:`, error);
+            
             return {
                 success: false,
-                can_upload: true, // Default to allowing upload if validation fails
-                errors: [],
-                warnings: []
+                can_upload: false,
+                errors: [{ 
+                    type: 'validation_network_error', 
+                    message: `Network error during validation: ${error.message}`,
+                    details: { 
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    }
+                }],
+                warnings: [],
+                info: []
             };
         }
     };
@@ -147,7 +191,18 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
     const checkVideoExist = async () => {
         if (fetchType !== 'new' && movieData.id)
             try {
-                const res = await fetch(`${API_URL}/api/movies/${movieData.id}/check`)
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log("No authentication token found");
+                    setFetchLoading(false);
+                    return;
+                }
+
+                const res = await fetch(`${API_URL}/api/movies/${movieData.id}/check`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
                 const json = await res.json()
                 setVidExist(json)
             } catch (error) {
@@ -176,7 +231,18 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
     const fetchMovieDetails = async () => {
         try {
             setFetchLoading(true)
-            const response = await fetch(`${API_URL}/${isEdit ? "api" : fetchType}/movies/${movieID}`);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log("No authentication token found");
+                setFetchLoading(false);
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/${isEdit ? "api" : fetchType}/movies/${movieID}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await response.json();
             console.log(data);
             const newMovieData = { ...movieData };
@@ -333,41 +399,10 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
         seconds -= minutes * 60;
         return `${hours ? `${hours} hour${hours > 1 ? 's' : ''} `: ''} ${minutes ? `${minutes} minute${minutes > 1 ? 's' : ''} and` : ''} ${Math.round(seconds)} second${seconds === 1 ? '' : 's'}`;
     };
-      const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setInputErrors({});
         setProgress(0);
-
-        // Pre-upload validation (only for new uploads, not edits)
-        if (!isEdit && movieData.id) {
-            try {
-                const validationResult = await validateUpload('movie', movieData.id);
-                
-                // Check validation result
-                if (validationResult && !validationResult.can_upload) {
-                    const errorMessages = validationResult.errors.map(error => error.message).join('\n');
-                    notification.error({
-                        message: 'Upload Blocked',
-                        description: errorMessages,
-                        duration: 8,
-                    });
-                    return;
-                }
-
-                // Show warnings if any
-                if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
-                    const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
-                    notification.warning({
-                        message: 'Upload Warnings',
-                        description: warningMessages,
-                        duration: 6,
-                    });
-                }
-            } catch (error) {
-                console.error('Validation failed:', error);
-                // Continue with upload despite validation failure
-            }
-        }
 
         const method = isEdit ? 'PUT' : 'POST'
         const url = isEdit ? `${API_URL}/api/upload/movie/${movieData.id}` : `${API_URL}/api/upload/movie`
@@ -376,6 +411,31 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
         if (isValid) {
             for (const key in movieData) {
                 formData.append(key, movieData[key]);
+            }
+
+            // Pre-upload validation
+            let validationResult = null;
+            validationResult = await validateUpload('movie', movieData.id, null, movieData);
+
+            // Check validation result
+            if (validationResult && !validationResult.can_upload) {
+                const errorMessages = validationResult.errors.map(error => error.message).join('\n');
+                notification.error({
+                    message: 'Upload Blocked',
+                    description: errorMessages,
+                    duration: 8,
+                });
+                setSaveLoading(false);
+                return;
+            }
+    
+            // Show warnings if any
+            if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                notification.warning({
+                    message: 'Upload Warnings',
+                    description: warningMessages,
+                });
             }
 
             try {
@@ -460,8 +520,8 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
 
     const processMovieData = data => {
         return data.map(movie => ({
-            value: movie.title,
-            label: movie.title,
+            value: `${movie.title} | ${new Date(movie.release_date).getFullYear() || 'Unknown'}`,
+            label: `${movie.title} | ${new Date(movie.release_date).getFullYear() || 'Unknown'}`,
             movie: movie
         }))
     }
@@ -473,6 +533,7 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
                 setLoadingMovies(true)
                 const res = await fetch(`${API_URL}/cdn/search?q=${encodeURIComponent(decodeURIComponent(query))}&max_results=10&media_type=movies`)
                 const data = await res.json();
+                console.log("sugs", data);
                 setSuggestions(processMovieData(data));
             } catch (error) {
                 console.error('Error validating token:', error);
@@ -522,7 +583,7 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
 
     const navigateTitle = () => {
         if (location.pathname !== `/watch/${movieData.id}`) {
-            navigate(`/watch/${movieData.id}`)
+            navigate(`/watch/m-${movieData.id}`)
         }
     }
 
@@ -658,7 +719,7 @@ const MovieEditModal = ({ onClose, movieID, openDelForm, refresh, fetchType="api
                             autoPlay
                             muted
                             width="420" height="340"
-                            src={vidExist.exist ? `${API_URL}/api/stream/${movieData.id}` : videoPreviewUrl}
+                            src={vidExist.exist ? `${API_URL}/api/stream/m-${movieData.id}` : videoPreviewUrl}
                             controlsList="nodownload nofullscreen"
                         >
                             Your browser does not support the video tag.

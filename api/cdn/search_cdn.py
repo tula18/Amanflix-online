@@ -68,6 +68,61 @@ def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
 
     return paginate(final_results, page, per_page)
 
+def _perform_search_with_images(query, genre, min_rating, max_rating, media_type, is_random, with_images, page, per_page):
+    from app import tv_series, movies
+
+    def apply_filters(items, item_type):
+        results = []
+        for item in items:
+            title_or_name = item.get('title' if item_type == 'movie' else 'name', '')
+            vote_average = item.get('vote_average', 0)
+            if isinstance(vote_average, str):
+                try:
+                    vote_average = float(vote_average)
+                except ValueError:
+                    continue
+            if query.lower() in str(title_or_name).lower() and \
+                    (filter_valid_genres(item, genre) if genre else True) and \
+                    (min_rating <= vote_average <= max_rating):
+                item['type'] = item_type
+                results.append(item)
+        return results
+
+    # Check if with_images is True
+    if with_images:
+        from app import movies_with_images, tv_series_with_images
+
+        # Get IDs from movies_with_images
+        temp_movies_with_images_ids = [item['id'] for item in movies_with_images if query.lower() in item.get('title', '').lower()]
+
+        # Filter movies based on IDs
+        temp_movies = [item for item in movies if item['id'] in temp_movies_with_images_ids]
+
+        # Do the same for TV series
+        temp_tv_series_with_images_ids = [item['id'] for item in tv_series_with_images if query.lower() in item.get('name', '').lower()]
+        temp_tv_series = [item for item in tv_series if item['id'] in temp_tv_series_with_images_ids]
+
+    else:
+        # If with_images is False, use the original lists
+        temp_movies = movies
+        temp_tv_series = tv_series
+
+    if media_type == 'movies':
+        movie_results = apply_filters(temp_movies, 'movie')
+        final_results = movie_results
+    elif media_type == 'tv':
+        tv_results = apply_filters(temp_tv_series, 'tv_series')
+        final_results = tv_results
+    else:
+        movie_results = apply_filters(temp_movies, 'movie')
+        tv_results = apply_filters(temp_tv_series, 'tv_series')
+        final_results = movie_results + tv_results
+
+    if is_random:
+        random.shuffle(final_results)
+
+    return paginate(final_results, page, per_page)
+
 # Public search endpoint that doesn't require authentication
 @search_cdn_bp.route('/search', methods=['GET'])
 def public_search():

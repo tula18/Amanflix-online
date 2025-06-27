@@ -19,6 +19,14 @@ const HomePage = () => {
   useEffect(() => {
     const fetchContentById = async () => {
       if (!contentId) return;
+      const isNumber = /^\d+$/.test(contentId);
+      console.log("isNum: ", isNumber);
+
+      if (!isNumber) {
+        // redirect to 404 page or display an error message
+        console.log("not a number");
+        ErrorHandler("not_found", navigate);
+      }
       
       setIsLoading(true);
       try {

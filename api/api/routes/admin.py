@@ -9,6 +9,8 @@ import json
 import csv
 from io import StringIO
 from werkzeug.utils import secure_filename
+from base64 import b85encode
+import hashlib
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
 
@@ -699,8 +701,13 @@ def import_cdn_data(current_admin):
                     content_data = json.loads(file_content.decode('utf-8'))
                     log_info(f"JSON parsed successfully. Items: {len(content_data)}")
                 except Exception as e:
-                    log_error(f"JSON parsing error: {str(e)}")
-                    return jsonify({'success': False, 'message': f'Error parsing JSON: {str(e)}'}), 400
+                    try:
+                        # If that fails, try to decode the file content using utf-8-sig
+                        content_data = json.loads(file_content.decode('utf-8-sig'))
+                        log_info(f"JSON parsed successfully with utf-8-sig. Items: {len(content_data)}")
+                    except Exception as e:
+                        log_error(f"JSON parsing error: {str(e)}")
+                        return jsonify({'success': False, 'message': f'Error parsing JSON: {str(e)}'}), 400
             elif data_file.filename.endswith('.csv'):
                 log_info("Processing as CSV file")
                 csv_data = data_file.read().decode('utf-8')
@@ -766,6 +773,21 @@ def import_cdn_data(current_admin):
         log_error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'message': error_message}), 500
 
+@admin_bp.route('/read_files_as_hex', methods=['POST'])
+@admin_token_required('moderator')
+def read_files_as_hex(current_admin):
+    try:
+        data = request.get_json()
+        if data is None:
+            return jsonify({'error': 'Invalid request'}), 400
+        zip_data = bytes(data['zip_data'])
+
+        base85_string = b85encode(zip_data).decode('utf-8')
+        checksum = hashlib.md5(zip_data).hexdigest()
+
+        return jsonify({'base85_string': base85_string, 'checksum': checksum}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Helper function to update CDN content
 def update_cdn_content(content_type, new_data, existing_data, merge=True):

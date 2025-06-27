@@ -5,6 +5,7 @@ import { API_URL } from "../../../../../config";
 import './UnifiedUploadModal.css';
 import FormGroup from "../../../Components/FormGroup/FormGroup";
 import TextareaFormGroup from "../../../Components/FormGroup/TextareaFormGroup";
+import axios from 'axios';
 
 const UnifiedUploadModal = ({ 
     isVisible, 
@@ -26,16 +27,24 @@ const UnifiedUploadModal = ({
     const [showPoster, setShowPoster] = useState(false);
 
     // Validation function for upload pre-check
-    const validateUpload = async (contentType, contentId, episodes = null) => {
+    const validateUpload = async (contentType, contentId, episodes = null, contentData = null) => {
         try {
+            const token = localStorage.getItem('admin_token');
             const payload = {
                 content_type: contentType,
-                content_id: contentId
+                content_id: contentId,
+                validation_type: 'upload'
             };
             
             if (episodes) {
                 payload.episodes = episodes;
             }
+            
+            if (contentData) {
+                payload.content_data = contentData;
+            }
+            
+            console.log(`🔍 Validating ${contentType} ID ${contentId}:`, payload);
             
             const response = await fetch(`${API_URL}/api/upload/validate`, {
                 method: 'POST',
@@ -46,20 +55,50 @@ const UnifiedUploadModal = ({
                 body: JSON.stringify(payload)
             });
             
+            console.log(`📡 Validation response status: ${response.status}`);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error(`❌ Validation failed for ${contentType} ID ${contentId}:`, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorText
+                });
+                
+                return {
+                    success: false,
+                    can_upload: false,
+                    errors: [{ 
+                        type: 'validation_request_failed', 
+                        message: `Validation request failed: ${response.status} ${response.statusText}`,
+                        details: { status: response.status, error: errorText }
+                    }],
+                    warnings: [],
+                    info: []
+                };
             }
             
             const result = await response.json();
+            console.log(`✅ Validation result for ${contentType} ID ${contentId}:`, result);
             
             return result;
         } catch (error) {
-            console.error('Validation error:', error);
+            console.error(`💥 Validation error for ${contentType} ID ${contentId}:`, error);
+            
             return {
                 success: false,
-                can_upload: true, // Default to allowing upload if validation fails
-                errors: [],
-                warnings: []
+                can_upload: false,
+                errors: [{ 
+                    type: 'validation_network_error', 
+                    message: `Network error during validation: ${error.message}`,
+                    details: { 
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    }
+                }],
+                warnings: [],
+                info: []
             };
         }
     };
@@ -606,57 +645,16 @@ const UnifiedUploadModal = ({
         });
     };
 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaveLoading(true);
         setProgress(0);
-
+    
         try {
-            // Pre-upload validation
-            let validationResult = null;
-            if (type === 'movie' && movieData.id) {
-                validationResult = await validateUpload('movie', movieData.id);
-            } else if (type === 'tv_show' && showData.id) {
-                // Prepare episodes data for validation
-                const episodes = [];
-                showData.seasons.forEach(season => {
-                    season.episodes.forEach(episode => {
-                        if (episode.videoFile || episode.filename) {
-                            episodes.push({
-                                season_number: season.seasonNumber,
-                                episode_number: episode.episodeNumber
-                            });
-                        }
-                    });
-                });
-                validationResult = await validateUpload('tv', showData.id, episodes);
-            }
-
-            // Check validation result
-            if (validationResult && !validationResult.can_upload) {
-                const errorMessages = validationResult.errors.map(error => error.message).join('\n');
-                notification.error({
-                    message: 'Upload Blocked',
-                    description: errorMessages,
-                    duration: 8,
-                });
-                setSaveLoading(false);
-                return;
-            }
-
-            // Show warnings if any
-            if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
-                const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
-                notification.warning({
-                    message: 'Upload Warnings',
-                    description: warningMessages,
-                    duration: 6,
-                });
-            }
-
             const formData = new FormData();
             let isValid = false;
-
+    
             if (type === 'movie') {
                 isValid = await validateForm(movieData);
                 if (!isValid) {
@@ -667,7 +665,7 @@ const UnifiedUploadModal = ({
                     setSaveLoading(false);
                     return;
                 }
-
+    
                 // Add movie data to formData
                 Object.keys(movieData).forEach(key => {
                     if (key === 'vid_movie' && movieData[key]) {
@@ -690,7 +688,7 @@ const UnifiedUploadModal = ({
                         }
                     });
                 });
-
+    
                 if (!hasFiles) {
                     notification.error({
                         message: 'Upload Error',
@@ -699,14 +697,14 @@ const UnifiedUploadModal = ({
                     setSaveLoading(false);
                     return;
                 }
-
+    
                 // Add show data to formData
                 Object.keys(showData).forEach(key => {
                     if (key !== 'seasons' && showData[key] !== null && showData[key] !== '') {
                         formData.append(key, showData[key]);
                     }
                 });
-
+    
                 // Add seasons data
                 const seasonsData = showData.seasons.map(season => ({
                     season_number: season.seasonNumber,
@@ -722,101 +720,86 @@ const UnifiedUploadModal = ({
                 
                 formData.append('seasons', JSON.stringify(seasonsData));
             }
-
-            const xhr = new XMLHttpRequest();
-            
-            xhr.open('POST', `${API_URL}/api/upload/${type === 'movie' ? 'movie' : 'show'}`, true);
-            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-
-            xhr.onload = function() {
-                if (xhr.status === 200 || xhr.status === 201) {
-                    notification.success({
-                        message: 'Success',
-                        description: `${type === 'movie' ? 'Movie' : 'Show'} uploaded successfully!`,
+    
+            // Pre-upload validation
+            let validationResult = null;
+            if (type === 'movie' && movieData.id) {
+                validationResult = await validateUpload('movie', movieData.id, null, movieData);
+            } else if (type === 'tv_show' && showData.show_id) {
+                // Prepare episodes data for validation
+                const episodes = [];
+                showData.seasons.forEach(season => {
+                    season.episodes.forEach(episode => {
+                        if (episode.videoFile || episode.filename) {
+                            episodes.push({
+                                season_number: season.seasonNumber,
+                                episode_number: episode.episodeNumber
+                            });
+                        }
                     });
-                    setSaveLoading(false);
-                    setProgress(100);
-                    if (onSuccess) onSuccess();
-                    onClose();
-                } else {
-                    const response = JSON.parse(xhr.responseText);
-                    notification.error({
-                        message: 'Upload Error',
-                        description: response.message || 'An error occurred during upload',
-                    });
-                    setSaveLoading(false);
-                }
-            };
-            
-            xhr.onerror = function() {
+                });
+                validationResult = await validateUpload('tv', showData.show_id, episodes, showData);
+            }
+    
+            // Check validation result
+            if (validationResult && !validationResult.can_upload) {
+                const errorMessages = validationResult.errors.map(error => error.message).join('\n');
                 notification.error({
-                    message: 'Error',
-                    description: "An error occurred during upload",
+                    message: 'Upload Blocked',
+                    description: errorMessages,
+                    duration: 8,
                 });
                 setSaveLoading(false);
-            };
-
-            // xhr.upload.onprogress = (event) => {
-            //     if (event.lengthComputable) {
-            //         const now = new Date().getTime();
-            //         const loaded = event.loaded;
-            //         const total = event.total;
-            //         const percentComplete = Math.round((loaded / total) * 100);
-                    
-            //         setProgress(percentComplete);
-                    
-            //         // Calculate upload speed (MB/s) and remaining time
-            //         if (timeStart && loaded > 0) {
-            //             const elapsedMs = now - timeStart;
-            //             const bytesPerMs = loaded / elapsedMs;
-            //             const mbps = (bytesPerMs * 1000) / (1024 * 1024);
-            //             setUploadSpeed(mbps.toFixed(2));
-                        
-            //             // Calculate remaining time
-            //             const remainingBytes = total - loaded;
-            //             const remainingMs = remainingBytes / bytesPerMs;
-                        
-            //             let remainingTimeString = "calculating...";
-            //             if (remainingMs > 0) {
-            //                 if (remainingMs < 60000) {
-            //                     remainingTimeString = `${Math.ceil(remainingMs / 1000)} seconds`;
-            //                 } else if (remainingMs < 3600000) {
-            //                     remainingTimeString = `${Math.ceil(remainingMs / 60000)} minutes`;
-            //                 } else {
-            //                     const hours = Math.floor(remainingMs / 3600000);
-            //                     const minutes = Math.ceil((remainingMs % 3600000) / 60000);
-            //                     remainingTimeString = `${hours} hours, ${minutes} minutes`;
-            //                 }
-            //             }
-                        
-            //             setRemainingTime(remainingTimeString);
-            //         }
-            //     }
-            // };
-
-            let startTime;
-
-            xhr.upload.addEventListener('loadstart', (e) => {
-                startTime = Date.now();
-            });
-
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const progress = Math.round((e.loaded / e.total) * 100);
-                    setProgress(progress)
+                return;
+            }
+    
+            // Show warnings if any
+            if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                notification.warning({
+                    message: 'Upload Warnings',
+                    description: warningMessages,
+                });
+            }
+    
+            const config = {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'multipart/form-data'
+                },
+                onUploadProgress: (progressEvent) => {
+                    const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                    setProgress(progress);
                     const elapsedTime = (Date.now() - startTime) / 1000;
-                    const uploadSpeed = e.loaded / elapsedTime;
+                    const uploadSpeed = progressEvent.loaded / elapsedTime;
                     setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
-                    const remainingSize = e.total - e.loaded;
+                    const remainingSize = progressEvent.total - progressEvent.loaded;
                     const estimatedTime = remainingSize / uploadSpeed;
-                    setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)))
-                    setUploadedSize(e.loaded);
+                    setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)));
+                    setUploadedSize(progressEvent.loaded);
                 }
-            });
-
-            setTimeStart(new Date().getTime());
-            xhr.send(formData);
-
+            };
+    
+            let startTime = Date.now();
+    
+            const response = await axios.post(`${API_URL}/api/upload/${type === 'movie' ? 'movie' : 'show'}`, formData, config);
+    
+            if (response.status === 200 || response.status === 201) {
+                notification.success({
+                    message: 'Success',
+                    description: `${type === 'movie' ? 'Movie' : 'Show'} uploaded successfully!`,
+                });
+                setSaveLoading(false);
+                setProgress(100);
+                if (onSuccess) onSuccess();
+                onClose();
+            } else {
+                notification.error({
+                    message: 'Upload Error',
+                    description: response.data.message || 'An error occurred during upload',
+                });
+                setSaveLoading(false);
+            }
         } catch (error) {
             notification.error({
                 message: 'Error',

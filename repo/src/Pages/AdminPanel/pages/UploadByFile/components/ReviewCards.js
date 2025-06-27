@@ -83,7 +83,8 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
             const token = localStorage.getItem('admin_token');
             const payload = {
                 content_type: contentType,
-                content_id: contentId
+                content_id: contentId,
+                validation_type: 'review'
             };
             
             if (episodes) {

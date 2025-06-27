@@ -25,14 +25,24 @@ def get_video_metadata(video_path):
             '-show_streams',
             video_path
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Run the command and capture the output as bytes
+        result = subprocess.run(cmd, capture_output=True)
+        
         if result.returncode != 0:
-            log_error(f"Error running ffprobe: {result.stderr}")
+            # If the command fails, log the error and return None
+            log_error(f"Error running ffprobe: {result.stderr.decode('utf-8', errors='ignore')}")
             return None
             
-        metadata = json.loads(result.stdout)
-        return metadata
+        # Attempt to parse the output as JSON
+        try:
+            metadata = json.loads(result.stdout.decode('utf-8', errors='ignore'))
+            return metadata
+        except json.JSONDecodeError as e:
+            # If the output is not valid JSON, log the error and return None
+            log_error(f"Error parsing video metadata: {str(e)}")
+            return None
     except Exception as e:
+        # Catch any other exceptions, log the error, and return None
         log_error(f"Error getting video metadata: {str(e)}")
         return None
 
@@ -567,10 +577,9 @@ def upload_tvshow(current_admin):
     if existing_show and tvshow_data['show_id']:
         return jsonify(message=f"A TV show with id {tvshow_data['show_id']} already exists in the database."), 400
 
-    error = validate_title_data(tvshow_data, ['title', 'show_id', 'genres', 'created_by', 'overview', 'first_air_date', 'last_air_date'])
+    error = validate_title_data(tvshow_data, ['title', 'show_id', 'genres', 'overview', 'first_air_date', 'last_air_date'])
     if error:
         # Clean up all files and database records
-        cleanup_uploaded_files(uploaded_files, new_show.show_id)
         return error
 
     if not seasons_data:
@@ -824,6 +833,7 @@ def check_show_episodes(current_admin, show_id):
         
         for episode in season.episodes:
             episode_num = episode.episode_number
+            print(episode.video_id)
             video_path = os.path.join('uploads', f"{episode.video_id}.mp4")
             
             result["episodes"][season_num][episode_num] = {
@@ -1042,7 +1052,28 @@ def validate_upload(current_admin):
         content_type = data.get('content_type')  # 'movie' or 'tv'
         content_id = data.get('content_id')
         content_data = data.get('content_data', {})  # Additional content metadata for validation
+        validation_type = data.get('validation_type', 'review')  # default to 'review' if not provided
+        validation_type = data.get('validation_type')  # default to 'review' if not provided
+
+        if validation_type not in ['review', 'upload']:
+            log_warning(f"❌ Invalid validation_type: {validation_type}")
+            return jsonify(success=False, message="validation_type must be 'review' or 'upload'"), 400
+
         
+        # Define required fields for each content type
+        required_fields = {
+            'movie': ['title', 'id', 'overview', 'release_date', 'genres', 'runtime'],
+            'tv': ['overview', 'first_air_date', 'vote_average', 'genres', 'last_air_date']
+        }
+
+        if validation_type == 'review':
+            required_fields['tv'].append('name')
+            required_fields['tv'].append('id')
+        else:
+            required_fields['tv'].append('title')
+            required_fields['tv'].append('show_id')
+
+
         log_info(f"📊 Validating {content_type} with ID {content_id}")
         
         if not content_type or not content_id:
@@ -1071,6 +1102,27 @@ def validate_upload(current_admin):
         }
         
         log_info(f"🚀 Starting validation checks for {content_type} ID {content_id}")
+
+        # Check if all required fields are present
+        if content_type in required_fields:
+            missing_fields = [field for field in required_fields[content_type] if not content_data.get(field)]
+            if missing_fields:
+                if validation_type == 'upload':
+                    # For upload, missing fields are errors
+                    validation_result['errors'].append({
+                        'type': 'missing_fields',
+                        'message': f"Missing required fields for {content_type}: {', '.join(missing_fields)}",
+                        'suggestion': "Provide all required metadata"
+                    })
+                    validation_result['success'] = False
+                    validation_result['can_upload'] = False
+                else:
+                    # For review, missing fields are warnings
+                    validation_result['warnings'].append({
+                        'type': 'missing_fields',
+                        'message': f"Missing required fields for {content_type}: {', '.join(missing_fields)}",
+                        'suggestion': "Provide all required metadata for better content"
+                    })
         
         # System-wide checks
         try:

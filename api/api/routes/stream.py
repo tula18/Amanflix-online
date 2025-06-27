@@ -41,14 +41,9 @@ def stream_video(watch_id):
     
     # Check if the file exists
     mp4_path = os.path.join('uploads', f"{video_id}.mp4")
-    avi_path = os.path.join('uploads', f"{video_id}.avi")
-
     if os.path.exists(mp4_path):
         file_path = mp4_path
         mimetype = 'video/mp4'
-    elif os.path.exists(avi_path):
-        file_path = avi_path
-        mimetype = 'video/x-msvideo'
     else:
         return jsonify(message="File not found"), 404
 
@@ -59,36 +54,3 @@ def stream_video(watch_id):
         return jsonify({"message":"The content is not available", "error_reason": "video_not_found"}), 404
     except Exception as e:
         return jsonify({"message":"Our apologies, something went wrong on our end.", "error_reason": "video_error"})
-
-@stream_bp.route('/watch/<string:filename>', methods=['GET'])
-def stream_video2(filename):
-    from app import app
-    # Check if the file exists
-    mp4_path = os.path.join('uploads', filename + '.mp4')
-    avi_path = os.path.join('uploads', filename + '.avi')
-
-    if os.path.exists(mp4_path):
-        file_path = mp4_path
-        mimetype = 'video/mp4'
-    elif os.path.exists(avi_path):
-        file_path = avi_path
-        mimetype = 'video/x-msvideo'
-    else:
-        return jsonify(message="File not found"), 404
-
-    # Set up the response
-    response = make_response()
-    response.headers['Content-Type'] = mimetype
-    
-    # For MP4, allow streaming; for AVI, prevent download
-    if mimetype == 'video/mp4':
-        response.headers['Content-Disposition'] = f'inline; filename={os.path.basename(mp4_path)}'
-    else:
-        response.headers['Content-Disposition'] = f'attachment; filename={os.path.basename(avi_path)}'
-
-    try:
-        return app.send_from_directory('uploads', os.path.basename(file_path), response=response)
-    except FileNotFoundError:
-        return jsonify(message="The content is not available"), 404
-    except Exception as e:
-        return jsonify(message="Our apologies, something went wrong on our end.")

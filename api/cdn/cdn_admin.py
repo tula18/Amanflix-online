@@ -29,8 +29,13 @@ def update_cdn_content(current_admin, content_type, content_id):
         
         # Read the existing content
         items = []
-        with open(cdn_file_path, 'r') as f:
-            items = json.load(f)
+        try:
+            with open(cdn_file_path, 'r', encoding='utf-8') as f:
+                items = json.load(f)
+        except FileNotFoundError:
+            return jsonify({"message": f"CDN file not found: {cdn_file_path}"}), 404
+        except json.JSONDecodeError as e:
+            return jsonify({"message": f"Error parsing CDN file: {str(e)}"}), 500
         
         # Find and update the item
         item_found = False
@@ -46,8 +51,13 @@ def update_cdn_content(current_admin, content_type, content_id):
             return jsonify({"message": f"Content with ID {content_id} not found in CDN data"}), 404
         
         # Write back to the file
-        with open(cdn_file_path, 'w') as f:
-            json.dump(items, f, indent=2)
+        try:
+            with open(cdn_file_path, 'w', encoding='utf-8') as f:
+                json.dump(items, f, indent=2)
+        except Exception as e:
+            # Log and return error
+            log_error(f"Error writing to CDN file: {str(e)}")
+            return jsonify({"message": f"Error updating CDN file: {str(e)}"}), 500
         
         # Update the in-memory data
         import app
@@ -70,8 +80,13 @@ def update_cdn_content(current_admin, content_type, content_id):
                 
                 # Read with_images content
                 with_images_items = []
-                with open(with_images_file_path, 'r') as f:
-                    with_images_items = json.load(f)
+                try:
+                    with open(with_images_file_path, 'r', encoding='utf-8') as f:
+                        with_images_items = json.load(f)
+                except FileNotFoundError:
+                    return jsonify({"message": f"With images CDN file not found: {with_images_file_path}"}), 404
+                except json.JSONDecodeError as e:
+                    return jsonify({"message": f"Error parsing with images CDN file: {str(e)}"}), 500
                 
                 # Update or add to with_images
                 with_images_found = False
@@ -85,8 +100,12 @@ def update_cdn_content(current_admin, content_type, content_id):
                     with_images_items.append(data)
                     
                 # Write back to the with_images file
-                with open(with_images_file_path, 'w') as f:
-                    json.dump(with_images_items, f, indent=2)
+                try:
+                    with open(with_images_file_path, 'w', encoding='utf-8') as f:
+                        json.dump(with_images_items, f, indent=2)
+                except Exception as e:
+                    # Log and continue - this is not critical
+                    log_error(f"Warning: Error writing to with images CDN file: {str(e)}")
                     
                 # Update in-memory with_images data
                 if content_type == 'movie':

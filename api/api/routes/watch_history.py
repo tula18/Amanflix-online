@@ -142,9 +142,18 @@ def get_continue_watching(current_user):
     
     
     result = []
+    seen_content = set()
     
     # Process each item
     for item in paginated_history:
+        key = (item.content_id, item.season_number, item.episode_number) if item.content_type == 'tv' else (item.content_id,)
+        
+        # Filter duplicates
+        if key in seen_content:
+            continue
+        
+        seen_content.add(key)
+
         content = None
         
         # Handle movies

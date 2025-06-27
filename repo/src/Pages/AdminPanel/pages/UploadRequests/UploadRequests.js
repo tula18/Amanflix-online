@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { Table, Input, Button, Tag, Space, Tooltip, Flex, notification, Checkbox, Form, Modal, Radio, message, Image } from "antd";
+import { Table, Input, Button, Tag, Space, Tooltip, Flex, notification, Checkbox, Form, Modal, Radio, message, Image, List } from "antd";
 import { API_URL } from "../../../../config";
 import { CheckOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from "@ant-design/icons";
 import QRCode from 'qrcode';
+import JSZip from 'jszip';
+import base64 from 'base-64';
 
 
 const ManageUploadRequests = () => {
@@ -20,6 +22,13 @@ const ManageUploadRequests = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [qrCodeDataUrl, setQRCodeDataUrl] = useState(null);
     const [isQRModalVisible, setIsQRModalVisible] = useState(false);
+    const [isQrCodeModalVisible, setIsQrCodeModalVisible] = useState(false);
+    const [isPreviewModalVisible, setIsPreviewModalVisible] = useState(false);
+
+    const [selectedQrCode, setSelectedQrCode] = useState(null);
+    const [error, setError] = useState(null);
+    const [qrCodes, setQrCodes] = useState([]);
+    const [selectedChunk, setSelectedChunk] = useState(0);
 
     const showModal = () => {
         setIsModalVisible(true);
@@ -318,10 +327,11 @@ const ManageUploadRequests = () => {
     };
 
     const exportToTxt = () => {
-        const keys = ['imdb_id', 'title_id', 'title', 'count', 'media_type', 'release_date'];
+        const keys = ['title_id', 'title', 'count', 'media_type', 'release_date'];
         const header = keys.join(':?:');
-        const rows = data.map(item => `${item.imdb_id}:?:${item.title_id}:?:${item.title}:?:${item.count}:?:${item.media_type}:?:${item.release_date}`).join('\n');
+        const rows = data.map(item => `${item.title_id}:?:${item.title}:?:${item.count}:?:${item.media_type}:?:${item.release_date}`).join('\n');
         const txtData = `${header}\n${rows}`
+        
         const blob = new Blob([txtData], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -335,28 +345,137 @@ const ManageUploadRequests = () => {
     };
 
     const handleGenerateQRCode = async () => {
-        const keys = ['imdb_id', 'title_id', 'title', 'count', 'media_type', 'release_date'];
-        const header = keys.join(':?:');
-        const rows = data.map(item => `${item.imdb_id}:?:${item.title_id}:?:${item.title}:?:${item.count}:?:${item.media_type}:?:${item.release_date}`).join('\n');
-        const txtData = `${header}\n${rows}`
         try {
-            const qrCodeDataUrl = await QRCode.toDataURL(txtData);
-            setQRCodeDataUrl(qrCodeDataUrl);
-            setIsQRModalVisible(true);
+            console.log('Generating QR code...');
+            const keys = ['title_id', 'title', 'count', 'media_type', 'release_date'];
+            const header = keys.join(':?:');
+            const rows = data.map(item => `${item.title_id}:?:${item.title}:?:${item.count}:?:${item.media_type}:?:${item.release_date}`).join('\n');
+            const txtData = `${header}\n${rows}`;
+    
+            const zip = new JSZip();
+            zip.file('data.txt', txtData);
+            const zipData = await zip.generateAsync({ type: 'uint8array' });
+    
+            // Download the zipData
+            const blob = new Blob([new Uint8Array(zipData)], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+    
+            const response = await fetch(`${API_URL}/api/admin/read_files_as_hex`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json; charset=UTF-8',
+                },
+                body: JSON.stringify({ zip_data: Array.from(zipData) }),
+            });
+    
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error generating QR code:', error);
+                return;
+            }
+    
+            const result = await response.json();
+            const base85String = result.base85_string;
+            const checksum = result.checksum;
+
+            console.log(`File read successfully. Base85 len: ${base85String.length} chars. Checksum: ${checksum}`);
+    
+            const chunks = splitHexString(base85String, 2950);
+            createQrCodes(chunks, setError, setQrCodes);
+            setIsQrCodeModalVisible(true);
         } catch (error) {
-            console.error('Error generating QR Code:', error);
-            message.error('Failed to generate QR Code');
+            console.error('Error generating QR code:', error);
+            message.error('Failed to generate QR code');
         }
     };
 
+    const handlePreviewQrCode = (index) => {
+        console.log(`Previewing chunk ${qrCodes[index].chunkId}...`);
+        setSelectedChunk(qrCodes[index].chunkId);
+        setSelectedQrCode(qrCodes[index].qrCode);
+        setIsPreviewModalVisible(true);
+    };
+    
+    const splitHexString = (hexString, startChunkSize = 2048) => {
+        console.log(`Splitting hex string into chunks of ${startChunkSize} chars...`);
+        const hexLen = hexString.length;
+        let currentChunk = 0;
+        const chunks = [];
+
+        while (currentChunk < hexLen) {
+            console.log(currentChunk);
+            const metadata = `chunk_${chunks.length}:?:`;
+            const chunkSize = startChunkSize - metadata.length;
+            currentChunk += chunkSize;
+            const chunk = metadata + hexString.slice(currentChunk - chunkSize, currentChunk);
+            chunks.push(chunk);
+            console.log(`\rProcessing chunk ${chunks.length}, Starting: ${chunk.slice(0, 10)}... len: ${chunk.length} chunk len: ${chunkSize}`);
+        }
+
+        console.log(`\nTotal chunks created: ${chunks.length}`);
+        return chunks;
+    };
+    
+    const createQrCodes = (chunks, setError, setQrCodes) => {
+        console.log('Creating QR codes...');
+        const qrCodesArray = [];
+        chunks.forEach((chunk, index) => {
+            console.log(`Chunk ${index + 1}/${chunks.length}: Start: ${chunk.split(':?:')[1].slice(0, 10)}... ${chunk.slice(-10)}`);
+            const chunkId = chunk.split(':?:')[0].split('_')[1];
+            QRCode.toDataURL(chunk, { errorCorrectionLevel: 'L' })
+                .then((dataUrl) => {
+                    console.log(`QR code for chunk ${chunkId} generated successfully.`);
+                    qrCodesArray.push({ chunkId, qrCode: dataUrl });
+                    if (index === chunks.length - 1) {
+                        console.log('All QR codes generated successfully.');
+                        setQrCodes(qrCodesArray);
+                    }
+                })
+                .catch((error) => {
+                    console.error(`Error generating QR code for chunk ${chunkId}:`, error);
+                    setError(`Error generating QR code for chunk ${chunkId}: ${error.message}`);
+                });
+        });
+    };
+
+    const handleDownloadAllQRCode = () => {
+        const zip = new JSZip();
+        qrCodes.forEach((qrCode) => {
+            zip.file(`qr_${qrCode.chunkId}.png`, fetch(qrCode.qrCode).then((res) => res.blob()));
+        });
+        zip.generateAsync({ type: 'blob' })
+            .then((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'qr_codes.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            })
+            .catch((error) => {
+                console.error('Error downloading all QR codes:', error);
+            });
+    };
+    
     const handleDownloadQRCode = () => {
+        const url = selectedQrCode;
         const a = document.createElement('a');
-        a.href = qrCodeDataUrl;
-        a.download = 'qrcode.png';
+        a.href = url;
+        a.download = `qr_${selectedChunk}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        message.success('QR Code downloaded');
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -407,18 +526,61 @@ const ManageUploadRequests = () => {
             </Modal>
             <Modal
                 title="QR Code"
-                visible={isQRModalVisible}
-                onCancel={() => setIsQRModalVisible(false)}
+                visible={isQrCodeModalVisible}
+                onCancel={() => setIsQrCodeModalVisible(false)}
+                width={800}
+                centered
                 footer={[
-                    <Button key="back" onClick={() => setIsQRModalVisible(false)}>
-                        Close
+                    <Button type="primary" onClick={handleDownloadAllQRCode}>
+                        Download All
                     </Button>,
-                    <Button key="download" type="primary" onClick={handleDownloadQRCode}>
-                        Download
+                    <Button key="back" type="primary" onClick={() => setIsQrCodeModalVisible(false)}>
+                        Close
+                    </Button>
+                ]}
+                >
+                <Table
+                    columns={[
+                        {
+                            title: 'Chunk',
+                            dataIndex: 'chunkId',
+                            key: 'chunkId',
+                        },
+                        {
+                            title: 'QR Code',
+                            dataIndex: 'qrCode',
+                            key: 'qrCode',
+                            render: (qrCode, record) => (
+                                <Flex>
+                                    <Image src={qrCode} width={100} style={{ objectFit: 'contain' }} onClick={() => handlePreviewQrCode(record.chunkId, qrCode)} />
+                                    <Button type="link" icon={<SearchOutlined />} onClick={() => handlePreviewQrCode(record.chunkId, qrCode)}>
+                                        Preview
+                                    </Button>
+                                </Flex>
+                            ),
+                        },
+                    ]}
+                    dataSource={qrCodes.map((qrCode, index) => ({ ...qrCode, key: index }))}
+                    pagination={false}
+            />
+                
+            </Modal>
+            <Modal
+                title={`QR Code Preview - Chunk ${selectedChunk}`}
+                visible={isPreviewModalVisible}
+                onCancel={() => setIsPreviewModalVisible(false)}
+                width={'60%'}
+                // height={'100%'}
+                centered
+                footer={[
+                    <Button key="back" type="primary" onClick={() => setIsPreviewModalVisible(false)}>
+                        Close
                     </Button>,
                 ]}
             >
-                {qrCodeDataUrl && <Image src={qrCodeDataUrl} width={'100%'} />}
+                <Flex direction="column" align="center" justify="center" style={{ height: '100%' }}>
+                    <Image src={selectedQrCode} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </Flex>
             </Modal>
         </Flex>
     )

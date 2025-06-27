@@ -47,9 +47,23 @@ function Banner() {
     useEffect(() => {
       const fetchData = async () => {
         try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log("No authentication token found");
+                setIsLoading(false);
+                return;
+            }
+
+
             // Try API discovery endpoint first
-            const response = await fetch(`${API_URL}/api/discovery/random?per_page=1`);
+            const response = await fetch(`${API_URL}/api/discovery/random?per_page=1`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
             
+
+
             if (response.ok) {
                 const data = await response.json();
                 
@@ -364,7 +378,7 @@ function Banner() {
 
 
     return (
-        <div className='banner' style={{backgroundImage: `url('${API_URL}/cdn/images/${movie.backdrop_path}')`}}>
+        <div className='banner' style={{backgroundImage: `url('${API_URL}/cdn/images${movie.backdrop_path}')`}}>
             <div className='banner-opacity'></div>
             {/* <div className={!isDark ? 'banner-opacity' : ''}></div> */}
             {/* {!isDark ? <div className='banner-opacity'></div> : <div/>} */}

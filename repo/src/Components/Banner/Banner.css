@@ -147,6 +147,25 @@
   color: #ccc;
 }
 
+
+
+.play-button_skeleton {
+  background-color: #ccc !important;
+  color: #ccc !important;
+  animation: loading 2s infinite;
+  font-size: 15px !important;
+  border: none !important;
+  border-radius: 5px !important;
+  padding: 10px 20px !important;
+  margin-right: 10px !important;
+  width: 150px;
+  height: 40px;
+}
+.play-button_skeleton .spinner-border {
+  height: 15px;
+  width: 15px;
+}
+
 .skeleton_button:hover {
   background-color: #ccc;
   color: #ccc;

@@ -371,10 +371,10 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
                             newErrors[`S${season.seasonNumber}E${episode.episodeNumber}-title`] = `Episode title is required`;
                             isValid = false;
                         }
-                        if (!episode.overview) {
-                            newErrors[`S${season.seasonNumber}E${episode.episodeNumber}-overview`] = `Episode overview is required`;
-                            isValid = false;
-                        }
+                        // if (!episode.overview) {
+                        //     newErrors[`S${season.seasonNumber}E${episode.episodeNumber}-overview`] = `Episode overview is required`;
+                        //     isValid = false;
+                        // }
                         
                         // Fix: Rename the local variable to avoid shadowing
                         const episodeKey = `S${season.seasonNumber}E${episode.episodeNumber}`;
@@ -391,7 +391,9 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
     
         setErrors(newErrors);
         return isValid;
-    };    const handleSubmit = async (e) => {
+    };
+    
+    const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('handle1', showData)
         
@@ -400,7 +402,7 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
         }
         
         // Pre-upload validation
-        if (showData.show_id) {
+        if (showData.show_id && !isEdit) {
             // Prepare episodes data for validation
             const episodes = [];
             showData.seasons.forEach(season => {
@@ -651,7 +653,8 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
         try {
             const payload = {
                 content_type: contentType,
-                content_id: contentId
+                content_id: contentId,
+                validation_type: 'upload'
             };
             
             if (episodes) {
@@ -994,9 +997,9 @@ const TvShowEditModal = ({ onClose, ShowID, openDelForm, refresh, fetchType="api
                                                 controls
                                                 autoPlay
                                                 muted
-                                                // width="420" height="340"
+                                                width="420" height="340"
                                                 src={episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists 
-                                                    ? `${API_URL}/api/stream/${showData.show_id}${season.seasonNumber}${episode.episodeNumber}` 
+                                                    ? `${API_URL}/api/stream/t-${showData.show_id}-${season.seasonNumber}-${episode.episodeNumber}` 
                                                     : episodePreviews[`S${season.seasonNumber}E${episode.episodeNumber}`]}
                                                 controlsList="nodownload nofullscreen"
                                             >
