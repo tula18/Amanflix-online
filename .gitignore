@@ -17,7 +17,7 @@ api/migrations/
 api/migrations/*
 .DS_Store
 *.DS_Store
-qr_encode2.5.py
+qr_encder2.5.py
 update_tool.py
 
 
