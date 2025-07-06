@@ -2,6 +2,7 @@
 /api/cdn/posters_combined/*
 /api/cdn/files/
 /api/cdn/posters_combined/
+/api/backups/*
 api/instance/amanflix_db.db
 api/logs/
 api/logs/*
@@ -16,6 +17,9 @@ api/migrations/
 api/migrations/*
 .DS_Store
 *.DS_Store
+qr_encode2.5.py
+update_tool.py
+
 
 # Python cache files and directories
 __pycache__/
@@ -54,3 +58,4 @@ amanflix_env/
 
 amanflix-data-downloader/node_modules
 amanflix-data-downloader/build
+
