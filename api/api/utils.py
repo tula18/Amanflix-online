@@ -306,8 +306,6 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
         # If no specific episode requested, get the last watched one
         query = query.order_by(desc(WatchHistory.last_watched))
     
-    log_info(f"Query: {query}")
-
     watch_history = query.first()
     
     if not watch_history:
