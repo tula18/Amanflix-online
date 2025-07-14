@@ -7,10 +7,18 @@ be saved back to JSON files.
 
 Key features:
 - Deep copying to prevent data contamination 
-- Automatic cleaning of unwanted fields (watch_history, etc.)
-- Performance optimizations for large datasets
+- Efficient read operations with deep copy only (force_clean=False by default)
+- Data cleaning ONLY when explicitly requested (force_clean=True) for save/export operations
+- Performance optimizations for large datasets with caching
 - Comprehensive error handling
-- Support for conditional cleaning
+- Global variables remain read-only in memory
+
+Optimized Performance Strategy:
+- Read operations: Deep copy only (fast, data isolation guaranteed)
+- Save/Export operations: Deep copy + cleaning (force_clean=True)
+- Cleaning only on import/export and explicit force_clean requests
+- Global data cleaned only during import/export cycles, not per request
+- Memory-efficient deep copying preserves data isolation without unnecessary processing
 """
 
 import copy
@@ -107,7 +115,8 @@ def clean_data_list(data_list, fields_to_remove=None, clean=True):
             return []
             
         if not clean:
-            # Just return a deep copy without cleaning
+            # Just return a deep copy without cleaning (optimized for read operations)
+            log_debug(f"Performing fast deep copy of {len(data_list)} items (no cleaning)")
             return copy.deepcopy(data_list)
         
         # Set default fields to remove
@@ -132,6 +141,8 @@ def clean_data_list(data_list, fields_to_remove=None, clean=True):
         
         if items_cleaned > 0:
             log_debug(f"Cleaned {items_cleaned} items out of {len(data_list)} total items")
+        else:
+            log_debug(f"No items needed cleaning out of {len(data_list)} total items")
         
         return cleaned_data
     except Exception as e:
@@ -140,23 +151,24 @@ def clean_data_list(data_list, fields_to_remove=None, clean=True):
         return copy.deepcopy(data_list)
 
 
-def get_movies(clean=True, fields_to_remove=None):
+def get_movies(force_clean=False, fields_to_remove=None):
     """
     Get a safe, deep-copied version of the movies data with caching.
     
     Args:
-        clean (bool): Whether to remove unwanted fields. Defaults to True
-        fields_to_remove (list): Custom list of fields to remove
+        force_clean (bool): Whether to force cleaning of unwanted fields. 
+                           Only use when saving/exporting data. Defaults to False
+        fields_to_remove (list): Custom list of fields to remove when force_clean=True
     
     Returns:
-        list: Deep copy of movies data, optionally cleaned
+        list: Deep copy of movies data, cleaned only if force_clean=True
     """
     try:
         # Performance testing: start timing
         start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
         
         # Create cache key based on parameters
-        cache_key = f"movies_clean_{clean}_fields_{fields_to_remove}"
+        cache_key = f"movies_force_clean_{force_clean}_fields_{fields_to_remove}"
         
         # Check cache first (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -170,14 +182,24 @@ def get_movies(clean=True, fields_to_remove=None):
         # Import and process data
         from app import movies
         
-        # Performance testing: time the cleaning operation
-        clean_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        result = clean_data_list(movies, fields_to_remove, clean)
+        # Performance testing: time the operation
+        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
+        
+        if force_clean:
+            # Only clean when explicitly requested (for save/export operations)
+            result = clean_data_list(movies, fields_to_remove, clean=True)
+            log_debug(f"Force cleaned movies data for save/export operation")
+        else:
+            # Fast deep copy without cleaning (for all read operations)
+            # This provides complete data isolation without unnecessary processing
+            result = copy.deepcopy(movies)
+            log_debug(f"Fast deep copy of movies data for read operation")
         
         if ENABLE_PERFORMANCE_LOGGING:
-            clean_elapsed = time.time() - clean_start
+            process_elapsed = time.time() - process_start
             total_elapsed = time.time() - start_time
-            log_info(f"⚡ PERFORMANCE [MOVIES CLEAN]: Clean took {clean_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items (clean={clean})")
+            operation = "CLEAN" if force_clean else "COPY"
+            log_info(f"⚡ PERFORMANCE [MOVIES {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
         
         # Cache the result (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -192,23 +214,24 @@ def get_movies(clean=True, fields_to_remove=None):
         return []
 
 
-def get_tv_shows(clean=True, fields_to_remove=None):
+def get_tv_shows(force_clean=False, fields_to_remove=None):
     """
     Get a safe, deep-copied version of the TV series data with caching.
     
     Args:
-        clean (bool): Whether to remove unwanted fields. Defaults to True
-        fields_to_remove (list): Custom list of fields to remove
+        force_clean (bool): Whether to force cleaning of unwanted fields.
+                           Only use when saving/exporting data. Defaults to False
+        fields_to_remove (list): Custom list of fields to remove when force_clean=True
     
     Returns:
-        list: Deep copy of TV series data, optionally cleaned
+        list: Deep copy of TV series data, cleaned only if force_clean=True
     """
     try:
         # Performance testing: start timing
         start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
         
         # Create cache key based on parameters
-        cache_key = f"tv_series_clean_{clean}_fields_{fields_to_remove}"
+        cache_key = f"tv_series_force_clean_{force_clean}_fields_{fields_to_remove}"
         
         # Check cache first (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -222,15 +245,22 @@ def get_tv_shows(clean=True, fields_to_remove=None):
         # Import and process data
         from app import tv_series
         
-        # Performance testing: time the cleaning operation
-        clean_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        result = clean_data_list(tv_series, fields_to_remove, clean)
+        # Performance testing: time the operation
+        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
+        
+        if force_clean:
+            # Only clean when explicitly requested (for save/export operations)
+            result = clean_data_list(tv_series, fields_to_remove, clean=True)
+            log_debug(f"Force cleaned TV series data for save/export operation")
+        else:
+            # Just return deep copy without cleaning (for read operations)
+            result = copy.deepcopy(tv_series)
         
         if ENABLE_PERFORMANCE_LOGGING:
-            clean_elapsed = time.time() - clean_start
+            process_elapsed = time.time() - process_start
             total_elapsed = time.time() - start_time
-            print(f"⚡ PERFORMANCE [TV CLEAN]: Clean took {clean_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items (clean={clean})")
-            log_info(f"⚡ PERFORMANCE [TV CLEAN]: Clean took {clean_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items (clean={clean})")
+            operation = "CLEAN" if force_clean else "COPY"
+            log_info(f"⚡ PERFORMANCE [TV {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
         
         # Cache the result (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -245,23 +275,24 @@ def get_tv_shows(clean=True, fields_to_remove=None):
         return []
 
 
-def get_movies_with_images(clean=True, fields_to_remove=None):
+def get_movies_with_images(force_clean=False, fields_to_remove=None):
     """
     Get a safe, deep-copied version of the movies with images data with caching.
     
     Args:
-        clean (bool): Whether to remove unwanted fields. Defaults to True
-        fields_to_remove (list): Custom list of fields to remove
+        force_clean (bool): Whether to force cleaning of unwanted fields.
+                           Only use when saving/exporting data. Defaults to False
+        fields_to_remove (list): Custom list of fields to remove when force_clean=True
     
     Returns:
-        list: Deep copy of movies with images data, optionally cleaned
+        list: Deep copy of movies with images data, cleaned only if force_clean=True
     """
     try:
         # Performance testing: start timing
         start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
         
         # Create cache key based on parameters
-        cache_key = f"movies_with_images_clean_{clean}_fields_{fields_to_remove}"
+        cache_key = f"movies_with_images_force_clean_{force_clean}_fields_{fields_to_remove}"
         
         # Check cache first (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -275,14 +306,22 @@ def get_movies_with_images(clean=True, fields_to_remove=None):
         # Import and process data
         from app import movies_with_images
         
-        # Performance testing: time the cleaning operation
-        clean_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        result = clean_data_list(movies_with_images, fields_to_remove, clean)
+        # Performance testing: time the operation
+        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
+        
+        if force_clean:
+            # Only clean when explicitly requested (for save/export operations)
+            result = clean_data_list(movies_with_images, fields_to_remove, clean=True)
+            log_debug(f"Force cleaned movies with images data for save/export operation")
+        else:
+            # Just return deep copy without cleaning (for read operations)
+            result = copy.deepcopy(movies_with_images)
         
         if ENABLE_PERFORMANCE_LOGGING:
-            clean_elapsed = time.time() - clean_start
+            process_elapsed = time.time() - process_start
             total_elapsed = time.time() - start_time
-            log_info(f"⚡ PERFORMANCE [MOVIES_IMG CLEAN]: Clean took {clean_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items (clean={clean})")
+            operation = "CLEAN" if force_clean else "COPY"
+            log_info(f"⚡ PERFORMANCE [MOVIES_IMG {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
         
         # Cache the result (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -297,23 +336,24 @@ def get_movies_with_images(clean=True, fields_to_remove=None):
         return []
 
 
-def get_tv_shows_with_images(clean=True, fields_to_remove=None):
+def get_tv_shows_with_images(force_clean=False, fields_to_remove=None):
     """
     Get a safe, deep-copied version of the TV series with images data with caching.
     
     Args:
-        clean (bool): Whether to remove unwanted fields. Defaults to True
-        fields_to_remove (list): Custom list of fields to remove
+        force_clean (bool): Whether to force cleaning of unwanted fields.
+                           Only use when saving/exporting data. Defaults to False
+        fields_to_remove (list): Custom list of fields to remove when force_clean=True
     
     Returns:
-        list: Deep copy of TV series with images data, optionally cleaned
+        list: Deep copy of TV series with images data, cleaned only if force_clean=True
     """
     try:
         # Performance testing: start timing
         start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
         
         # Create cache key based on parameters
-        cache_key = f"tv_series_with_images_clean_{clean}_fields_{fields_to_remove}"
+        cache_key = f"tv_series_with_images_force_clean_{force_clean}_fields_{fields_to_remove}"
         
         # Check cache first (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -327,14 +367,22 @@ def get_tv_shows_with_images(clean=True, fields_to_remove=None):
         # Import and process data
         from app import tv_series_with_images
         
-        # Performance testing: time the cleaning operation
-        clean_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        result = clean_data_list(tv_series_with_images, fields_to_remove, clean)
+        # Performance testing: time the operation
+        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
+        
+        if force_clean:
+            # Only clean when explicitly requested (for save/export operations)
+            result = clean_data_list(tv_series_with_images, fields_to_remove, clean=True)
+            log_debug(f"Force cleaned TV series with images data for save/export operation")
+        else:
+            # Just return deep copy without cleaning (for read operations)
+            result = copy.deepcopy(tv_series_with_images)
         
         if ENABLE_PERFORMANCE_LOGGING:
-            clean_elapsed = time.time() - clean_start
+            process_elapsed = time.time() - process_start
             total_elapsed = time.time() - start_time
-            log_info(f"⚡ PERFORMANCE [TV_IMG CLEAN]: Clean took {clean_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items (clean={clean})")
+            operation = "CLEAN" if force_clean else "COPY"
+            log_info(f"⚡ PERFORMANCE [TV_IMG {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
         
         # Cache the result (unless disabled for testing)
         if not DISABLE_CACHE_FOR_TESTING:
@@ -349,40 +397,42 @@ def get_tv_shows_with_images(clean=True, fields_to_remove=None):
         return []
 
 
-def get_all_items(clean=True, fields_to_remove=None):
+def get_all_items(force_clean=False, fields_to_remove=None):
     """
     Get a safe, deep-copied version of all content items (movies + TV shows).
     
     Args:
-        clean (bool): Whether to remove unwanted fields. Defaults to True
-        fields_to_remove (list): Custom list of fields to remove
+        force_clean (bool): Whether to force cleaning of unwanted fields.
+                           Only use when saving/exporting data. Defaults to False
+        fields_to_remove (list): Custom list of fields to remove when force_clean=True
     
     Returns:
-        list: Deep copy of all content items, optionally cleaned
+        list: Deep copy of all content items, cleaned only if force_clean=True
     """
     try:
-        movies_data = get_movies(clean, fields_to_remove)
-        tv_data = get_tv_shows(clean, fields_to_remove)
+        movies_data = get_movies(force_clean, fields_to_remove)
+        tv_data = get_tv_shows(force_clean, fields_to_remove)
         return movies_data + tv_data
     except Exception as e:
         log_error(f"Error getting all items data: {str(e)}")
         return []
 
 
-def get_all_items_with_images(clean=True, fields_to_remove=None):
+def get_all_items_with_images(force_clean=False, fields_to_remove=None):
     """
     Get a safe, deep-copied version of all content items with images.
     
     Args:
-        clean (bool): Whether to remove unwanted fields. Defaults to True
-        fields_to_remove (list): Custom list of fields to remove
+        force_clean (bool): Whether to force cleaning of unwanted fields.
+                           Only use when saving/exporting data. Defaults to False
+        fields_to_remove (list): Custom list of fields to remove when force_clean=True
     
     Returns:
-        list: Deep copy of all content items with images, optionally cleaned
+        list: Deep copy of all content items with images, cleaned only if force_clean=True
     """
     try:
-        movies_data = get_movies_with_images(clean, fields_to_remove)
-        tv_data = get_tv_shows_with_images(clean, fields_to_remove)
+        movies_data = get_movies_with_images(force_clean, fields_to_remove)
+        tv_data = get_tv_shows_with_images(force_clean, fields_to_remove)
         return movies_data + tv_data
     except Exception as e:
         log_error(f"Error getting all items with images data: {str(e)}")
@@ -408,8 +458,8 @@ def build_item_index(data_list):
 
 def clean_and_save_global_data(fields_to_remove=None):
     """
-    Clean the global data variables and save them back to the JSON files.
-    This function removes unwanted fields from the in-memory data and saves the cleaned data.
+    Clean unwanted fields from all global data variables and save them back to files.
+    This function should only be called when explicitly saving/exporting data.
     
     Args:
         fields_to_remove (list): List of field names to remove. 
@@ -420,7 +470,7 @@ def clean_and_save_global_data(fields_to_remove=None):
     """
     import json
     import os
-    from flask import current_app
+    # Note: Flask import will be handled in the try block to avoid import errors
     
     if fields_to_remove is None:
         fields_to_remove = ['watch_history', 'user_specific_data']
@@ -432,27 +482,37 @@ def clean_and_save_global_data(fields_to_remove=None):
     }
     
     try:
+        # Import Flask only when needed
+        try:
+            from flask import current_app
+        except ImportError:
+            log_warning("Flask not available, using relative paths")
+            current_app = None
+            
         import app
+        
+        # Use force_clean=True for all data when saving
+        log_info("Starting global data cleaning for save/export operation...")
         
         # Define the data to clean and their corresponding file paths
         data_to_clean = [
             {
-                'data': app.movies,
+                'getter_func': lambda: get_movies(force_clean=True, fields_to_remove=fields_to_remove),
                 'file_path': 'cdn/files/movies_little_clean.json',
                 'name': 'movies'
             },
             {
-                'data': app.tv_series,
+                'getter_func': lambda: get_tv_shows(force_clean=True, fields_to_remove=fields_to_remove),
                 'file_path': 'cdn/files/tv_little_clean.json',
                 'name': 'tv_series'
             },
             {
-                'data': app.movies_with_images,
+                'getter_func': lambda: get_movies_with_images(force_clean=True, fields_to_remove=fields_to_remove),
                 'file_path': 'cdn/files/movies_with_images.json',
                 'name': 'movies_with_images'
             },
             {
-                'data': app.tv_series_with_images,
+                'getter_func': lambda: get_tv_shows_with_images(force_clean=True, fields_to_remove=fields_to_remove),
                 'file_path': 'cdn/files/tv_with_images.json',
                 'name': 'tv_series_with_images'
             }
@@ -460,21 +520,28 @@ def clean_and_save_global_data(fields_to_remove=None):
         
         for data_info in data_to_clean:
             try:
-                # Clean the data
-                original_count = len(data_info['data'])
-                cleaned_data = clean_data_list(data_info['data'], fields_to_remove, clean=True)
+                # Get the original data to count items that need cleaning
+                original_data = getattr(app, data_info['name'])
+                original_count = len(original_data)
                 
-                # Calculate items that were actually cleaned
+                # Count items with unwanted fields
                 items_with_unwanted_fields = 0
-                for item in data_info['data']:
+                for item in original_data:
                     if any(field in item for field in fields_to_remove):
                         items_with_unwanted_fields += 1
+                
+                # Get cleaned data using force_clean=True
+                cleaned_data = data_info['getter_func']()
                 
                 # Update the global variable with cleaned data
                 setattr(app, data_info['name'], cleaned_data)
                 
                 # Save to file
-                file_path = os.path.join(current_app.root_path, data_info['file_path'])
+                if current_app:
+                    file_path = os.path.join(current_app.root_path, data_info['file_path'])
+                else:
+                    file_path = data_info['file_path']
+                    
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
                 
@@ -499,7 +566,10 @@ def clean_and_save_global_data(fields_to_remove=None):
         clear_data_cache()
         
         # Rebuild content indexes
-        app.rebuild_content_indexes()
+        try:
+            app.rebuild_content_indexes()
+        except AttributeError:
+            log_warning("rebuild_content_indexes function not available")
         
         log_info(f"Global data cleaning completed: {results['items_cleaned']} items cleaned across {len(results['files_processed'])} files")
         
