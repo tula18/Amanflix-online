@@ -545,7 +545,9 @@ def uploadRequests_count(current_admin):
 @admin_bp.route('/uploadRequests', methods=['GET'])
 @admin_token_required('moderator')
 def get_all_uploadRequests(current_admin):
-    from app import tv_series, movies
+    from utils.data_helpers import get_tv_shows, get_movies
+    temp_tv_series = get_tv_shows()
+    temp_movies = get_movies()
     uploadRequest_items = UploadRequest.query.all()
     with_duplicates = request.args.get('with_duplicates', 'false').lower() == 'true'
 
@@ -555,7 +557,7 @@ def get_all_uploadRequests(current_admin):
     for title in uploadRequest_items:
         requests_count = len(UploadRequest.query.filter_by(content_id=title.content_id).all())
         if title.content_type == 'movie':
-            movie = next((item for item in movies if item["id"] == title.content_id), None)
+            movie = next((item for item in temp_movies if item["id"] == title.content_id), None)
             if movie:
                 new_data = {
                     'id': title.id,
@@ -581,7 +583,7 @@ def get_all_uploadRequests(current_admin):
                     if not found:
                         titles.append(new_data)
         elif title.content_type == 'tv':
-            tv = next((item for item in tv_series if item["id"] == title.content_id), None)
+            tv = next((item for item in temp_tv_series if item["id"] == title.content_id), None)
             if tv:
                 new_data = {
                     'id': title.id,
@@ -737,25 +739,29 @@ def import_cdn_data(current_admin):
             log_info(f"Sorted content - Movies: {len(movies_data)}, TV Shows: {len(tv_data)}")
             
             # Update the CDN files
-            from app import movies, tv_series, movies_with_images, tv_series_with_images
-            log_info(f"Current content - Movies: {len(movies)}, TV Shows: {len(tv_series)}")
+            from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
+            temp_movies = get_movies(clean=False)
+            temp_tv_series = get_tv_shows(clean=False)
+            temp_movies_with_images = get_movies_with_images(clean=False)
+            temp_tv_series_with_images = get_tv_shows_with_images(clean=False)
+            log_info(f"Current content - Movies: {len(temp_movies)}, TV Shows: {len(temp_tv_series)}")
             
             # Update the normal content files
             if merge_content:
                 log_info("Merging with existing content")
                 # Merge with existing content
-                update_cdn_content('movies', movies_data, movies, merge=True)
-                update_cdn_content('tv', tv_data, tv_series, merge=True)
+                update_cdn_content('movies', movies_data, temp_movies, merge=True)
+                update_cdn_content('tv', tv_data, temp_tv_series, merge=True)
             else:
                 log_info("Replacing existing content")
                 # Replace existing content
-                update_cdn_content('movies', movies_data, movies, merge=False)
-                update_cdn_content('tv', tv_data, tv_series, merge=False)
+                update_cdn_content('movies', movies_data, temp_movies, merge=False)
+                update_cdn_content('tv', tv_data, temp_tv_series, merge=False)
                 
             # Update the with_images files for the imported items only
             log_info("Updating with_images files for imported content")
-            update_with_images_content('movies', movies_data, movies_with_images)
-            update_with_images_content('tv', tv_data, tv_series_with_images)
+            update_with_images_content('movies', movies_data, temp_movies_with_images)
+            update_with_images_content('tv', tv_data, temp_tv_series_with_images)
         
         # For items that may have been associated with newly uploaded images
         # but weren't in the JSON file - look for them separately
@@ -831,13 +837,11 @@ def update_cdn_content(content_type, new_data, existing_data, merge=True):
         
         # Update the in-memory data
         if content_type == 'movies':
-            from app import movies
             # Direct reference to avoid shadowing the parameter
             import app
             app.movies = new_data if not merge else existing_data
             log_info(f"Updated in-memory movies data, new count: {len(app.movies)}")
         elif content_type == 'tv':
-            from app import tv_series
             # Direct reference to avoid shadowing the parameter
             import app
             app.tv_series = new_data if not merge else existing_data
@@ -949,7 +953,11 @@ def update_with_images_content(content_type, new_data, existing_with_images):
 def update_with_images_for_new_files(filenames):
     """Update with_images data for items with newly uploaded image files."""
     try:
-        from app import movies, tv_series, movies_with_images, tv_series_with_images
+        from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
+        temp_movies = get_movies(clean=False)
+        temp_tv_series = get_tv_shows(clean=False)
+        temp_movies_with_images = get_movies_with_images(clean=False)
+        temp_tv_series_with_images = get_tv_shows_with_images(clean=False)
         import app
         
         # Extract IDs from filenames (assumes format like poster_123.jpg or backdrop_123.jpg)
@@ -975,31 +983,31 @@ def update_with_images_for_new_files(filenames):
         # Check movies
         movies_updated = 0
         for item_id in updated_items:
-            movie = next((m for m in movies if m['id'] == item_id), None)
+            movie = next((m for m in temp_movies if m['id'] == item_id), None)
             if movie:
                 from cdn.utils import check_images_existence
                 if check_images_existence(movie):
-                    # Add to or update in movies_with_images
-                    existing_index = next((i for i, m in enumerate(movies_with_images) if m['id'] == item_id), None)
+                    # Add to or update in temp_movies_with_images
+                    existing_index = next((i for i, m in enumerate(temp_movies_with_images) if m['id'] == item_id), None)
                     if existing_index is not None:
-                        movies_with_images[existing_index] = movie
+                        temp_movies_with_images[existing_index] = movie
                     else:
-                        movies_with_images.append(movie)
+                        temp_movies_with_images.append(movie)
                     movies_updated += 1
         
         # Check TV shows
         tv_updated = 0
         for item_id in updated_items:
-            show = next((s for s in tv_series if s['id'] == item_id), None)
+            show = next((s for s in temp_tv_series if s['id'] == item_id), None)
             if show:
                 from cdn.utils import check_images_existence
                 if check_images_existence(show):
-                    # Add to or update in tv_series_with_images
-                    existing_index = next((i for i, s in enumerate(tv_series_with_images) if s['id'] == item_id), None)
+                    # Add to or update in temp_tv_series_with_images
+                    existing_index = next((i for i, s in enumerate(temp_tv_series_with_images) if s['id'] == item_id), None)
                     if existing_index is not None:
-                        tv_series_with_images[existing_index] = show
+                        temp_tv_series_with_images[existing_index] = show
                     else:
-                        tv_series_with_images.append(show)
+                        temp_tv_series_with_images.append(show)
                     tv_updated += 1
         
         log_info(f"Updated with_images data: {movies_updated} movies, {tv_updated} TV shows")
@@ -1009,14 +1017,14 @@ def update_with_images_for_new_files(filenames):
         tv_file_path = os.path.join(current_app.root_path, 'cdn/files/tv_with_images.json')
         
         with open(movies_file_path, 'w') as f:
-            json.dump(movies_with_images, f, indent=2)
+            json.dump(temp_movies_with_images, f, indent=2)
             
         with open(tv_file_path, 'w') as f:
-            json.dump(tv_series_with_images, f, indent=2)
+            json.dump(temp_tv_series_with_images, f, indent=2)
             
         # Update in-memory data
-        app.movies_with_images = movies_with_images
-        app.tv_series_with_images = tv_series_with_images
+        app.movies_with_images = temp_movies_with_images
+        app.tv_series_with_images = temp_tv_series_with_images
         
         # Rebuild derived data structures for search functionality
         app.rebuild_content_indexes()

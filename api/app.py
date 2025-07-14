@@ -199,12 +199,37 @@ log_success("CDN structure verified successfully")
 log_step("Loading content databases")
 
 def load_data(file_path, media_type):
+    """
+    Load data from JSON file and clean unwanted fields.
+    This function ensures that any watch_history or other unwanted fields
+    are removed from the data when loaded from disk.
+    """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        for item in tqdm(data, desc=f"Loading {media_type} data"):
+        
+        # Clean unwanted fields and add required metadata
+        cleaned_count = 0
+        for item in tqdm(data, desc=f"Loading and cleaning {media_type} data"):
+            # Remove unwanted fields that shouldn't be in the main data files
+            fields_to_remove = ['watch_history', 'user_specific_data']
+            fields_removed = False
+            
+            for field in fields_to_remove:
+                if field in item:
+                    del item[field]
+                    fields_removed = True
+                    
+            if fields_removed:
+                cleaned_count += 1
+            
+            # Add required metadata
             item['media_type'] = media_type
             item['dir_type'] = 'cdn'
+        
+        if cleaned_count > 0:
+            log_warning(f"Cleaned {cleaned_count} items with unwanted fields from {file_path}")
+            
         return data
     except FileNotFoundError:
         log_warning(f"File not found: {file_path} - returning empty list")
@@ -217,16 +242,42 @@ def load_data(file_path, media_type):
         return []
 
 def load_only_images_data(file_path, media_type):
+    """
+    Load data with images from JSON file and clean unwanted fields.
+    This function ensures that any watch_history or other unwanted fields
+    are removed from the data when loaded from disk.
+    """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         all_items = []
+        cleaned_count = 0
+        
         for item in tqdm(data, desc=f"Loading {media_type} with images"):
+            # Remove unwanted fields that shouldn't be in the main data files
+            fields_to_remove = ['watch_history', 'user_specific_data']
+            fields_removed = False
+            
+            for field in fields_to_remove:
+                if field in item:
+                    del item[field]
+                    fields_removed = True
+                    
+            if fields_removed:
+                cleaned_count += 1
+            
+            # Add required metadata
             item['media_type'] = media_type
+            
+            # Check if images exist
             poster_path = item.get('poster_path', '').replace("/", "")
             backdrop_path = item.get('backdrop_path', '').replace("/", "")
             if poster_path and os.path.exists(os.path.join('cdn/posters_combined', poster_path)) and backdrop_path and os.path.exists(os.path.join('cdn/posters_combined', backdrop_path)):
                 all_items.append(item)
+        
+        if cleaned_count > 0:
+            log_warning(f"Cleaned {cleaned_count} items with unwanted fields from {file_path}")
+            
         return all_items
     except FileNotFoundError:
         log_warning(f"File not found: {file_path} - returning empty list")
@@ -262,6 +313,13 @@ log_success(f"Created content index with {Colors.BOLD}{len(item_index)}{Colors.R
 def rebuild_content_indexes():
     """Rebuild the search indexes after content data changes."""
     global all_items, item_index, all_items_with_images, item_index_with_images
+    
+    # Clear data helpers cache when content is updated
+    try:
+        from utils.data_helpers import clear_data_cache
+        clear_data_cache()
+    except ImportError:
+        pass  # data_helpers might not be available during initial setup
     
     # Rebuild all_items and its index
     all_items = movies + tv_series

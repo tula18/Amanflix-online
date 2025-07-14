@@ -66,7 +66,9 @@ def check_in_mylist(current_user):
 @mylist_bp.route('/all', methods=['GET'])
 @token_required
 def get_all_mylist(current_user):
-    from app import tv_series, movies
+    from api.utils.data_helpers import get_tv_shows, get_movies
+    temp_tv_series = get_tv_shows()
+    temp_movies = get_movies()
     from api.utils import serialize_watch_history
     
     page = request.args.get('page', 1, type=int)
@@ -85,7 +87,7 @@ def get_all_mylist(current_user):
             if movie:
                 content_item = movie.serialize
             else:
-                movie = next((item for item in movies if item["id"] == title.content_id), None)
+                movie = next((item for item in temp_movies if item["id"] == title.content_id), None)
                 if movie:
                     content_item = movie
         
@@ -97,7 +99,7 @@ def get_all_mylist(current_user):
                 if 'show_id' in content_item and 'id' not in content_item:
                     content_item['id'] = content_item['show_id']
             else:
-                tv = next((item for item in tv_series if item["id"] == title.content_id), None)
+                tv = next((item for item in temp_tv_series if item["id"] == title.content_id), None)
                 if tv:
                     content_item = tv
                     # Ensure TV shows have an id field (copy from show_id if needed)

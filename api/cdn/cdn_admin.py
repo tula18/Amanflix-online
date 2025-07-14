@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 from api.utils import admin_token_required
+from utils.data_helpers import clean_data_list
 import json
 import os
 import traceback
@@ -238,3 +239,142 @@ def delete_cdn_content(current_admin, content_type, content_id):
         error_msg = f"Error deleting CDN content: {str(e)}"
         log_error(error_msg)
         return jsonify({"message": error_msg, "error": str(e)}), 500
+
+@cdn_admin_bp.route('/clean-files', methods=['POST'])
+@admin_token_required('superadmin')
+def clean_cdn_files(current_admin):
+    """
+    Manually clean CDN JSON files by removing unwanted fields like watch_history.
+    This endpoint removes watch_history and other unwanted fields from all content
+    in the main JSON files and saves the cleaned data back to disk.
+    """
+    try:
+        log_success(f"Admin {current_admin.username} initiated manual CDN file cleaning")
+        
+        # Get optional parameters
+        data = request.get_json() or {}
+        fields_to_remove = data.get('fields_to_remove', ['watch_history'])
+        backup_files = data.get('backup_files', True)
+        
+        # Define file paths
+        files_to_clean = [
+            {
+                'path': 'cdn/files/movies_little_clean.json',
+                'type': 'movies',
+                'global_var': 'movies'
+            },
+            {
+                'path': 'cdn/files/tv_little_clean.json', 
+                'type': 'tv_series',
+                'global_var': 'tv_series'
+            },
+            {
+                'path': 'cdn/files/movies_with_images.json',
+                'type': 'movies_with_images', 
+                'global_var': 'movies_with_images'
+            },
+            {
+                'path': 'cdn/files/tv_with_images.json',
+                'type': 'tv_series_with_images',
+                'global_var': 'tv_series_with_images'
+            }
+        ]
+        
+        cleaned_files = []
+        backup_files_created = []
+        errors = []
+        
+        for file_info in files_to_clean:
+            try:
+                file_path = os.path.join(current_app.root_path, file_info['path'])
+                
+                # Check if file exists
+                if not os.path.exists(file_path):
+                    log_warning(f"Skipping {file_info['path']} - file not found")
+                    continue
+                
+                # Create backup if requested
+                if backup_files:
+                    backup_path = f"{file_path}.backup"
+                    import shutil
+                    shutil.copy2(file_path, backup_path)
+                    backup_files_created.append(backup_path)
+                    log_success(f"Created backup: {backup_path}")
+                
+                # Load current data
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    original_data = json.load(f)
+                
+                original_count = len(original_data)
+                
+                # Count items with unwanted fields before cleaning
+                items_with_unwanted_fields = 0
+                total_unwanted_fields = 0
+                
+                for item in original_data:
+                    for field in fields_to_remove:
+                        if field in item:
+                            items_with_unwanted_fields += 1
+                            total_unwanted_fields += 1
+                            break
+                
+                # Clean the data
+                cleaned_data = clean_data_list(original_data, fields_to_remove, clean=True)
+                
+                # Save cleaned data back to file
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
+                
+                # Update in-memory global variables
+                try:
+                    import app
+                    setattr(app, file_info['global_var'], cleaned_data)
+                    
+                    # Rebuild indexes if this affects main content
+                    if file_info['global_var'] in ['movies', 'tv_series']:
+                        app.rebuild_content_indexes()
+                        
+                except Exception as e:
+                    log_warning(f"Could not update in-memory data for {file_info['global_var']}: {str(e)}")
+                
+                cleaned_files.append({
+                    'file': file_info['path'],
+                    'type': file_info['type'],
+                    'original_count': original_count,
+                    'items_with_unwanted_fields': items_with_unwanted_fields,
+                    'total_unwanted_fields_removed': total_unwanted_fields,
+                    'cleaned_count': len(cleaned_data)
+                })
+                
+                log_success(f"Cleaned {file_info['path']}: removed {total_unwanted_fields} unwanted fields from {items_with_unwanted_fields} items")
+                
+            except Exception as e:
+                error_msg = f"Error cleaning {file_info['path']}: {str(e)}"
+                log_error(error_msg)
+                errors.append(error_msg)
+        
+        # Prepare response
+        response = {
+            "message": "CDN file cleaning completed",
+            "cleaned_files": cleaned_files,
+            "backup_files_created": backup_files_created if backup_files else [],
+            "fields_removed": fields_to_remove,
+            "errors": errors,
+            "success": len(errors) == 0
+        }
+        
+        status_code = 200 if len(errors) == 0 else 207  # 207 = Multi-Status (partial success)
+        
+        log_success(f"CDN file cleaning completed. {len(cleaned_files)} files processed, {len(errors)} errors")
+        
+        return jsonify(response), status_code
+        
+    except Exception as e:
+        error_msg = f"Critical error during CDN file cleaning: {str(e)}"
+        log_error(error_msg)
+        log_error(traceback.format_exc())
+        return jsonify({
+            "message": error_msg, 
+            "error": str(e),
+            "success": False
+        }), 500

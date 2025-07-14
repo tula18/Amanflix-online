@@ -542,3 +542,52 @@ def get_content_metrics(current_admin):
     except Exception as e:
         log_error(f"Error retrieving content metrics: {str(e)}")
         return jsonify({'error': 'Failed to retrieve content metrics'}), 500
+
+@analytics_bp.route('/data-integrity', methods=['GET'])
+@admin_token_required('moderator')
+def get_data_integrity_metrics(current_admin):
+    """Get data integrity metrics including unwanted field contamination"""
+    try:
+        from utils.data_helpers import count_unwanted_fields
+        
+        # Get unwanted fields to check from query params
+        fields_param = request.args.get('fields', 'watch_history')
+        fields_to_check = [f.strip() for f in fields_param.split(',') if f.strip()]
+        
+        # Get include_files flag from query params
+        include_files = request.args.get('include_files', 'false').lower() == 'true'
+        
+        log_info(f"Checking data integrity for fields: {fields_to_check}, include_files: {include_files}")
+        
+        # Get contamination report
+        contamination_report = count_unwanted_fields(fields_to_check, include_files)
+        
+        # Add timestamp and request info
+        contamination_report['timestamp'] = datetime.utcnow().isoformat()
+        contamination_report['checked_fields'] = fields_to_check
+        contamination_report['include_files'] = include_files
+        
+        # Calculate health status
+        contamination_percentage = contamination_report.get('contamination_percentage', 0)
+        if contamination_percentage == 0:
+            health_status = 'excellent'
+        elif contamination_percentage < 1:
+            health_status = 'good'
+        elif contamination_percentage < 5:
+            health_status = 'warning'
+        else:
+            health_status = 'critical'
+        
+        contamination_report['health_status'] = health_status
+        
+        return jsonify(contamination_report), 200
+        
+    except Exception as e:
+        log_error(f"Error getting data integrity metrics: {str(e)}")
+        return jsonify({
+            'error': 'Failed to get data integrity metrics',
+            'total_contaminated': 0,
+            'total_items': 0,
+            'contamination_percentage': 0,
+            'health_status': 'error'
+        }), 500

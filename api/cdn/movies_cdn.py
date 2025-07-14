@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, abort
 from cdn.utils import paginate, calculate_similarity, check_images_existence
 from api.utils import token_required, serialize_watch_history
+from utils.data_helpers import get_movies, get_movies_with_images
 import random
 import os
 import time
@@ -10,13 +11,13 @@ movie_cdn_bp = Blueprint('movie_cdn_bp', __name__, url_prefix='/cdn')
 # Endpoint to get all movies with pagination
 @movie_cdn_bp.route('/movies', methods=['GET'])
 @token_required
-def get_movies(current_user):
-    from app import movies
+def get_movies_endpoint(current_user):
+    temp_movies = get_movies()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    paginated_movies = paginate(movies, page, per_page)
+    paginated_movies = paginate(temp_movies, page, per_page)
     
     # Add watch history if requested
     if include_watch_history:
@@ -36,12 +37,12 @@ def get_movies(current_user):
 @movie_cdn_bp.route('/movies/search', methods=['GET'])
 @token_required
 def search_movies(current_user):
-    from app import movies
+    temp_movies = get_movies()
     query = request.args.get('q', '', type=str)
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    result = [item for item in movies if query.lower() in str(item.get('title', '')).lower()]
+    result = [item for item in temp_movies if query.lower() in str(item.get('title', '')).lower()]
     limited_result = result[:max_results]
     
     # Add watch history if requested
@@ -62,10 +63,10 @@ def search_movies(current_user):
 @movie_cdn_bp.route('/movies/<int:movie_id>')
 @token_required
 def get_movie(current_user, movie_id):
-    from app import movies
+    temp_movies = get_movies()
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    movie = next((item for item in movies if item["id"] == movie_id), None)
+    movie = next((item for item in temp_movies if item["id"] == movie_id), None)
     if not movie:
         return jsonify(message="The selected Movie not found!"), 404
     
@@ -86,7 +87,8 @@ def get_movie(current_user, movie_id):
 @movie_cdn_bp.route('/movies/random', methods=['GET'])
 @token_required
 def get__random_movie(current_user):
-    from app import movies
+    temp_movies = get_movies()
+    temp_movies_with_images = get_movies_with_images()
     func_start_time = time.time()
     
     page = request.args.get('page', 1, type=int)
@@ -96,12 +98,11 @@ def get__random_movie(current_user):
     with_images = request.args.get('with_images', False, type=bool)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
 
-    temp_movies = movies
+    movies_to_use = temp_movies
     if with_images:
-        from app import movies_with_images
-        temp_movies = movies_with_images
+        movies_to_use = temp_movies_with_images
 
-    shuffled_movies = temp_movies.copy()
+    shuffled_movies = movies_to_use.copy()
     random.shuffle(shuffled_movies)
 
     def apply_filters(items):
@@ -140,7 +141,8 @@ def get__random_movie(current_user):
 @movie_cdn_bp.route('/movies/<int:movie_id>/similar', methods=['GET'])
 @token_required
 def get_similar_movies(current_user, movie_id):
-    from app import movies
+    temp_movies = get_movies()
+    temp_movies_with_images = get_movies_with_images()
 
     with_images = request.args.get('with_images', False, type=bool)
     is_random = request.args.get('random', False, type=bool)
@@ -148,17 +150,16 @@ def get_similar_movies(current_user, movie_id):
     per_page = request.args.get('per_page', 12, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
 
-    temp_movies = movies
+    movies_to_use = temp_movies
     if with_images:
-        from app import movies_with_images
-        temp_movies = movies_with_images
+        movies_to_use = temp_movies_with_images
 
-    movie = next((item for item in temp_movies if item["id"] == movie_id), None)
+    movie = next((item for item in movies_to_use if item["id"] == movie_id), None)
     if not movie:
         return jsonify(message="The selected Movie not found!"), 404
     
     similar_movies = []
-    for item in temp_movies:
+    for item in movies_to_use:
         if item['id'] != movie_id:
             similarity = calculate_similarity(movie, item)
             if similarity > 0:

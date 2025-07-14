@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, abort
 from models import Movie
-from api.utils import admin_token_required, sort
+from api.utils import admin_token_required, sort, token_required, serialize_watch_history
+from cdn.utils import filter_valid_genres
 import os
 import random
 
@@ -8,11 +9,13 @@ movies_bp = Blueprint('movies_bp', __name__, url_prefix='/api')
 
 # Endpoint to get all movies with pagination
 @movies_bp.route('/movies', methods=['GET'])
-def get_movies():
+@token_required
+def get_movies(current_user):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     order = request.args.get('order', 'asc', type=str)  # Default order is ascending
     sort_by_field = request.args.get('sort_by', None, type=str)  # Default sort_by is None
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
 
     # Assuming sort_by_field is a valid column name in the Movie model
     sort_by = getattr(Movie, sort_by_field, None) if sort_by_field else None
@@ -20,14 +23,30 @@ def get_movies():
     query = Movie.query
     
     paginated_movies = query.paginate(page=page, per_page=per_page, error_out=False)
-    return jsonify([movie.serialize for movie in paginated_movies.items]), 200
+    movie_list = [movie.serialize for movie in paginated_movies.items]
+    
+    # Add watch history if requested
+    if include_watch_history:
+        for movie in movie_list:
+            watch_history = serialize_watch_history(
+                content_id=movie['id'],
+                content_type='movie',
+                current_user=current_user,
+                include_next_episode=False
+            )
+            if watch_history:
+                movie['watch_history'] = watch_history
+    
+    return jsonify(movie_list), 200
 
 @movies_bp.route('/movies/random', methods=['GET'])
-def get__random_movie():
+@token_required
+def get__random_movie(current_user):
     genre = request.args.get('genre', '', type=str)
     min_rating = request.args.get('min_rating', 0, type=float)
     max_rating = request.args.get('max_rating', 10, type=float)
     per_page = request.args.get('per_page', 20, type=int)
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
 
     movies = Movie.query.all()
 
@@ -52,24 +71,70 @@ def get__random_movie():
     random.shuffle(movie_results)
 
     limited_results = movie_results[:per_page]
+    
+    # Add watch history if requested
+    if include_watch_history:
+        for movie in limited_results:
+            watch_history = serialize_watch_history(
+                content_id=movie['id'],
+                content_type='movie',
+                current_user=current_user,
+                include_next_episode=False
+            )
+            if watch_history:
+                movie['watch_history'] = watch_history
+    
     return jsonify(limited_results)
 
 # Endpoint to search for movies by title
 @movies_bp.route('/movies/search', methods=['GET'])
-def search_movies():
+@token_required
+def search_movies(current_user):
     query = request.args.get('q', '', type=str)
     max_results = request.args.get('max_results', 3, type=int)
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    
     movies = Movie.query.filter(Movie.title.ilike(f'%{query}%')).all()
     result = [movie.serialize for movie in movies]
     limited_result = result[:max_results]
+    
+    # Add watch history if requested
+    if include_watch_history:
+        for movie in limited_result:
+            watch_history = serialize_watch_history(
+                content_id=movie['id'],
+                content_type='movie',
+                current_user=current_user,
+                include_next_episode=False
+            )
+            if watch_history:
+                movie['watch_history'] = watch_history
+    
     return jsonify(limited_result)
 
 @movies_bp.route('/movies/<int:movie_id>', methods=['GET'])
-def get_movie(movie_id):
+@token_required
+def get_movie(current_user, movie_id):
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    
     movie = Movie.query.filter_by(movie_id=movie_id).first()
     if movie is None:
         return jsonify(message="The selected Movie not found!"), 404
-    return jsonify(movie.serialize)
+    
+    movie_data = movie.serialize
+    
+    # Add watch history if requested
+    if include_watch_history:
+        watch_history = serialize_watch_history(
+            content_id=movie_data['id'],
+            content_type='movie',
+            current_user=current_user,
+            include_next_episode=False
+        )
+        if watch_history:
+            movie_data['watch_history'] = watch_history
+    
+    return jsonify(movie_data)
 
 @movies_bp.route('/movies/<int:movie_id>/check', methods=['GET'])
 # @admin_token_required('moderator')

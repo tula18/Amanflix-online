@@ -20,7 +20,9 @@ import {
   DatePicker,
   InputNumber,
   Statistic,
-  Alert
+  Alert,
+  Row,
+  Col
 } from "antd";
 import { 
   InboxOutlined, 
@@ -40,7 +42,8 @@ import {
   CloudUploadOutlined,
   SyncOutlined,
   LoadingOutlined,
-  FileImageOutlined
+  FileImageOutlined,
+  ClearOutlined  // Add this for clean files functionality
 } from '@ant-design/icons';
 import { API_URL } from "../../../../config";
 import './CDNManagementPage.css';
@@ -223,6 +226,12 @@ const CdnManagementPage = () => {
   const [previewTitle, setPreviewTitle] = useState('');
   const [previewPagination, setPreviewPagination] = useState({ current: 1, pageSize: 10 });
   const [fullImportData, setFullImportData] = useState([]);
+  
+  // Clean Files functionality state
+  const [cleanFilesLoading, setCleanFilesLoading] = useState(false);
+  const [precheckModalVisible, setPrecheckModalVisible] = useState(false);
+  const [precheckData, setPrecheckData] = useState(null);
+  const [precheckLoading, setPrecheckLoading] = useState(false);
 
   const showImportModal = () => {
     setImportModalVisible(true);
@@ -1111,6 +1120,87 @@ const convertItemToFormValues = (item) => {
     }
   };
 
+  // Handler for Clean Files functionality
+  const handleCleanFiles = async () => {
+    try {
+      setPrecheckLoading(true);
+      setPrecheckModalVisible(true);
+      
+      // Get data integrity metrics to show what will be cleaned
+      // Include both in-memory and file data for comprehensive precheck
+      const response = await fetch(`${API_URL}/api/analytics/data-integrity?fields=watch_history,user_specific_data&include_files=true`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setPrecheckData(data);
+      } else {
+        throw new Error(data.message || 'Failed to get data integrity information');
+      }
+    } catch (error) {
+      console.error('Error getting precheck data:', error);
+      message.error(`Failed to get contamination information: ${error.message}`);
+      setPrecheckModalVisible(false);
+    } finally {
+      setPrecheckLoading(false);
+    }
+  };
+
+  // Handler for proceeding with the actual clean operation
+  const handleProceedWithClean = async () => {
+    try {
+      setCleanFilesLoading(true);
+      setPrecheckModalVisible(false);
+      
+      const response = await fetch(`${API_URL}/api/cdn/admin/clean-files`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields_to_remove: ['watch_history', 'user_specific_data'],
+          backup_files: true
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        message.success({
+          content: `Files cleaned successfully! ${data.cleaned_files?.length || 0} files processed.`,
+          duration: 5
+        });
+        
+        // Show detailed results if available
+        if (data.cleaned_files && data.cleaned_files.length > 0) {
+          console.log('Clean Files Results:', data);
+        }
+        
+        // Refresh content after cleaning
+        await fetchCdnContent();
+      } else {
+        throw new Error(data.message || 'Failed to clean files');
+      }
+    } catch (error) {
+      console.error('Error cleaning files:', error);
+      message.error(`Failed to clean files: ${error.message}`);
+    } finally {
+      setCleanFilesLoading(false);
+    }
+  };
+
+  // Handler for canceling the clean operation
+  const handleCancelClean = () => {
+    setPrecheckModalVisible(false);
+    setPrecheckData(null);
+  };
+
   return (
     <Flex vertical>
       <Flex justify={"space-between"} align="center" style={{marginTop: "20px", marginBottom: "20px"}}>
@@ -1133,6 +1223,22 @@ const convertItemToFormValues = (item) => {
               Reset Filters
             </Button>
           </Tooltip>
+          {/* Clean Files button - only visible to superadmins */}
+          {window.currentUserRole === 'superadmin' && (
+            <Tooltip title="Clean unwanted fields from CDN files (superadmin only)">
+              <Button
+                icon={<ClearOutlined />}
+                onClick={handleCleanFiles}
+                loading={cleanFilesLoading}
+                className="clean-files-button"
+                style={{
+                  width: 140,
+                }}
+              >
+                {cleanFilesLoading ? 'Cleaning...' : 'Clean Files'}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title="Import data from amanflix-data-downloader">
             <Button
               type="primary"
@@ -1763,6 +1869,120 @@ const convertItemToFormValues = (item) => {
                 Delete
               </Button>
             </Flex>
+          </div>
+        )}
+      </Modal>
+
+      {/* Clean Files Precheck Modal */}
+      <Modal
+        title="Clean Files - Data Integrity Check"
+        open={precheckModalVisible}
+        onCancel={handleCancelClean}
+        width={700}
+        footer={[
+          <Button key="cancel" onClick={handleCancelClean}>
+            Cancel
+          </Button>,
+          <Button 
+            key="proceed" 
+            type="primary" 
+            danger 
+            loading={cleanFilesLoading}
+            onClick={handleProceedWithClean}
+            disabled={!precheckData || precheckData.total_contaminated === 0}
+          >
+            {cleanFilesLoading ? 'Cleaning...' : 'Proceed with Cleaning'}
+          </Button>
+        ]}
+      >
+        {precheckLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <LoadingOutlined style={{ fontSize: 24, marginBottom: 16 }} />
+            <div>Analyzing data contamination...</div>
+          </div>
+        ) : precheckData ? (
+          <div>
+            <Alert
+              message="Data Contamination Analysis"
+              description={
+                precheckData.total_contaminated > 0 
+                  ? `Found ${precheckData.total_contaminated} contaminated items out of ${precheckData.total_items} total items (${precheckData.contamination_percentage?.toFixed(2)}% contaminated).`
+                  : "No contaminated items found. All data is clean."
+              }
+              type={precheckData.total_contaminated > 0 ? "warning" : "success"}
+              showIcon
+              style={{ marginBottom: 20 }}
+            />
+            
+            <div style={{ marginBottom: 20 }}>
+              <h4 style={{ color: '#e0e0e0', marginBottom: 12 }}>Contamination by Data Source:</h4>
+              <Row gutter={[12, 12]}>
+                {Object.entries(precheckData.data_sources || {}).map(([source, data]) => (
+                  <Col xs={12} sm={6} key={source}>
+                    <div 
+                      style={{ 
+                        background: '#1a2035', 
+                        padding: '12px', 
+                        borderRadius: '6px',
+                        border: data.contaminated > 0 ? '1px solid #ff7875' : '1px solid #52c41a'
+                      }}
+                    >
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#a0a0a0', 
+                        marginBottom: '4px',
+                        textTransform: 'uppercase'
+                      }}>
+                        {source.replace(/_/g, ' ')}
+                      </div>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold',
+                        color: data.contaminated > 0 ? '#ff7875' : '#52c41a'
+                      }}>
+                        {data.contaminated}/{data.total}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#a0a0a0' }}>
+                        {data.total > 0 ? `${((data.contaminated / data.total) * 100).toFixed(1)}%` : '0%'} contaminated
+                      </div>
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+
+            {precheckData.total_contaminated > 0 && (
+              <div>
+                <h4 style={{ color: '#e0e0e0', marginBottom: 12 }}>Fields to be Removed:</h4>
+                <div style={{ marginBottom: 16 }}>
+                  {precheckData.checked_fields?.map(field => (
+                    <Tag key={field} color="red" style={{ marginBottom: 8 }}>
+                      {field}
+                    </Tag>
+                  ))}
+                </div>
+                
+                <Alert
+                  message="Warning"
+                  description="This operation will permanently remove the unwanted fields from your JSON files. Backup files will be created automatically before cleaning."
+                  type="warning"
+                  showIcon
+                />
+              </div>
+            )}
+
+            {precheckData.total_contaminated === 0 && (
+              <Alert
+                message="No Action Needed"
+                description="Your data is already clean. No unwanted fields were found in any of the data sources."
+                type="success"
+                showIcon
+              />
+            )}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div style={{ color: '#ff7875' }}>Failed to load contamination data</div>
           </div>
         )}
       </Modal>

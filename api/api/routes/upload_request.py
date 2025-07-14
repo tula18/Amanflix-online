@@ -64,7 +64,9 @@ def check_in_uploadRequest(current_user):
 @upload_request_bp.route('/all', methods=['GET'])
 @token_required
 def get_all_uploadRequest(current_user):
-    from app import tv_series, movies
+    from utils.data_helpers import get_movies, get_tv_shows
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
 
@@ -74,12 +76,12 @@ def get_all_uploadRequest(current_user):
     titles = []
     for title in uploadRequest_items:
         if title.content_type == 'movie':
-            movie = next((item for item in movies if item["id"] == title.content_id), None)
+            movie = next((item for item in temp_movies if item["id"] == title.content_id), None)
             if movie:
                 titles.append(movie)
             pass
         elif title.content_type == 'tv':
-            tv = next((item for item in tv_series if item["id"] == title.content_id), None)
+            tv = next((item for item in temp_tv_series if item["id"] == title.content_id), None)
             if tv:
                 titles.append(tv)
             pass

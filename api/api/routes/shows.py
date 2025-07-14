@@ -1,32 +1,82 @@
 from flask import Blueprint, request, jsonify, abort
 from models import TVShow
-from api.utils import admin_token_required
+from api.utils import admin_token_required, token_required, serialize_watch_history
 import os
 
 shows_bp = Blueprint('shows_bp', __name__, url_prefix='/api')
 
 @shows_bp.route('/shows', methods=['GET'])
-def get_shows():
+@token_required
+def get_shows(current_user):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    
     paginated_shows = TVShow.query.paginate(page=page, per_page=per_page, error_out=False)
-    return jsonify([show.serialize for show in paginated_shows.items]), 200
+    show_list = [show.serialize for show in paginated_shows.items]
+    
+    # Add watch history if requested
+    if include_watch_history:
+        for show in show_list:
+            watch_history = serialize_watch_history(
+                content_id=show['show_id'],
+                content_type='tv',
+                current_user=current_user,
+                include_next_episode=True
+            )
+            if watch_history:
+                show['watch_history'] = watch_history
+    
+    return jsonify(show_list), 200
 
 @shows_bp.route('/shows/search', methods=['GET'])
-def search_show():
+@token_required
+def search_show(current_user):
     query = request.args.get('q', '', type=str)
     max_results = request.args.get('max_results', 3, type=int)
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    
     shows = TVShow.query.filter(TVShow.title.ilike(f'%{query}%')).all()
-    result = [shows.serialize for show in shows]
+    result = [show.serialize for show in shows]
     limited_result = result[:max_results]
+    
+    # Add watch history if requested
+    if include_watch_history:
+        for show in limited_result:
+            watch_history = serialize_watch_history(
+                content_id=show['show_id'],
+                content_type='tv',
+                current_user=current_user,
+                include_next_episode=True
+            )
+            if watch_history:
+                show['watch_history'] = watch_history
+    
     return jsonify(limited_result)
 
 @shows_bp.route('/shows/<int:show_id>', methods=['GET'])
-def get_show(show_id):
+@token_required
+def get_show(current_user, show_id):
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    
     show = TVShow.query.filter_by(show_id=show_id).first()
     if show is None:
         return jsonify(message="The selected Show not found!"), 404
-    return jsonify(show.serialize)
+    
+    show_data = show.serialize
+    
+    # Add watch history if requested
+    if include_watch_history:
+        watch_history = serialize_watch_history(
+            content_id=show_data['show_id'],
+            content_type='tv',
+            current_user=current_user,
+            include_next_episode=True
+        )
+        if watch_history:
+            show_data['watch_history'] = watch_history
+    
+    return jsonify(show_data)
 
 @shows_bp.route('/shows/<int:show_id>/check', methods=['GET'])
 def check_show_exists(show_id):

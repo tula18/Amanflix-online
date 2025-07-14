@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from cdn.utils import paginate, check_images_existence
+from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
 import random
 
 discovery_cdn_bp = Blueprint('discovery_cdn_bp', __name__, url_prefix='/cdn')
@@ -10,7 +11,11 @@ def get_cdn_discovery_random():
     CDN Discovery endpoint that returns random content from both movies and TV shows
     This is a fallback when the main API is not available
     """
-    from app import movies, tv_series, movies_with_images, tv_series_with_images
+    # Use safe getter functions to get cleaned data copies
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
+    temp_movies_with_images = get_movies_with_images()
+    temp_tv_series_with_images = get_tv_shows_with_images()
     
     # Get query parameters
     page = request.args.get('page', 1, type=int)
@@ -22,11 +27,11 @@ def get_cdn_discovery_random():
     
     # Choose data source based on image requirements
     if with_images:
-        temp_movies = movies_with_images
-        temp_tv = tv_series_with_images
+        temp_movies = temp_movies_with_images
+        temp_tv = temp_tv_series_with_images
     else:
-        temp_movies = movies
-        temp_tv = tv_series
+        temp_movies = temp_movies
+        temp_tv = temp_tv_series
     
     # Apply content type filter
     combined_content = []
@@ -74,7 +79,11 @@ def get_cdn_discovery_trending():
     Get trending content from both movies and TV shows based on popularity
     CDN version without authentication
     """
-    from app import movies, tv_series, movies_with_images, tv_series_with_images
+    # Use safe getter functions to get cleaned data copies
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
+    temp_movies_with_images = get_movies_with_images()
+    temp_tv_series_with_images = get_tv_shows_with_images()
     
     # Get query parameters
     page = request.args.get('page', 1, type=int)
@@ -84,11 +93,11 @@ def get_cdn_discovery_trending():
     
     # Choose data source based on image requirements
     if with_images:
-        temp_movies = movies_with_images
-        temp_tv = tv_series_with_images
+        temp_movies = temp_movies_with_images
+        temp_tv = temp_tv_series_with_images
     else:
-        temp_movies = movies
-        temp_tv = tv_series
+        temp_movies = temp_movies
+        temp_tv = temp_tv_series
     
     # Apply content type filter and add media_type
     combined_content = []
@@ -128,7 +137,11 @@ def get_cdn_discovery_featured():
     Based on high ratings and popularity
     CDN version without authentication
     """
-    from app import movies, tv_series, movies_with_images, tv_series_with_images
+    # Use safe getter functions to get cleaned data copies
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
+    temp_movies_with_images = get_movies_with_images()
+    temp_tv_series_with_images = get_tv_shows_with_images()
     
     # Get query parameters
     page = request.args.get('page', 1, type=int)
@@ -139,11 +152,11 @@ def get_cdn_discovery_featured():
     
     # Choose data source based on image requirements
     if with_images:
-        temp_movies = movies_with_images
-        temp_tv = tv_series_with_images
+        temp_movies = temp_movies_with_images
+        temp_tv = temp_tv_series_with_images
     else:
-        temp_movies = movies
-        temp_tv = tv_series
+        temp_movies = temp_movies
+        temp_tv = temp_tv_series
     
     # Apply content type filter and add media_type
     combined_content = []

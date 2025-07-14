@@ -278,10 +278,6 @@
   box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05) !important;
 } */
 
-.ant-table-filter-dropdown .ant-dropdown-menu {
-  /* background-color: #1f2a40 !important; */
-}
-
 .ant-table-filter-dropdown .ant-checkbox-wrapper {
   color: #e0e0e0 !important;
 }
@@ -1158,6 +1154,7 @@
   overflow: hidden;
   background-color: #141b2d;
   border: 1px solid #283555;
+  transition: all 0.2s;
 }
 
 .image-thumbnail img {
@@ -1484,4 +1481,49 @@
 .upload-status .anticon {
   margin-right: 8px;
   font-size: 16px;
+}
+
+/* Clean Files button styling */
+.cdn-table-container .clean-files-button {
+  background: linear-gradient(135deg, #722ed1 0%, #531dab 100%);
+  border-color: #722ed1;
+  color: white;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.cdn-table-container .clean-files-button:hover {
+  background: linear-gradient(135deg, #531dab 0%, #391085 100%);
+  border-color: #531dab;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(114, 46, 209, 0.3);
+}
+
+.cdn-table-container .clean-files-button:active {
+  transform: translateY(0);
+}
+
+.cdn-table-container .clean-files-button.ant-btn-loading {
+  background: #722ed1;
+  border-color: #722ed1;
+}
+
+/* Clean Files button icon animation */
+.cdn-table-container .clean-files-button .anticon-clear {
+  animation: cleanPulse 2s infinite;
+}
+
+@keyframes cleanPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.cdn-table-container .clean-files-button:hover .anticon-clear {
+  animation: cleanSpin 0.5s ease;
+}
+
+@keyframes cleanSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

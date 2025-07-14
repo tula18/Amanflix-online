@@ -39,6 +39,7 @@ const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [contentMetrics, setContentMetrics] = useState(null);
+  const [dataIntegrity, setDataIntegrity] = useState(null);
   const [timeRange, setTimeRange] = useState(1); // days
   const [refreshing, setRefreshing] = useState(false);
   const token = localStorage.getItem('admin_token');
@@ -65,17 +66,39 @@ const AnalyticsDashboard = () => {
     }
   };
   
+  // Add fetch function for data integrity
+  const fetchDataIntegrity = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/analytics/data-integrity?fields=watch_history&include_files=true`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Data integrity:", data);
+        setDataIntegrity(data);
+      } else {
+        console.error("Failed to fetch data integrity metrics");
+      }
+    } catch (error) {
+      console.error("Error fetching data integrity metrics:", error);
+    }
+  };
+  
   // Update useEffect to fetch both datasets
   useEffect(() => {
     const fetchData = async () => {
       // Only show full loading on initial load
-      if (!dashboardData || !contentMetrics) {
+      if (!dashboardData || !contentMetrics || !dataIntegrity) {
         setLoading(true);
       } else {
         setRefreshing(true); // Use a lighter refresh indicator for tab changes
       }
       
-      await Promise.all([fetchDashboardData(), fetchContentMetrics()]);
+      await Promise.all([fetchDashboardData(), fetchContentMetrics(), fetchDataIntegrity()]);
       
       setLoading(false);
       setRefreshing(false);
@@ -130,6 +153,9 @@ const AnalyticsDashboard = () => {
     fetch(`${API_URL}/api/analytics/content-metrics?days=${nextRange}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
+    fetch(`${API_URL}/api/analytics/data-integrity?fields=watch_history&include_files=true`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
   };
 
   // Add these after other state declarations
@@ -176,6 +202,21 @@ const AnalyticsDashboard = () => {
             { key: 'Disk Usage', value: dashboardData.system_health.disk_usage_percent + '%' }
           ]
         };
+      case 'integrity':
+        return {
+          metrics: [
+            { key: 'Total Items', value: dataIntegrity.total_items },
+            { key: 'Contaminated Items', value: dataIntegrity.total_contaminated },
+            { key: 'Contamination Rate', value: dataIntegrity.contamination_percentage.toFixed(2) + '%' },
+            { key: 'Health Status', value: dataIntegrity.health_status.toUpperCase() }
+          ],
+          dataSources: Object.entries(dataIntegrity.data_sources || {}).map(([source, data]) => ({
+            source: source.replace(/_/g, ' ').toUpperCase(),
+            total: data.total,
+            contaminated: data.contaminated,
+            percentage: data.total > 0 ? ((data.contaminated / data.total) * 100).toFixed(1) + '%' : '0%'
+          }))
+        };
       case 'all':
       default:
         return {
@@ -183,7 +224,8 @@ const AnalyticsDashboard = () => {
           timeRange: `${timeRange} day${timeRange > 1 ? 's' : ''}`,
           userMetrics: prepareDataForExport('user'),
           contentMetrics: prepareDataForExport('content'),
-          performanceMetrics: prepareDataForExport('performance')
+          performanceMetrics: prepareDataForExport('performance'),
+          dataIntegrity: prepareDataForExport('integrity')
         };
     }
   };
@@ -356,7 +398,7 @@ const AnalyticsDashboard = () => {
     );
   };
 
-  if (loading || !dashboardData || !contentMetrics) {
+  if (loading || !dashboardData || !contentMetrics || !dataIntegrity) {
     return (
       <div style={{ textAlign: 'center', padding: '100px', borderRadius: '8px', height: '100%' }}>
         <Spin size="large" />
@@ -404,6 +446,30 @@ const AnalyticsDashboard = () => {
     if (percent >= 80) return 'danger';
     if (percent >= 60) return 'warning';
     return '';
+  };
+
+  // Get data integrity status color
+  const getDataIntegrityColor = (healthStatus) => {
+    switch (healthStatus) {
+      case 'excellent': return '';
+      case 'good': return '';
+      case 'warning': return 'warning';
+      case 'critical': return 'danger';
+      case 'error': return 'danger';
+      default: return '';
+    }
+  };
+
+  // Get health status icon
+  const getHealthStatusIcon = (healthStatus) => {
+    switch (healthStatus) {
+      case 'excellent': return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+      case 'good': return <CheckCircleOutlined style={{ color: '#1890ff' }} />;
+      case 'warning': return <WarningOutlined style={{ color: '#faad14' }} />;
+      case 'critical': return <WarningOutlined style={{ color: '#ff4d4f' }} />;
+      case 'error': return <WarningOutlined style={{ color: '#ff4d4f' }} />;
+      default: return <DashboardOutlined />;
+    }
   };
 
   // Add helper functions for content metrics
@@ -832,6 +898,82 @@ const AnalyticsDashboard = () => {
                 />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+        </Col>
+      </Row>
+
+      {/* Data Integrity Section */}
+      <div className="section-header">
+        <h2><WarningOutlined /> Data Integrity</h2>
+      </div>
+      
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="analytics-card">
+            <Statistic 
+              className="analytics-statistic"
+              title="Total Items" 
+              value={dataIntegrity.total_items} 
+              prefix={<DashboardOutlined />} 
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className={`analytics-card ${getDataIntegrityColor(dataIntegrity.health_status)}`}>
+            <Statistic 
+              className="analytics-statistic"
+              title="Contaminated Items" 
+              value={dataIntegrity.total_contaminated} 
+              prefix={<WarningOutlined />} 
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className={`analytics-card ${getDataIntegrityColor(dataIntegrity.health_status)}`}>
+            <Statistic 
+              className="analytics-statistic"
+              title="Contamination Rate" 
+              value={dataIntegrity.contamination_percentage.toFixed(2)} 
+              suffix="%" 
+              prefix={<WarningOutlined />} 
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className={`analytics-card ${getDataIntegrityColor(dataIntegrity.health_status)}`}>
+            <Statistic 
+              className="analytics-statistic"
+              title="Health Status" 
+              value={dataIntegrity.health_status.toUpperCase()} 
+              prefix={getHealthStatusIcon(dataIntegrity.health_status)} 
+            />
+          </Card>
+        </Col>
+      </Row>
+      
+      {/* Data Sources Breakdown */}
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
+        <Col xs={24}>
+          <div className="chart-container">
+            <h3>Data Contamination by Source</h3>
+            <Row gutter={[16, 16]}>
+              {Object.entries(dataIntegrity.data_sources || {}).map(([source, data]) => (
+                <Col xs={24} sm={12} md={6} key={source}>
+                  <Card className="analytics-card" size="small">
+                    <Statistic 
+                      title={source.replace(/_/g, ' ').toUpperCase()}
+                      value={`${data.contaminated}/${data.total}`}
+                      suffix={data.total > 0 ? `(${((data.contaminated / data.total) * 100).toFixed(1)}%)` : '(0%)'}
+                      className="analytics-statistic"
+                      valueStyle={{ 
+                        color: data.contaminated > 0 ? '#ff4d4f' : '#52c41a',
+                        fontSize: '16px'
+                      }}
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </div>
         </Col>
       </Row>

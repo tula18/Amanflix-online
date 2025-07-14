@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, send_from_directory, request
+from utils.data_helpers import get_movies, get_tv_shows
 import os
 from utils.logger import log_error
 from api.utils import admin_token_required
@@ -27,16 +28,17 @@ def check_image(filename):
 
 @cdn_bp.route('/genres', methods=['GET'])
 def get_genres():
-    from app import movies, tv_series
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
 
     list_type = request.args.get('list_type', 'all', type=str)
 
     if list_type == 'movies':
-        use_list = movies
+        use_list = temp_movies
     elif list_type == 'tv':
-        use_list = tv_series
+        use_list = temp_tv_series
     else:
-        use_list = movies + tv_series
+        use_list = temp_movies + temp_tv_series
 
     genres = set()
     for item in use_list:
@@ -55,16 +57,17 @@ def get_combined_content(current_admin):
     content_type = request.args.get('content_type', '')
     search_query = request.args.get('q', '')
     
-    from app import movies, tv_series
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
     
     # Apply content type filter
     if content_type == 'movie':
-        items = movies
+        items = temp_movies
     elif content_type == 'tv':
-        items = tv_series
+        items = temp_tv_series
     else:
         # Combine both, sorted by ID
-        items = sorted(movies + tv_series, key=lambda x: x.get('id', 0))
+        items = sorted(temp_movies + temp_tv_series, key=lambda x: x.get('id', 0))
     
     # Apply search filter if provided
     if search_query:

@@ -1,21 +1,23 @@
 from flask import Blueprint, jsonify, request
 from cdn.utils import filter_valid_genres, check_images_existence, paginate
 from api.utils import token_required, serialize_watch_history
+from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
 import random
 
 search_cdn_bp = Blueprint('search_cdn_bp', __name__, url_prefix='/cdn')
 
 @search_cdn_bp.route('/autocomplete', methods=['GET'])
 def autocomplete():
-    from app import tv_series, movies
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
     query = request.args.get('q', '', type=str).lower()
     max_results = request.args.get('max_results', 10, type=int)
 
     movie_suggestions = [
-        {"id": item['id'], "title": item['title']} for item in movies if query in str(item.get('title', '')).lower()
+        {"id": item['id'], "title": item['title']} for item in temp_movies if query in str(item.get('title', '')).lower()
     ]
     tv_suggestions = [
-        {"id": item['id'], "name": item['name']} for item in tv_series if isinstance(item.get('name'), str) and query in item.get('name').lower()
+        {"id": item['id'], "name": item['name']} for item in temp_tv_series if isinstance(item.get('name'), str) and query in item.get('name').lower()
     ]
 
     suggestions = movie_suggestions + tv_suggestions
@@ -25,7 +27,8 @@ def autocomplete():
 
 # Common search functionality extracted to a helper function
 def _perform_search(query, genre, min_rating, max_rating, media_type, is_random, with_images, page, per_page):
-    from app import tv_series, movies
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
 
     def apply_filters(items, item_type):
         results = []
@@ -44,23 +47,24 @@ def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
                 results.append(item)
         return results
 
-    temp_movies = movies
-    temp_tv_series = tv_series
+    temp_movies_search = temp_movies
+    temp_tv_series_search = temp_tv_series
 
     if with_images:
-        from app import movies_with_images, tv_series_with_images
-        temp_movies = movies_with_images
-        temp_tv_series = tv_series_with_images
+        temp_movies_with_images = get_movies_with_images()
+        temp_tv_series_with_images = get_tv_shows_with_images()
+        temp_movies_search = temp_movies_with_images
+        temp_tv_series_search = temp_tv_series_with_images
 
     if media_type == 'movies':
-        movie_results = apply_filters(temp_movies, 'movie')
+        movie_results = apply_filters(temp_movies_search, 'movie')
         final_results = movie_results
     elif media_type == 'tv':
-        tv_results = apply_filters(temp_tv_series, 'tv_series')
+        tv_results = apply_filters(temp_tv_series_search, 'tv_series')
         final_results = tv_results
     else:
-        movie_results = apply_filters(temp_movies, 'movie')
-        tv_results = apply_filters(temp_tv_series, 'tv_series')
+        movie_results = apply_filters(temp_movies_search, 'movie')
+        tv_results = apply_filters(temp_tv_series_search, 'tv_series')
         final_results = movie_results + tv_results
 
     if is_random:
@@ -69,7 +73,8 @@ def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
     return paginate(final_results, page, per_page)
 
 def _perform_search_with_images(query, genre, min_rating, max_rating, media_type, is_random, with_images, page, per_page):
-    from app import tv_series, movies
+    temp_movies = get_movies()
+    temp_tv_series = get_tv_shows()
 
     def apply_filters(items, item_type):
         results = []
@@ -90,32 +95,33 @@ def _perform_search_with_images(query, genre, min_rating, max_rating, media_type
 
     # Check if with_images is True
     if with_images:
-        from app import movies_with_images, tv_series_with_images
+        temp_movies_with_images = get_movies_with_images()
+        temp_tv_series_with_images = get_tv_shows_with_images()
 
         # Get IDs from movies_with_images
-        temp_movies_with_images_ids = [item['id'] for item in movies_with_images if query.lower() in item.get('title', '').lower()]
+        temp_movies_with_images_ids = [item['id'] for item in temp_movies_with_images if query.lower() in item.get('title', '').lower()]
 
         # Filter movies based on IDs
-        temp_movies = [item for item in movies if item['id'] in temp_movies_with_images_ids]
+        filtered_movies = [item for item in temp_movies if item['id'] in temp_movies_with_images_ids]
 
         # Do the same for TV series
-        temp_tv_series_with_images_ids = [item['id'] for item in tv_series_with_images if query.lower() in item.get('name', '').lower()]
-        temp_tv_series = [item for item in tv_series if item['id'] in temp_tv_series_with_images_ids]
+        temp_tv_series_with_images_ids = [item['id'] for item in temp_tv_series_with_images if query.lower() in item.get('name', '').lower()]
+        filtered_tv_series = [item for item in temp_tv_series if item['id'] in temp_tv_series_with_images_ids]
 
     else:
         # If with_images is False, use the original lists
-        temp_movies = movies
-        temp_tv_series = tv_series
+        filtered_movies = temp_movies
+        filtered_tv_series = temp_tv_series
 
     if media_type == 'movies':
-        movie_results = apply_filters(temp_movies, 'movie')
+        movie_results = apply_filters(filtered_movies, 'movie')
         final_results = movie_results
     elif media_type == 'tv':
-        tv_results = apply_filters(temp_tv_series, 'tv_series')
+        tv_results = apply_filters(filtered_tv_series, 'tv_series')
         final_results = tv_results
     else:
-        movie_results = apply_filters(temp_movies, 'movie')
-        tv_results = apply_filters(temp_tv_series, 'tv_series')
+        movie_results = apply_filters(filtered_movies, 'movie')
+        tv_results = apply_filters(filtered_tv_series, 'tv_series')
         final_results = movie_results + tv_results
 
     if is_random:

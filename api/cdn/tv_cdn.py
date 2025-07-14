@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, abort
 from cdn.utils import paginate, calculate_similarity, check_images_existence
 from api.utils import token_required, serialize_watch_history
+from utils.data_helpers import get_tv_shows, get_tv_shows_with_images
 import random
 
 tv_cdn_bp = Blueprint('tv_cdn_bp', __name__, url_prefix='/cdn')
@@ -9,12 +10,12 @@ tv_cdn_bp = Blueprint('tv_cdn_bp', __name__, url_prefix='/cdn')
 @tv_cdn_bp.route('/tv', methods=['GET'])
 @token_required
 def get_tv_series(current_user):
-    from app import tv_series
+    temp_tv_series = get_tv_shows()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    paginated_tv_series = paginate(tv_series, page, per_page)
+    paginated_tv_series = paginate(temp_tv_series, page, per_page)
     
     # Add watch history if requested
     if include_watch_history:
@@ -34,13 +35,13 @@ def get_tv_series(current_user):
 @tv_cdn_bp.route('/tv/search', methods=['GET'])
 @token_required
 def search_tv_series(current_user):
-    from app import tv_series
+    temp_tv_series = get_tv_shows()
     query = request.args.get('q', '', type=str)
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
     result = [
-        item for item in tv_series
+        item for item in temp_tv_series
         if query.lower() in str(item.get('name', '')).lower()
     ]
     limited_result = result[:max_results]
@@ -63,10 +64,10 @@ def search_tv_series(current_user):
 @tv_cdn_bp.route('/tv/<int:tv_id>')
 @token_required
 def get_tv(current_user, tv_id):
-    from app import tv_series
+    temp_tv_series = get_tv_shows()
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    tv = next((item for item in tv_series if item["id"] == tv_id), None)
+    tv = next((item for item in temp_tv_series if item["id"] == tv_id), None)
     if not tv:
         return jsonify(message="The selected Show not found!"), 404
     
@@ -87,7 +88,8 @@ def get_tv(current_user, tv_id):
 @tv_cdn_bp.route('/tv/random', methods=['GET'])
 @token_required
 def get_random_tv(current_user):
-    from app import tv_series
+    temp_tv_series = get_tv_shows()
+    temp_tv_series_with_images = get_tv_shows_with_images()
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -96,10 +98,9 @@ def get_random_tv(current_user):
     with_images = request.args.get('with_images', False, type=bool)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    temp_shows = tv_series
+    temp_shows = temp_tv_series
     if with_images:
-        from app import tv_series_with_images
-        temp_shows = tv_series_with_images
+        temp_shows = temp_tv_series_with_images
     
     shuffled_tv = temp_shows.copy()
     random.shuffle(shuffled_tv)
@@ -138,7 +139,8 @@ def get_random_tv(current_user):
 @tv_cdn_bp.route('/tv/<int:tv_id>/similar', methods=['GET'])
 @token_required
 def get_similar_tv_series(current_user, tv_id):
-    from app import tv_series
+    temp_tv_series = get_tv_shows()
+    temp_tv_series_with_images = get_tv_shows_with_images()
     
     with_images = request.args.get('with_images', False, type=bool)
     is_random = request.args.get('random', False, type=bool)
@@ -146,10 +148,9 @@ def get_similar_tv_series(current_user, tv_id):
     per_page = request.args.get('per_page', 12, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    temp_shows = tv_series
+    temp_shows = temp_tv_series
     if with_images:
-        from app import tv_series_with_images
-        temp_shows = tv_series_with_images
+        temp_shows = temp_tv_series_with_images
     
     tv = next((item for item in temp_shows if item["id"] == tv_id), None)
     if not tv:
