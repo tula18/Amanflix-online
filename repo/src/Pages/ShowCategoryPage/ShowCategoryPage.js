@@ -22,6 +22,11 @@ const ShowCategoryPage = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     
     const [categories, setCategories] = useState({
+        uploaded: {
+            type: 'static',
+            title: "Uploaded Shows",
+            url: `${API_URL}/api/shows?page=page_num&per_page=30&include_watch_history=true`
+        },
         random: {
             type: 'static',
             title: "Random Shows",
