@@ -14,8 +14,10 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=db.func.now())
 
-    watch_history = db.relationship('WatchHistory', back_populates='user', lazy=True)
-    watchlist = db.relationship('MyList', backref='user', lazy=True)
+    watch_history = db.relationship('WatchHistory', back_populates='user', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    watchlist = db.relationship('MyList', backref='user', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    bug_reports = db.relationship('BugReport', backref='reporter', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    upload_requests = db.relationship('UploadRequest', backref='user', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
 
     def serialize(self):
         return {
@@ -55,7 +57,7 @@ class Admin(db.Model):
 
 class BugReport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.now())
@@ -77,7 +79,7 @@ class BlacklistToken(db.Model):
 
 class WatchHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content_type = db.Column(db.String(50), nullable=False)  # 'movie' or 'tv'
     content_id = db.Column(db.Integer, nullable=False)
     watch_timestamp = db.Column(db.Integer, default=0)  # Position in seconds
@@ -109,14 +111,14 @@ class WatchHistory(db.Model):
 
 class MyList(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content_type = db.Column(db.String(50), nullable=False)
     content_id = db.Column(db.Integer, nullable=False)
     added_at = db.Column(db.DateTime, default=db.func.now())
 
 class UploadRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content_type = db.Column(db.String(50), nullable=False)
     content_id = db.Column(db.Integer, nullable=False)
     added_at = db.Column(db.DateTime, default=db.func.now())
@@ -327,7 +329,7 @@ class Notification(db.Model):
     title = db.Column(db.String(100), nullable=False)
     message = db.Column(db.Text, nullable=False)
     notification_type = db.Column(db.String(20), nullable=False)  # account, system, content, prompt, warning
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Null for global notifications
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)  # Null for global notifications
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_read = db.Column(db.Boolean, default=False)
     link = db.Column(db.String(200), nullable=True)  # Optional link to redirect users
@@ -357,7 +359,7 @@ class Notification(db.Model):
 class UserSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(64), unique=True, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable for anonymous sessions
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)  # Nullable for anonymous sessions
     user_agent = db.Column(db.String(255))
     ip_address = db.Column(db.String(45))
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -383,7 +385,7 @@ class UserSession(db.Model):
 class UserActivity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(64), db.ForeignKey('user_session.session_id'), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     endpoint = db.Column(db.String(255), nullable=False)
     method = db.Column(db.String(10), nullable=False)  # GET, POST, etc.
     path = db.Column(db.String(255), nullable=False)

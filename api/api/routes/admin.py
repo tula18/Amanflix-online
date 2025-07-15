@@ -403,10 +403,35 @@ def delete_user(current_admin):
         return jsonify({'message': 'Password incorrect! Check your credentials.'}), 401
 
     user = User.query.get(user_id)
-    db.session.delete(user)
-    db.session.commit()
-
-    return jsonify({'message': f'The account {user.username} has been deleted successfully.'})
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+    
+    username = user.username  # Store username before deletion
+    
+    try:
+        # For SQLite databases, CASCADE DELETE might not work properly
+        # So we manually delete related records first
+        
+        # Delete watch history records
+        from models import WatchHistory, MyList
+        db.session.query(WatchHistory).filter(WatchHistory.user_id == user_id).delete()
+        
+        # Delete MyList records (watchlist)
+        db.session.query(MyList).filter(MyList.user_id == user_id).delete()
+        
+        # Bug reports and upload requests should be handled by cascade since they use backref
+        # But we can be explicit if needed
+        
+        # Now delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        log_success(f"Admin {current_admin.username} deleted user {username} (ID: {user_id})")
+        return jsonify({'message': f'The account {username} has been deleted successfully.'})
+    except Exception as e:
+        db.session.rollback()
+        log_error(f"Failed to delete user {username} (ID: {user_id}): {str(e)}")
+        return jsonify({'message': f'Failed to delete user: {str(e)}'}), 500
 
 @admin_bp.route('/user', methods=['POST'])
 @admin_token_required('admin')
