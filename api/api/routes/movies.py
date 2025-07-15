@@ -16,14 +16,32 @@ def get_movies(current_user):
     order = request.args.get('order', 'asc', type=str)  # Default order is ascending
     sort_by_field = request.args.get('sort_by', None, type=str)  # Default sort_by is None
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
-
-    # Assuming sort_by_field is a valid column name in the Movie model
-    sort_by = getattr(Movie, sort_by_field, None) if sort_by_field else None
-
+    reverse = request.args.get('reverse', False, type=bool)
+    
+    # Get all Movies first
     query = Movie.query
     
-    paginated_movies = query.paginate(page=page, per_page=per_page, error_out=False)
-    movie_list = [movie.serialize for movie in paginated_movies.items]
+    # Apply sorting if sort_by_field is provided
+    if sort_by_field:
+        sort_by = getattr(Movie, sort_by_field, None)
+        if sort_by:
+            if order.lower() == 'desc':
+                query = query.order_by(sort_by.desc())
+            else:
+                query = query.order_by(sort_by.asc())
+                
+    # Get all movies and reverse the list
+    all_movies = query.all()
+    if reverse:
+        all_movies.reverse()
+    
+    # Manual pagination on the reversed list
+    total = len(all_movies)
+    start = (page - 1) * per_page
+    end = start + per_page
+    movies_page = all_movies[start:end]
+    
+    movie_list = [movie.serialize for movie in movies_page]
     
     # Add watch history if requested
     if include_watch_history:

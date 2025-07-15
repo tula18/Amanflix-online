@@ -10,10 +10,35 @@ shows_bp = Blueprint('shows_bp', __name__, url_prefix='/api')
 def get_shows(current_user):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
+    order = request.args.get('order', 'asc', type=str)  # Default order is ascending
+    sort_by_field = request.args.get('sort_by', None, type=str)  # Default sort_by is None
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    reverse = request.args.get('reverse', False, type=bool)
     
-    paginated_shows = TVShow.query.paginate(page=page, per_page=per_page, error_out=False)
-    show_list = [show.serialize for show in paginated_shows.items]
+    # Get all Shows first
+    query = TVShow.query
+    
+    # Apply sorting if sort_by_field is provided
+    if sort_by_field:
+        sort_by = getattr(TVShow, sort_by_field, None)
+        if sort_by:
+            if order.lower() == 'desc':
+                query = query.order_by(sort_by.desc())
+            else:
+                query = query.order_by(sort_by.asc())
+                
+    # Get all shows and reverse the list
+    all_shows = query.all()
+    if reverse:
+        all_shows.reverse()
+    
+    # Manual pagination on the reversed list
+    total = len(all_shows)
+    start = (page - 1) * per_page
+    end = start + per_page
+    shows_page = all_shows[start:end]
+    
+    show_list = [movie.serialize for movie in shows_page]
     
     # Add watch history if requested
     if include_watch_history:
