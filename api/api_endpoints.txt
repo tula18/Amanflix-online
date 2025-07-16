@@ -34,6 +34,7 @@ POST /api/admin/user/update
 GET /api/admin/bugs
 DELETE /api/admin/bugs/<bug_id>
 POST /api/admin/bugs/<bug_id>/resolve
+POST /api/admin/read_files_as_hex
 
 Bug Reporting:
 POST /api/bugreport
