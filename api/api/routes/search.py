@@ -17,7 +17,7 @@ def autocomplete():
         {"id": item.id, "title": item.title} for item in movies if query in str(item.title.lower())
     ]
     tv_suggestions = [
-        {"id": item.id, "name": item.name} for item in tv_series if isinstance(item.name, str) and query in item.name.lower()
+        {"id": item.id, "name": item.title} for item in tv_series if isinstance(item.title, str) and query in item.title.lower()
     ]
 
     suggestions = list(movie_suggestions + tv_suggestions)
