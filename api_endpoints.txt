@@ -1,0 +1,116 @@
+# API Endpoints List
+
+Global:
+GET /ip
+
+Authentication:
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/verify
+GET /api/auth/profile
+DELETE /api/auth/delete
+POST /api/auth/update
+
+Admin Management:
+POST /api/admin/create
+POST /api/admin/login
+POST /api/admin/logout
+POST /api/admin/verify
+GET /api/admin/profile
+POST /api/admin/update
+POST /api/admin/admin
+POST /api/admin/update/<admin_id>
+DELETE /api/admin/delete/<admin_id>
+POST /api/admin/disable/<admin_id>
+POST /api/admin/enable/<admin_id>
+GET /api/admin/list
+GET /api/admin/user/list
+POST /api/admin/user/ban
+POST /api/admin/user/unban
+DELETE /api/admin/user/delete
+POST /api/admin/user
+POST /api/admin/user/update
+GET /api/admin/bugs
+DELETE /api/admin/bugs/<bug_id>
+POST /api/admin/bugs/<bug_id>/resolve
+
+Bug Reporting:
+POST /api/bugreport
+
+My List:
+POST /api/mylist/add
+POST /api/mylist/delete
+POST /api/mylist/check
+GET /api/mylist/all
+
+Movies:
+GET /api/movies
+GET /api/movies/random
+GET /api/movies/search
+GET /api/movies/<movie_id>
+GET /api/movies/<movie_id>/check
+
+Shows:
+GET /api/shows
+GET /api/shows/search
+GET /api/shows/<show_id>
+GET /api/shows/<show_id>/check
+
+Analytics:
+POST /api/analytics/sessions
+POST /api/analytics/heartbeat
+POST /api/analytics/end-session
+GET /api/analytics/dashboard
+GET /api/analytics/sessions/active
+GET /api/analytics/content-metrics
+GET /api/analytics/data-integrity
+
+Notifications (Admin):
+POST /api/admin/notifications
+GET /api/admin/notifications
+DELETE /api/admin/notifications/<notification_id>
+PUT /api/admin/notifications/<notification_id>
+GET /api/admin/notifications/stats
+GET /api/admin/notifications/filter
+POST /api/admin/notifications/bulk-delete
+POST /api/admin/notifications/broadcast
+
+Notifications (User):
+GET /api/notifications
+GET /api/notifications/unread/count
+PUT /api/notifications/<notification_id>/read
+PUT /api/notifications/read-all
+
+Search:
+GET /api/autocomplete
+GET /api/search
+
+Streaming:
+GET /api/stream/<watch_id>
+
+Content Upload:
+GET /api/upload/progress/<id>
+POST /api/upload/movie
+PUT /api/upload/movie/<movie_id>
+DELETE /api/upload/movie/delete/<movie_id>
+POST /api/upload/show
+DELETE /api/upload/show/delete/<show_id>
+GET /api/upload/show/<show_id>/check
+PUT /api/upload/show/<show_id>
+POST /api/upload/validate
+POST /api/upload/validate/test
+
+Upload Requests:
+POST /api/uploadRequest/add
+POST /api/uploadRequest/delete
+POST /api/uploadRequest/check
+GET /api/uploadRequest/all
+
+File Parsing:
+POST /api/uploads/parse-files
+
+Discovery:
+GET /api/discovery/random
+GET /api/discovery/trending
+GET /api/discovery/featured
