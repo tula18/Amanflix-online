@@ -1,0 +1,65 @@
+{
+  "_comment": "Amanflix Load Test Configuration - Copy this file to config.json and modify as needed",
+  "api_settings": {
+    "base_url": "http://localhost:5001",
+    "timeout_seconds": 30,
+    "retry_attempts": 3
+  },
+  
+  "test_parameters": {
+    "num_users": 100,
+    "test_duration_minutes": 10,
+    "max_concurrent_requests": 50,
+    "read_write_ratio": 0.7,
+    "cleanup_test_data": true
+  },
+  
+  "watch_history_focus": {
+    "enabled": true,
+    "update_frequency_seconds": 2.0,
+    "rapid_update_probability": 0.3,
+    "burst_mode_enabled": true,
+    "burst_interval_seconds": [30, 180],
+    "burst_users_count": 20,
+    "burst_requests_per_user": [3, 8]
+  },
+  
+  "session_management": {
+    "heartbeat_interval_seconds": 30.0,
+    "session_timeout_minutes": 60,
+    "auto_renew_tokens": true
+  },
+  
+  "content_simulation": {
+    "movie_watch_duration_range": [90, 180],
+    "tv_episode_duration_range": [20, 60],
+    "progress_increment_range": [10, 120],
+    "completion_threshold_percent": 90
+  },
+  
+  "error_detection": {
+    "database_lock_keywords": [
+      "database is locked",
+      "SQLite database is locked", 
+      "database table is locked",
+      "locked"
+    ],
+    "retry_on_lock": true,
+    "max_lock_retries": 3,
+    "lock_retry_delay": 0.5
+  },
+  
+  "logging": {
+    "log_level": "INFO",
+    "log_to_file": true,
+    "detailed_error_logging": true,
+    "response_time_logging": true
+  },
+  
+  "reporting": {
+    "console_progress_interval": 30,
+    "save_detailed_report": true,
+    "include_user_details": true,
+    "include_error_samples": 10
+  }
+}

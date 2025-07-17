@@ -66,7 +66,7 @@ def check_in_mylist(current_user):
 @mylist_bp.route('/all', methods=['GET'])
 @token_required
 def get_all_mylist(current_user):
-    from api.utils.data_helpers import get_tv_shows, get_movies
+    from utils.data_helpers import get_tv_shows, get_movies
     temp_tv_series = get_tv_shows()
     temp_movies = get_movies()
     from api.utils import serialize_watch_history
