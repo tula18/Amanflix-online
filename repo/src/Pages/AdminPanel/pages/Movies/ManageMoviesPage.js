@@ -148,7 +148,10 @@ const ManageMovies = () => {
                 // setMovies([])
                 setMovieType('api')
                 setLoadingMovies(true)
-                const res = await fetch(`${API_URL}/api/movies?per_page=10000`)
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/movies?per_page=10000`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
                 const data = await res.json();
                 if (!res.ok) {
                     console.error({message: data.error})

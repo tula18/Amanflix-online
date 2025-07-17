@@ -135,7 +135,10 @@ const ManageShows = () => {
                 // setShows([])
                 setShowType('api')
                 setLoadingShows(true)
-                const res = await fetch(`${API_URL}/api/shows?per_page=10000`)
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/shows?per_page=10000`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
                 const data = await res.json();
                 console.log(data);
                 if (!res.ok) {
