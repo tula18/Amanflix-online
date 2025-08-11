@@ -49,6 +49,49 @@ function App() {
   // Add this after line 37 with your other state variables
   const [includeEpisodes, setIncludeEpisodes] = useState(true);
 
+  // JSON to Formatted TXT conversion functions (adapted from json_to_formatted_txt.py)
+  const flattenJson = (data, prefix = '', flattened = {}) => {
+    if (Array.isArray(data)) {
+      if (data.length === 0) {
+        // Mark empty arrays with a special marker
+        flattened[prefix.slice(0, -1) + '_EMPTY_ARRAY'] = "EMPTY_ARRAY";
+      } else {
+        data.forEach((item, index) => {
+          flattenJson(item, prefix + index + '_', flattened);
+        });
+      }
+    } else if (data !== null && typeof data === 'object') {
+      Object.keys(data).forEach(key => {
+        flattenJson(data[key], prefix + key + '_', flattened);
+      });
+    } else {
+      flattened[prefix.slice(0, -1)] = String(data); // Ensure data is converted to string
+    }
+    return flattened;
+  };
+
+  const convertToFormattedTxt = (data) => {
+    let result = '';
+    
+    if (Array.isArray(data)) {
+      // For array of items, flatten each item with index prefix
+      data.forEach((item, index) => {
+        const flattened = flattenJson(item, index + '_');
+        Object.keys(flattened).forEach(key => {
+          result += `${key}:val: ${flattened[key]}\n`;
+        });
+      });
+    } else {
+      // For single object, flatten without index prefix
+      const flattened = flattenJson(data, '0_');
+      Object.keys(flattened).forEach(key => {
+        result += `${key}:val: ${flattened[key]}\n`;
+      });
+    }
+    
+    return result;
+  };
+
   // Add these with your other state variables at the top of the App component
   const [fetchAllModalVisible, setFetchAllModalVisible] = useState(false);
   const [fetchForm] = Form.useForm();
@@ -417,7 +460,7 @@ const handleExportSubmit = async (values) => {
         mimeType = 'text/csv';
         break;
       case 'txt':
-        dataContent = JSON.stringify(formattedData, null, compactMode ? 0 : 2);
+        dataContent = convertToFormattedTxt(formattedData);
         fileExtension = 'txt';
         mimeType = 'text/plain';
         break;
@@ -650,6 +693,8 @@ const handleExportSubmit = async (values) => {
           preview = convertToCSV(formattedData);
           break;
         case 'txt':
+          preview = convertToFormattedTxt(formattedData);
+          break;
         case 'json':
         default:
           preview = JSON.stringify(formattedData, null, compactMode ? 0 : 2);
@@ -1913,7 +1958,7 @@ const loadMoreMovies = () => {
             <Select placeholder="Select a format">
               <Option value="json">JSON</Option>
               <Option value="csv">CSV</Option>
-              <Option value="txt">Text</Option>
+              <Option value="txt">Formatted TXT (Flattened key-value pairs)</Option>
             </Select>
           </Form.Item>
 
