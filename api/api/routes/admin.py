@@ -747,7 +747,7 @@ def import_cdn_data(current_admin):
                     return jsonify({'success': False, 'message': f'Error converting CSV: {str(e)}'}), 400
             else:
                 log_warning(f"Unsupported file format: {data_file.filename}")
-                return jsonify({'success': False, 'message': 'Unsupported file format'}), 400
+                return jsonify({'success': False, 'message': 'Unsupported file format. Supported formats: JSON, CSV (TXT files are converted to JSON in frontend)'}), 400
             
             # Sort content into movies and TV shows
             log_info("Sorting content by media type")

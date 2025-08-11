@@ -55,6 +55,150 @@ import SeasonEpisodeEditor from './SeasonEpisodeEditor';
 
 const { Dragger } = Upload;
 
+// Helper function to convert formatted TXT to JSON for preview (matches backend logic)
+const convertFormattedTxtToPreview = (txtContent) => {
+  const data = [];
+  
+  // Helper functions matching backend logic
+  const convertValue = (value) => {
+    if (value === "None" || value === "null") return null;
+    if (!value) return "";
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+    
+    try {
+      if (value.includes('.')) return parseFloat(value);
+      if (/^\d+$/.test(value)) return parseInt(value);
+      return value;
+    } catch {
+      return value;
+    }
+  };
+
+  const isNestedKey = (keyPath) => {
+    if (keyPath.endsWith('_EMPTY_ARRAY')) {
+      const realKey = keyPath.substring(0, keyPath.length - '_EMPTY_ARRAY'.length);
+      const nestedPrefixes = ['last_episode_to_air_', 'seasons_'];
+      return nestedPrefixes.some(prefix => realKey.startsWith(prefix)) || realKey === 'seasons';
+    }
+    const nestedPrefixes = ['last_episode_to_air_', 'seasons_'];
+    return nestedPrefixes.some(prefix => keyPath.startsWith(prefix));
+  };
+
+  const setNestedValue = (data, keyPath, value) => {
+    // Handle empty array markers
+    if (keyPath.endsWith('_EMPTY_ARRAY') && value === "EMPTY_ARRAY") {
+      const realKey = keyPath.substring(0, keyPath.length - '_EMPTY_ARRAY'.length);
+      if (realKey.startsWith('last_episode_to_air_')) {
+        const nestedKey = realKey.substring('last_episode_to_air_'.length);
+        if (!data.last_episode_to_air) data.last_episode_to_air = {};
+        data.last_episode_to_air[nestedKey] = [];
+      } else if (realKey.startsWith('seasons_')) {
+        if (!data.seasons) data.seasons = [];
+        if (realKey === 'seasons') {
+          data.seasons = [];
+        } else {
+          const parts = realKey.substring('seasons_'.length).split('_');
+          const seasonIdx = parseInt(parts[0]);
+          while (data.seasons.length <= seasonIdx) {
+            data.seasons.push({});
+          }
+          if (parts.length > 1 && parts[1] === 'episodes') {
+            data.seasons[seasonIdx].episodes = [];
+          } else {
+            const seasonKey = parts.slice(1).join('_');
+            data.seasons[seasonIdx][seasonKey] = [];
+          }
+        }
+      } else {
+        data[realKey] = [];
+      }
+      return;
+    }
+
+    if (keyPath.startsWith('last_episode_to_air_')) {
+      if (!data.last_episode_to_air) data.last_episode_to_air = {};
+      const nestedKey = keyPath.substring('last_episode_to_air_'.length);
+      if (nestedKey === 'production_code') {
+        data.last_episode_to_air[nestedKey] = value;
+      } else {
+        data.last_episode_to_air[nestedKey] = convertValue(value);
+      }
+    } else if (keyPath.startsWith('seasons_')) {
+      if (!data.seasons) data.seasons = [];
+      const parts = keyPath.substring('seasons_'.length).split('_');
+      const seasonIdx = parseInt(parts[0]);
+      
+      while (data.seasons.length <= seasonIdx) {
+        data.seasons.push({});
+      }
+      
+      if (parts.length > 1 && parts[1] === 'episodes') {
+        if (!data.seasons[seasonIdx].episodes) data.seasons[seasonIdx].episodes = [];
+        const episodeIdx = parseInt(parts[2]);
+        while (data.seasons[seasonIdx].episodes.length <= episodeIdx) {
+          data.seasons[seasonIdx].episodes.push({});
+        }
+        
+        if (parts.length > 3) {
+          const episodeKey = parts.slice(3).join('_');
+          if (episodeKey === 'production_code') {
+            data.seasons[seasonIdx].episodes[episodeIdx][episodeKey] = value;
+          } else {
+            data.seasons[seasonIdx].episodes[episodeIdx][episodeKey] = convertValue(value);
+          }
+        } else {
+          // This shouldn't happen, but handle gracefully
+          data.seasons[seasonIdx].episodes[episodeIdx] = convertValue(value);
+        }
+      } else {
+        const seasonKey = parts.slice(1).join('_');
+        data.seasons[seasonIdx][seasonKey] = convertValue(value);
+      }
+    } else {
+      data[keyPath] = convertValue(value);
+    }
+  };
+  
+  for (const line of txtContent.split('\n')) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue; // Skip empty lines
+    
+    let lineKey, lineVal;
+    if (trimmedLine.includes(':val: ')) {
+      const parts = trimmedLine.split(':val: ', 2);
+      lineKey = parts[0];
+      lineVal = parts[1] || "";
+    } else if (trimmedLine.includes(':val:')) {
+      const parts = trimmedLine.split(':val:', 2);
+      lineKey = parts[0];
+      lineVal = parts[1] || "";
+    } else {
+      continue; // Skip malformed lines
+    }
+    
+    const underscoreIndex = lineKey.indexOf('_');
+    if (underscoreIndex === -1) continue; // Skip malformed lines
+    
+    const idx = parseInt(lineKey.substring(0, underscoreIndex));
+    const keyPath = lineKey.substring(underscoreIndex + 1);
+    
+    // Extend data array if needed
+    while (data.length <= idx) {
+      data.push({});
+    }
+    
+    // Use proper nesting logic like backend
+    if (isNestedKey(keyPath)) {
+      setNestedValue(data[idx], keyPath, lineVal);
+    } else {
+      data[idx][keyPath] = convertValue(lineVal);
+    }
+  }
+  
+  return data;
+};
+
 // Update the DynamicValueInput component to properly handle onChange events
 const DynamicValueInput = ({ type, value, onChange }) => {
   // console.log(`Rendering input with type: ${type}, value:`, value);
@@ -226,6 +370,9 @@ const CdnManagementPage = () => {
   const [previewTitle, setPreviewTitle] = useState('');
   const [previewPagination, setPreviewPagination] = useState({ current: 1, pageSize: 10 });
   const [fullImportData, setFullImportData] = useState([]);
+  
+  // JSON Data Preview Modal state
+  const [jsonPreviewModalVisible, setJsonPreviewModalVisible] = useState(false);
   
   // Clean Files functionality state
   const [cleanFilesLoading, setCleanFilesLoading] = useState(false);
@@ -421,12 +568,13 @@ const jsonUploadProps = {
   multiple: false,
   fileList: jsonFileList,
   beforeUpload: (file) => {
-    // Check if file is JSON or CSV
-    const isJSONorCSV = file.type === 'application/json' || file.name.endsWith('.json') || 
-                      file.type === 'text/csv' || file.name.endsWith('.csv');
+    // Check if file is JSON, CSV, or TXT
+    const isValidFile = file.type === 'application/json' || file.name.endsWith('.json') || 
+                       file.type === 'text/csv' || file.name.endsWith('.csv') ||
+                       file.type === 'text/plain' || file.name.endsWith('.txt');
     
-    if (!isJSONorCSV) {
-      message.error(`${file.name} is not a JSON or CSV file`);
+    if (!isValidFile) {
+      message.error(`${file.name} is not a JSON, CSV, or TXT file`);
       return Upload.LIST_IGNORE;
     }
     
@@ -450,6 +598,10 @@ const jsonUploadProps = {
             });
             parsedData.push(item);
           }
+        } else if (file.name.endsWith('.txt')) {
+          // TXT parsing - convert formatted TXT to JSON structure
+          const txtContent = e.target.result;
+          parsedData = convertFormattedTxtToPreview(txtContent);
         } else {
           // JSON parsing
           parsedData = JSON.parse(e.target.result);
@@ -558,7 +710,18 @@ const imagesUploadProps = {
       const formData = new FormData();
       
       if (jsonFileList.length > 0) {
-        formData.append('data_file', jsonFileList[0]);
+        const file = jsonFileList[0];
+        
+        // If it's a TXT file, send the converted JSON data instead of the raw file
+        if (file.name.endsWith('.txt') && parsedJsonContent) {
+          // Create a JSON blob from the converted data
+          const jsonBlob = new Blob([JSON.stringify(parsedJsonContent)], { type: 'application/json' });
+          const jsonFile = new File([jsonBlob], file.name.replace('.txt', '.json'), { type: 'application/json' });
+          formData.append('data_file', jsonFile);
+        } else {
+          // For JSON and CSV files, send as-is
+          formData.append('data_file', file);
+        }
       }
       
       formData.append('merge', mergeContent);
@@ -1339,7 +1502,7 @@ const convertItemToFormValues = (item) => {
           <Form.Item label={<span className="section-title"><ImportOutlined /> Choose Import Type</span>} className="import-type-selection">
             <Radio.Group value={importType} onChange={handleImportTypeChange} buttonStyle="solid">
               <Radio.Button value="json">
-                <FileTextOutlined /> JSON/CSV Data
+                <FileTextOutlined /> JSON/CSV/TXT Data
               </Radio.Button>
               <Radio.Button value="images">
                 <PictureOutlined /> Images
@@ -1370,11 +1533,11 @@ const convertItemToFormValues = (item) => {
             </Flex>
           </div>
 
-          {/* JSON/CSV Upload Section */}
+          {/* JSON/CSV/TXT Upload Section */}
           {(importType === 'json' || importType === 'both') && (
             <>
               <Form.Item 
-                label={<span className="section-title"><FileTextOutlined /> JSON/CSV Data</span>}
+                label={<span className="section-title"><FileTextOutlined /> JSON/CSV/TXT Data</span>}
                 name="jsonFile"
                 rules={[{ required: importType !== 'images', message: 'Please upload the data file' }]}
               >
@@ -1382,7 +1545,7 @@ const convertItemToFormValues = (item) => {
                   <Dragger 
                     {...jsonUploadProps}
                     className="netflix-styled-uploader"
-                    accept=".json,.csv"
+                    accept=".json,.csv,.txt"
                     maxCount={1}
                   >
                     <div className="upload-content">
@@ -1392,7 +1555,9 @@ const convertItemToFormValues = (item) => {
                             <div className="file-icon">
                               {jsonFileList[0].name.endsWith('.json') ? 
                                 <span className="file-type-badge json">JSON</span> : 
-                                <span className="file-type-badge csv">CSV</span>
+                                jsonFileList[0].name.endsWith('.csv') ?
+                                <span className="file-type-badge csv">CSV</span> :
+                                <span className="file-type-badge txt">TXT</span>
                               }
                             </div>
                           </div>
@@ -1412,7 +1577,7 @@ const convertItemToFormValues = (item) => {
                       ) : (
                         <div className="upload-instructions">
                           <p className="ant-upload-text" style={{ color: "#e0e0e0" }}>
-                            Drop your JSON or CSV file here
+                            Drop your JSON, CSV, or formatted TXT file here
                           </p>
                           <p className="upload-divider">OR</p>
                           <Button 
@@ -1427,7 +1592,7 @@ const convertItemToFormValues = (item) => {
                             Browse Files
                           </Button>
                           <p className="ant-upload-hint" style={{ color: "#c0c0c0" }}>
-                            Support for <Tag color="#108ee9">JSON</Tag> or <Tag color="#87d068">CSV</Tag> formats
+                            Support for <Tag color="#108ee9">JSON</Tag>, <Tag color="#87d068">CSV</Tag>, or <Tag color="#f50">TXT</Tag> formats
                           </p>
                         </div>
                       )}
@@ -1445,6 +1610,22 @@ const convertItemToFormValues = (item) => {
                     type="success"
                     showIcon
                   />
+                  {/* Preview button for JSON data */}
+                  {parsedJsonContent && parsedJsonContent.length > 0 && (
+                    <div style={{ marginTop: 12, textAlign: 'center' }}>
+                      <Button 
+                        type="default"
+                        icon={<EyeOutlined />}
+                        onClick={() => setJsonPreviewModalVisible(true)}
+                        style={{ 
+                          borderColor: '#e50914',
+                          color: '#e50914'
+                        }}
+                      >
+                        Preview Data ({jsonSummary.total} items)
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -1983,6 +2164,154 @@ const convertItemToFormValues = (item) => {
         ) : (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div style={{ color: '#ff7875' }}>Failed to load contamination data</div>
+          </div>
+        )}
+      </Modal>
+
+      {/* JSON Data Preview Modal */}
+      <Modal
+        title={
+          <div>
+            <EyeOutlined style={{ marginRight: 8 }} />
+            Data Preview
+            {jsonSummary && (
+              <span style={{ marginLeft: 12, fontSize: 14, fontWeight: 'normal', color: '#a0a0a0' }}>
+                {jsonSummary.movies} movies, {jsonSummary.shows} TV shows ({jsonSummary.total} total)
+              </span>
+            )}
+          </div>
+        }
+        open={jsonPreviewModalVisible}
+        onCancel={() => setJsonPreviewModalVisible(false)}
+        width={1200}
+        footer={[
+          <Button key="close" onClick={() => setJsonPreviewModalVisible(false)}>
+            Close
+          </Button>
+        ]}
+      >
+        {parsedJsonContent && parsedJsonContent.length > 0 ? (
+          <div>
+            {/* Summary Statistics */}
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={8}>
+                <Statistic
+                  title="Movies"
+                  value={jsonSummary.movies}
+                  prefix={<FileTextOutlined style={{ color: '#1890ff' }} />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="TV Shows"
+                  value={jsonSummary.shows}
+                  prefix={<FileTextOutlined style={{ color: '#52c41a' }} />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Total Items"
+                  value={jsonSummary.total}
+                  prefix={<TableOutlined style={{ color: '#fa8c16' }} />}
+                  valueStyle={{ color: '#fa8c16' }}
+                />
+              </Col>
+            </Row>
+
+            <Divider />
+
+            {/* Data Table */}
+            <Table
+              dataSource={parsedJsonContent.slice(
+                (previewPagination.current - 1) * previewPagination.pageSize,
+                previewPagination.current * previewPagination.pageSize
+              )}
+              rowKey={(record) => record.id || record.title + (record.release_date || record.first_air_date)}
+              pagination={{
+                current: previewPagination.current,
+                pageSize: previewPagination.pageSize,
+                total: parsedJsonContent.length,
+                onChange: (page, pageSize) => {
+                  setPreviewPagination({ current: page, pageSize });
+                },
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+              }}
+              scroll={{ y: 400 }}
+              size="small"
+              columns={[
+                {
+                  title: 'Type',
+                  dataIndex: 'media_type',
+                  key: 'media_type',
+                  width: 80,
+                  render: (type) => (
+                    <Tag color={type === 'movie' ? 'blue' : 'green'}>
+                      {type === 'movie' ? 'Movie' : 'TV'}
+                    </Tag>
+                  ),
+                },
+                {
+                  title: 'Title',
+                  dataIndex: 'title',
+                  key: 'title',
+                  ellipsis: true,
+                  render: (text, record) => record.title || record.name || 'Untitled',
+                },
+                {
+                  title: 'Year',
+                  key: 'year',
+                  width: 80,
+                  render: (record) => {
+                    const date = record.release_date || record.first_air_date;
+                    return date ? date.substring(0, 4) : 'N/A';
+                  },
+                },
+                {
+                  title: 'ID',
+                  dataIndex: 'id',
+                  key: 'id',
+                  width: 100,
+                },
+                {
+                  title: 'Actions',
+                  key: 'actions',
+                  width: 80,
+                  render: (_, record) => (
+                    <Button
+                      type="text"
+                      icon={<EyeOutlined />}
+                      size="small"
+                      onClick={() => {
+                        Modal.info({
+                          title: record.title || record.name || 'Item Details',
+                          content: (
+                            <pre style={{ 
+                              maxHeight: 400, 
+                              overflow: 'auto', 
+                              background: '#f5f5f5', 
+                              padding: 12, 
+                              borderRadius: 4,
+                              fontSize: 12 
+                            }}>
+                              {JSON.stringify(record, null, 2)}
+                            </pre>
+                          ),
+                          width: 800,
+                        });
+                      }}
+                    />
+                  ),
+                },
+              ]}
+            />
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+            No data to preview
           </div>
         )}
       </Modal>

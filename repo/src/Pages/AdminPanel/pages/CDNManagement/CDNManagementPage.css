@@ -1061,6 +1061,11 @@
   color: white;
 }
 
+.netflix-styled-uploader .file-type-badge.txt {
+  background-color: #f50;
+  color: white;
+}
+
 .netflix-styled-uploader .selected-file-info {
   text-align: center;
 }
