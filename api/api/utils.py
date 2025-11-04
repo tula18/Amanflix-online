@@ -2,6 +2,7 @@ import datetime
 import os
 import jwt
 import json  # Add this import
+import time
 from flask import request, jsonify
 from tqdm import tqdm
 from datetime import datetime, timedelta
@@ -13,6 +14,11 @@ from utils.logger import log_warning, log_info, log_error
 from models import User, BlacklistToken, db, Admin
 
 role_hierarchy = {'superadmin': 3, 'admin': 2, 'moderator': 1}
+
+# Episode cache for stream endpoint - prevents DB queries during streaming
+# Format: {cache_key: (video_id, timestamp)}
+_episode_cache = {}
+EPISODE_CACHE_TTL = 3600  # 1 hour - episodes rarely change
 
 # Global variable to track ffmpeg availability
 ffmpeg_available = None
@@ -268,6 +274,70 @@ def parse_watch_id(watch_id):
         }
     return None
 
+def get_episode_video_id_cached(content_id, season_number, episode_number):
+    """
+    Get video_id for a TV episode with caching to avoid DB queries during streaming.
+    
+    This function is specifically designed to isolate the stream endpoint from database
+    session issues by caching episode lookups.
+    
+    Args:
+        content_id (int): The TV show ID
+        season_number (int): Season number
+        episode_number (int): Episode number
+        
+    Returns:
+        str or None: The video_id if found, None if not found or error occurred
+    """
+    from models import Episode, Season
+    
+    # Create cache key
+    cache_key = f"{content_id}:{season_number}:{episode_number}"
+    
+    # Check cache first
+    if cache_key in _episode_cache:
+        video_id, timestamp = _episode_cache[cache_key]
+        # Check if cache is still valid
+        if time.time() - timestamp < EPISODE_CACHE_TTL:
+            log_info(f"Episode cache hit: {cache_key} -> {video_id}")
+            return video_id
+        else:
+            # Cache expired, remove it
+            del _episode_cache[cache_key]
+            log_info(f"Episode cache expired: {cache_key}")
+    
+    # Cache miss - query database with error handling
+    try:
+        episode = Episode.query.join(Season).filter(
+            Season.tvshow_id == content_id,
+            Season.season_number == season_number,
+            Episode.episode_number == episode_number
+        ).first()
+        
+        if episode:
+            video_id = episode.video_id
+            # Store in cache
+            _episode_cache[cache_key] = (video_id, time.time())
+            log_info(f"Episode cached: {cache_key} -> {video_id}")
+            return video_id
+        else:
+            log_warning(f"Episode not found in DB: show={content_id} S{season_number}E{episode_number}")
+            return None
+            
+    except Exception as e:
+        # If DB query fails (e.g., session poisoned), log error but don't crash
+        log_error(f"Failed to query episode from DB: {e}")
+        # Try to construct fallback ID
+        fallback_id = f"{content_id}{season_number}{episode_number}"
+        log_warning(f"Using fallback video_id: {fallback_id}")
+        return fallback_id
+
+def clear_episode_cache():
+    """Clear the episode cache. Useful when episodes are updated."""
+    global _episode_cache
+    _episode_cache.clear()
+    log_info("Episode cache cleared")
+
 def serialize_watch_history(content_id, content_type, current_user, season_number=None, episode_number=None, include_next_episode=True):
     """
     Return a serialized watch history for a given content (movie or TV show episode)
@@ -420,7 +490,7 @@ def setup_request_logging(app):
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
-    # Define excluded paths
+    # Define excluded paths - these paths should skip token validation to avoid DB queries
     excluded_paths = ['/images/', '/stream/']
     
     @app.before_request
@@ -429,7 +499,8 @@ def setup_request_logging(app):
         
     @app.after_request
     def log_request(response):
-        if request.path.startswith(('/api/', '/cdn/')):
+        # Check if this is an API/CDN request AND not in excluded paths
+        if request.path.startswith(('/api/', '/cdn/')) and not any(excluded in request.path for excluded in excluded_paths):
             # Calculate request duration
             duration = None
             if hasattr(request, 'start_time'):
