@@ -19,7 +19,12 @@ const EpisodeSelector = ({ showId, onEpisodeSelect }) => {
         const fetchShowDetails = async () => {
             try {
                 setLoading(true);
-                const response = await fetch(`${API_URL}/api/shows/${showId}`);
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/api/shows/${showId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.seasons && Array.isArray(data.seasons)) {
