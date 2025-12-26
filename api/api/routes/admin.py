@@ -477,6 +477,81 @@ def delete_user(current_admin):
         log_error(f"Failed to delete user {username} (ID: {user_id}): {str(e)}")
         return jsonify({'message': f'Failed to delete user: {str(e)}'}), 500
 
+@admin_bp.route('/user/batch-delete', methods=['DELETE'])
+@admin_token_required('admin')
+def batch_delete_users(current_admin):
+    """Delete multiple users at once"""
+    from app import bcrypt
+    from models import WatchHistory, MyList
+    
+    # Support both JSON and form data
+    if request.is_json:
+        data = request.json
+        user_ids = data.get('user_ids', [])
+        password = data.get('password')
+    else:
+        data = request.form.to_dict()
+        user_ids_str = data.get('user_ids', '')
+        # Parse comma-separated IDs or JSON array
+        if user_ids_str.startswith('['):
+            import json as json_module
+            user_ids = json_module.loads(user_ids_str)
+        else:
+            user_ids = [uid.strip() for uid in user_ids_str.split(',') if uid.strip()]
+        password = data.get('password')
+    
+    if not password or password == '':
+        return jsonify({'message': 'Please provide a password'}), 400
+    
+    if not user_ids or len(user_ids) == 0:
+        return jsonify({'message': 'Please provide user IDs to delete'}), 400
+    
+    if not bcrypt.check_password_hash(current_admin.password, password):
+        return jsonify({'message': 'Password incorrect! Check your credentials.'}), 401
+    
+    deleted_users = []
+    failed_users = []
+    
+    for user_id in user_ids:
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                failed_users.append({'id': user_id, 'reason': 'User not found'})
+                continue
+            
+            username = user.username
+            
+            # Delete related records first
+            db.session.query(WatchHistory).filter(WatchHistory.user_id == user_id).delete()
+            db.session.query(MyList).filter(MyList.user_id == user_id).delete()
+            
+            # Delete the user
+            db.session.delete(user)
+            
+            # Invalidate user cache
+            invalidate_user(int(user_id))
+            
+            deleted_users.append({'id': user_id, 'username': username})
+            
+        except Exception as e:
+            failed_users.append({'id': user_id, 'reason': str(e)})
+    
+    # Commit all deletions at once
+    if deleted_users:
+        if not safe_commit():
+            db.session.rollback()
+            return jsonify({'message': 'Failed to delete users due to database error'}), 500
+    
+    log_success(f"Admin {current_admin.username} batch deleted {len(deleted_users)} users")
+    
+    return jsonify({
+        'message': f'Successfully deleted {len(deleted_users)} users',
+        'deleted': deleted_users,
+        'failed': failed_users,
+        'deleted_count': len(deleted_users),
+        'failed_count': len(failed_users)
+    })
+
 @admin_bp.route('/user', methods=['POST'])
 @admin_token_required('admin')
 def get_user(current_admin):

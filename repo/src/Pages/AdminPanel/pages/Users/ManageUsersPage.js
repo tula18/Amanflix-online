@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { Table, Input, Button, Tag, Space, Tooltip, Flex } from "antd";
+import { Table, Input, Button, Tag, Space, Tooltip, Flex, message } from "antd";
 import { API_URL } from "../../../../config";
 import {  FaEye, FaEyeSlash } from "react-icons/fa6";
-import { DeleteOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SearchOutlined, StopOutlined, UnlockOutlined, UsergroupDeleteOutlined } from "@ant-design/icons";
 import PasswordFormGroup from "../../Components/FormGroup/PasswordFormGroup";
 
 const BanAccount = ({onClose, user, handleSubmit}) => {
@@ -185,6 +185,112 @@ const DeleteAccount = ({onClose, user}) => {
     )
 }
 
+const BatchDeleteAccount = ({onClose, users, getUsers}) => {
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
+
+    const toggle = () => {
+        onClose();
+    };
+
+    if (!users || users.length === 0) {
+        return (
+            <div className="modal">
+            <div className="profile_modal-content">
+                <h4 className="modal-title">Batch Delete Accounts</h4>
+                <p>No users selected.</p>
+                <div className="divider"/>
+                <div className="profile-form_buttons">
+                    <button type="button" className="profile_save_btn" onClick={onClose}>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+        )
+    }
+
+    const handleBatchDelete = async () => {
+        setLoading(true);
+        setStatusMessage('');
+        
+        const userIds = users.map(user => user.id);
+        
+        try {
+            const res = await fetch(`${API_URL}/api/admin/user/batch-delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('admin_token')
+                },
+                body: JSON.stringify({
+                    user_ids: userIds,
+                    password: password
+                })
+            });
+            
+            let data;
+            try {
+                data = await res.json();
+            } catch (jsonError) {
+                console.error("Failed to parse response:", jsonError);
+                setStatusMessage('Server error: Invalid response');
+                setLoading(false);
+                return;
+            }
+            
+            if (res.ok) {
+                setStatusMessage(`Successfully deleted ${data.deleted_count} users${data.failed_count > 0 ? `, ${data.failed_count} failed` : ''}`);
+                message.success(`Successfully deleted ${data.deleted_count} users`);
+                setTimeout(() => {
+                    onClose();
+                    getUsers();
+                }, 1500);
+            } else {
+                setStatusMessage(data.message || 'Failed to delete users');
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error("Error batch deleting users:", error);
+            setStatusMessage(`Error: ${error.message}`);
+            setLoading(false);
+        }
+    };
+
+    const handleToggle = () => {
+        setPassword('');
+        toggle();
+    };
+
+    return (
+        <div className="modal">
+            <div className="profile_modal-content">
+                <h4 className="modal-title">Batch Delete {users.length} Accounts</h4>
+                <p>Are you sure you want to delete the following accounts? This action is irreversible.</p>
+                <div style={{maxHeight: '150px', overflowY: 'auto', margin: '10px 0', padding: '10px', background: '#1a1a1a', borderRadius: '5px'}}>
+                    {users.map(user => (
+                        <Tag key={user.id} color="red" style={{margin: '2px'}}>{user.username}</Tag>
+                    ))}
+                </div>
+                <PasswordFormGroup label={"Please Enter your admin's Password"} name="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{width: 'auto'}} required />
+                <div className="divider"/>
+                <div className="profile-form_buttons">
+                    <button type="button" className="profile_save_btn" onClick={handleToggle}>
+                        Cancel
+                    </button>
+                    <button type="button" className="profile_delete_btn" onClick={handleBatchDelete} disabled={loading}>
+                        {loading ? "Deleting..." : `Delete ${users.length} Accounts`}
+                    </button>
+                </div>
+                <div className="profile-message">
+                    {statusMessage}
+                </div>
+            </div>
+        </div>
+    )
+}
+
 const CreateAccount = ({onClose, getUsers}) => {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -287,7 +393,10 @@ const ManageUsers = () => {
     const [showModal, setShowModal] = useState(false)
     const [showCreateModal, setCreateShowModal] = useState(false)
     const [showBanModal, setShowBanModal] = useState(false)
+    const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false)
     const [selectedUser, setSelectedUser] = useState('')
+    const [selectedRowKeys, setSelectedRowKeys] = useState([])
+    const [selectedUsers, setSelectedUsers] = useState([])
     const navigate = useNavigate();
 
     const searchInput = useRef(null);
@@ -485,6 +594,21 @@ const ManageUsers = () => {
         getUsers();
     };
 
+    const handleBatchDeleteModalClose = () => {
+        setShowBatchDeleteModal(false);
+        setSelectedRowKeys([]);
+        setSelectedUsers([]);
+        getUsers();
+    };
+
+    const rowSelection = {
+        selectedRowKeys,
+        onChange: (newSelectedRowKeys, newSelectedRows) => {
+            setSelectedRowKeys(newSelectedRowKeys);
+            setSelectedUsers(newSelectedRows);
+        },
+    };
+
     const banUser = async (user, reason, duration, setMessage) => {
         try {
             const formdata = new FormData();
@@ -575,6 +699,10 @@ const ManageUsers = () => {
             if (showBanModal && event.target.classList.contains('modal')) {
                 handleModalClose(setShowBanModal);
             }
+
+            if (showBatchDeleteModal && event.target.classList.contains('modal')) {
+                handleBatchDeleteModalClose();
+            }
         };
   
         document.addEventListener('mousedown', handleClickOutside);
@@ -592,7 +720,10 @@ const ManageUsers = () => {
           }
           if (showBanModal && event.key === 'Escape') {
             handleModalClose(setShowBanModal);
-        }
+          }
+          if (showBatchDeleteModal && event.key === 'Escape') {
+            handleBatchDeleteModalClose();
+          }
         };
       
         document.addEventListener('keydown', handleEscapeKey);
@@ -601,7 +732,7 @@ const ManageUsers = () => {
           document.removeEventListener('keydown', handleEscapeKey);
         };
         // eslint-disable-next-line
-    }, [showModal, showBanModal]);
+    }, [showModal, showBanModal, showBatchDeleteModal]);
 
     useEffect(() => {
         // Sort data by createdAt in descending order
@@ -616,6 +747,17 @@ const ManageUsers = () => {
                 <h1>Manage Users</h1>
                 <h2>{sortedData.length} Users</h2>
                 <Flex gap={"5px"}>
+                    {selectedRowKeys.length > 0 && (
+                        <Tooltip title={`Delete ${selectedRowKeys.length} selected users`}>
+                            <Button
+                            danger
+                            icon={<UsergroupDeleteOutlined />}
+                            onClick={() => setShowBatchDeleteModal(true)}
+                            >
+                                Delete {selectedRowKeys.length} Users
+                            </Button>
+                        </Tooltip>
+                    )}
                     <Tooltip title="Create a new User">
                         <Button
                         type="primary"
@@ -641,6 +783,8 @@ const ManageUsers = () => {
                 </Flex>
             </Flex>
             <Table
+              rowSelection={rowSelection}
+              rowKey="id"
               dataSource={sortedData}
               columns={columns}
               className="custom-table" 
@@ -661,6 +805,13 @@ const ManageUsers = () => {
             {showCreateModal && (
                 <CreateAccount
                 onClose={() => handleModalClose(setCreateShowModal)}
+                getUsers={getUsers}
+                />
+            )}
+            {showBatchDeleteModal && (
+                <BatchDeleteAccount
+                onClose={handleBatchDeleteModalClose}
+                users={selectedUsers}
                 getUsers={getUsers}
                 />
             )}
