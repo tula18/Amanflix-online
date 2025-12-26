@@ -39,7 +39,7 @@ const FileDropper = ({ onFilesSelected, onParseComplete, selectedFiles, isLoadin
         setDragOver(false);
         // Check for duplicate files
         const existingFileNames = new Set(selectedFiles.map(file => file.name));
-        const newFiles = Array.from(e.target.files).filter(file => {
+        const newFiles = Array.from(e.dataTransfer.files).filter(file => {
             if (existingFileNames.has(file.name)) {
                 message.error(`File "${file.name}" is already selected`);
                 return false;
@@ -50,7 +50,6 @@ const FileDropper = ({ onFilesSelected, onParseComplete, selectedFiles, isLoadin
         if (newFiles.length === 0) {
             return;
         }
-        const files = Array.from(e.dataTransfer.files);
         const combinedFiles = [...selectedFiles, ...newFiles];
         handleFiles(combinedFiles);
     };
