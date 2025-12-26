@@ -1,33 +1,55 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Spin, Table, Tabs, notification, Typography, Tag, Button, Dropdown, Space, Modal, Flex } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  Row, Col, Card, Statistic, Spin, notification, Typography, Tag, 
+  Button, Modal, Progress, Tooltip as AntTooltip, Badge, Space, Segmented,
+  Empty
+} from 'antd';
 import { 
   UserOutlined, ClockCircleOutlined, ApiOutlined, 
-  LineChartOutlined, WarningOutlined, DashboardOutlined,
-  PlaySquareOutlined, FireOutlined, VideoCameraOutlined,
-  CheckCircleOutlined, DesktopOutlined, PieChartOutlined,
-  DownloadOutlined, FileExcelOutlined, FilePdfOutlined,
-  FileTextOutlined, FileJpgOutlined, DatabaseOutlined,
-  SyncOutlined, ThunderboltOutlined
+  WarningOutlined, DashboardOutlined,
+  PlaySquareOutlined, VideoCameraOutlined,
+  CheckCircleOutlined, DesktopOutlined,
+  DownloadOutlined, FileTextOutlined, DatabaseOutlined, SyncOutlined, 
+  ThunderboltOutlined, RiseOutlined, FallOutlined,
+  CloudServerOutlined, HddOutlined, ReloadOutlined,
+  EyeOutlined, TeamOutlined, TrophyOutlined
 } from '@ant-design/icons';
 import { API_URL } from '../../../../config';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import './AnalyticsDashboard.css';
 
-const { TabPane } = Tabs;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
+// Modern color palette
+const COLORS = {
+  primary: '#e50914',
+  secondary: '#141414',
+  accent: '#564d4d',
+  success: '#52c41a',
+  warning: '#faad14',
+  error: '#ff4d4f',
+  info: '#1890ff',
+  purple: '#722ed1',
+  cyan: '#13c2c2',
+  magenta: '#eb2f96',
+  chart: ['#e50914', '#ff6b6b', '#ffa940', '#52c41a', '#1890ff', '#722ed1', '#eb2f96', '#13c2c2']
+};
+
+// Custom tooltip component
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
+    // For pie charts, get the name from payload
+    const displayLabel = label || payload[0]?.name || payload[0]?.payload?.name;
     return (
-      <div className="custom-tooltip">
-        <p><span className="custom-tooltip-label">Date:</span> {label}</p>
+      <div className="analytics-custom-tooltip">
+        {displayLabel && <p className="tooltip-label">{displayLabel}</p>}
         {payload.map((entry, index) => (
-          <p key={`item-${index}`} style={{ color: entry.color }}>
-            <span className="custom-tooltip-label">{entry.name}:</span>
-            {entry.value}
+          <p key={`item-${index}`} className="tooltip-value" style={{ color: entry.color || entry.payload?.fill }}>
+            <span className="tooltip-name">{entry.name || 'Value'}:</span>
+            <span className="tooltip-data">{typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}</span>
           </p>
         ))}
       </div>
@@ -35,6 +57,58 @@ const CustomTooltip = ({ active, payload, label }) => {
   }
   return null;
 };
+
+// Stat card with trend indicator
+const StatCard = ({ title, value, prefix, suffix, trend, trendValue, color, icon, loading }) => {
+  const getTrendIcon = () => {
+    if (!trend) return null;
+    return trend === 'up' ? <RiseOutlined style={{ color: COLORS.success }} /> : <FallOutlined style={{ color: COLORS.error }} />;
+  };
+
+  return (
+    <Card className={`stat-card ${color ? `stat-card-${color}` : ''}`} loading={loading}>
+      <div className="stat-card-content">
+        <div className="stat-card-icon">{icon}</div>
+        <div className="stat-card-info">
+          <Text className="stat-card-title">{title}</Text>
+          <div className="stat-card-value">
+            {prefix && <span className="stat-prefix">{prefix}</span>}
+            <span className="stat-number">{typeof value === 'number' ? value.toLocaleString() : value}</span>
+            {suffix && <span className="stat-suffix">{suffix}</span>}
+          </div>
+          {trend && (
+            <div className="stat-card-trend">
+              {getTrendIcon()}
+              <span className={`trend-value ${trend}`}>{trendValue}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// Section header component
+const SectionHeader = ({ icon, title, action }) => (
+  <div className="section-header">
+    <div className="section-header-left">
+      {icon}
+      <Title level={4} className="section-title">{title}</Title>
+    </div>
+    {action && <div className="section-header-right">{action}</div>}
+  </div>
+);
+
+// Chart card wrapper
+const ChartCard = ({ title, children, extra, loading }) => (
+  <Card className="chart-card" loading={loading}>
+    <div className="chart-card-header">
+      <Title level={5} className="chart-title">{title}</Title>
+      {extra && <div className="chart-extra">{extra}</div>}
+    </div>
+    <div className="chart-content">{children}</div>
+  </Card>
+);
 
 const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -44,20 +118,18 @@ const AnalyticsDashboard = () => {
   const [cacheStats, setCacheStats] = useState(null);
   const [cacheLoading, setCacheLoading] = useState(false);
   const [adminRole, setAdminRole] = useState(null);
-  const [timeRange, setTimeRange] = useState(1); // days
+  const [timeRange, setTimeRange] = useState('1');
   const [refreshing, setRefreshing] = useState(false);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const token = localStorage.getItem('admin_token');
-  
-  // Fetch admin profile to get role
-  const fetchAdminProfile = async () => {
+
+  // Fetch admin profile
+  const fetchAdminProfile = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/admin/profile`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (res.ok) {
         const data = await res.json();
         setAdminRole(data.role);
@@ -65,1058 +137,838 @@ const AnalyticsDashboard = () => {
     } catch (error) {
       console.error("Error fetching admin profile:", error);
     }
-  };
-  
-  // Fetch admin profile on mount
-  useEffect(() => {
-    fetchAdminProfile();
-  }, []);
-  
-  // Add fetch function for content metrics
-  const fetchContentMetrics = async () => {
+  }, [token]);
+
+  // Fetch dashboard data
+  const fetchDashboardData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/analytics/content-metrics?days=${timeRange}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`${API_URL}/api/analytics/dashboard?days=${timeRange}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (res.ok) {
         const data = await res.json();
-        console.log("Content metrics:", data);
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    }
+  }, [token, timeRange]);
+
+  // Fetch content metrics
+  const fetchContentMetrics = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/analytics/content-metrics?days=${timeRange}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
         setContentMetrics(data);
-      } else {
-        console.error("Failed to fetch content metrics");
       }
     } catch (error) {
       console.error("Error fetching content metrics:", error);
     }
-  };
-  
-  // Add fetch function for data integrity
-  const fetchDataIntegrity = async () => {
+  }, [token, timeRange]);
+
+  // Fetch data integrity
+  const fetchDataIntegrity = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/analytics/data-integrity?fields=watch_history&include_files=true`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (res.ok) {
         const data = await res.json();
-        console.log("Data integrity:", data);
         setDataIntegrity(data);
-      } else {
-        console.error("Failed to fetch data integrity metrics");
       }
     } catch (error) {
-      console.error("Error fetching data integrity metrics:", error);
+      console.error("Error fetching data integrity:", error);
     }
-  };
-  
-  // Fetch cache statistics
-  const fetchCacheStats = async () => {
+  }, [token]);
+
+  // Fetch cache stats
+  const fetchCacheStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/admin/cache/stats`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (res.ok) {
         const data = await res.json();
-        console.log("Cache stats:", data);
         setCacheStats(data.caches);
-      } else {
-        console.error("Failed to fetch cache statistics");
       }
     } catch (error) {
-      console.error("Error fetching cache statistics:", error);
+      console.error("Error fetching cache stats:", error);
     }
-  };
-  
-  // Clear all caches
+  }, [token]);
+
+  // Clear cache
   const handleClearCache = async () => {
     setCacheLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/admin/cache/clear`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (res.ok) {
         notification.success({
           message: 'Cache Cleared',
           description: 'All caches have been cleared successfully.'
         });
-        // Refresh cache stats
         await fetchCacheStats();
       } else {
-        const errorData = await res.json();
         notification.error({
           message: 'Failed to Clear Cache',
-          description: errorData.message || 'An error occurred while clearing cache.'
+          description: 'An error occurred while clearing cache.'
         });
       }
     } catch (error) {
-      notification.error({
-        message: 'Error',
-        description: error.message
-      });
+      notification.error({ message: 'Error', description: error.message });
     } finally {
       setCacheLoading(false);
     }
   };
-  
-  // Update useEffect to fetch both datasets
+
+  // Initial load
   useEffect(() => {
-    const fetchData = async () => {
-      // Only show full loading on initial load
-      if (!dashboardData || !contentMetrics || !dataIntegrity) {
+    fetchAdminProfile();
+  }, [fetchAdminProfile]);
+
+  // Fetch all data
+  useEffect(() => {
+    const fetchAllData = async () => {
+      const isInitialLoad = !dashboardData || !contentMetrics || !dataIntegrity;
+      if (isInitialLoad) {
         setLoading(true);
       } else {
-        setRefreshing(true); // Use a lighter refresh indicator for tab changes
+        setRefreshing(true);
       }
-      
-      await Promise.all([fetchDashboardData(), fetchContentMetrics(), fetchDataIntegrity(), fetchCacheStats()]);
-      
+
+      await Promise.all([
+        fetchDashboardData(),
+        fetchContentMetrics(),
+        fetchDataIntegrity(),
+        fetchCacheStats()
+      ]);
+
       setLoading(false);
       setRefreshing(false);
     };
-    
-    fetchData();
-    const interval = setInterval(fetchData, 300000); // Refresh every 5 minutes
-    
+
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 300000);
     return () => clearInterval(interval);
-  }, [timeRange]);
-  
-  const fetchDashboardData = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/analytics/dashboard?days=${timeRange}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setDashboardData(data);
-      } else {
-        notification.error({
-          message: 'Error',
-          description: 'Failed to fetch analytics data'
-        });
-      }
-    } catch (error) {
-      notification.error({
-        message: 'Error',
-        description: error.message
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleTimeRangeChange = (key) => {
-    setTimeRange(parseInt(key));
+  }, [timeRange, fetchDashboardData, fetchContentMetrics, fetchDataIntegrity, fetchCacheStats]);
+
+  // Manual refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchDashboardData(),
+      fetchContentMetrics(),
+      fetchDataIntegrity(),
+      fetchCacheStats()
+    ]);
+    setRefreshing(false);
+    notification.success({ message: 'Data Refreshed', duration: 2 });
   };
 
-  // Add this function to your component
-  const prefetchNextTimeRange = (nextRange) => {
-    if (nextRange === timeRange) return;
-    
-    // Silent prefetch without showing loading states
-    fetch(`${API_URL}/api/analytics/dashboard?days=${nextRange}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    fetch(`${API_URL}/api/analytics/content-metrics?days=${nextRange}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    fetch(`${API_URL}/api/analytics/data-integrity?fields=watch_history&include_files=true`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+  // Format helpers
+  const formatDuration = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0m 0s';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m ${secs}s`;
   };
 
-  // Add these after other state declarations
-  const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportSection, setExportSection] = useState('all');
-  const [exportLoading, setExportLoading] = useState(false);
-
-  // Add these functions before the return statement
-  const prepareDataForExport = (section) => {
-    switch(section) {
-      case 'user':
-        return {
-          metrics: [
-            { key: 'Active Users', value: dashboardData.user_metrics.daily_active_users.reduce((sum, day) => sum + day.count, 0) },
-            { key: 'Total Sessions', value: dashboardData.user_metrics.total_sessions },
-            { key: 'New Users', value: dashboardData.user_metrics.new_users },
-            { key: 'Avg. Session Duration', value: dashboardData.user_metrics.avg_session_duration_seconds }
-          ],
-          dailyUsers: dashboardData.user_metrics.daily_active_users
-        };
-      case 'content':
-        return {
-          metrics: [
-            { key: 'Total Views', value: (contentMetrics.content_type_distribution[0].value || 0) + (contentMetrics.content_type_distribution[1].value || 0) },
-            { key: 'Movie Views', value: contentMetrics.content_type_distribution[0].value || 0 },
-            { key: 'TV Show Views', value: contentMetrics.content_type_distribution[1].value || 0 },
-            { key: 'Completion Rate', value: contentMetrics.completion_metrics.completion_rate + '%' }
-          ],
-          mostWatchedMovies: contentMetrics.most_watched.movies,
-          mostWatchedShows: contentMetrics.most_watched.shows,
-          genres: formatGenreData(),
-          dailyViewing: contentMetrics.daily_viewing_trends
-        };
-      case 'performance':
-        return {
-          metrics: [
-            { key: 'P50 Latency', value: dashboardData.performance.p50_latency_ms + 'ms' },
-            { key: 'P90 Latency', value: dashboardData.performance.p90_latency_ms + 'ms' },
-            { key: 'P99 Latency', value: dashboardData.performance.p99_latency_ms + 'ms' }
-          ],
-          systemHealth: [
-            { key: 'CPU Usage', value: dashboardData.system_health.cpu_percent + '%' },
-            { key: 'Memory Usage', value: dashboardData.system_health.memory_percent + '%' },
-            { key: 'Disk Usage', value: dashboardData.system_health.disk_usage_percent + '%' }
-          ]
-        };
-      case 'integrity':
-        return {
-          metrics: [
-            { key: 'Total Items', value: dataIntegrity.total_items },
-            { key: 'Contaminated Items', value: dataIntegrity.total_contaminated },
-            { key: 'Contamination Rate', value: dataIntegrity.contamination_percentage.toFixed(2) + '%' },
-            { key: 'Health Status', value: dataIntegrity.health_status.toUpperCase() }
-          ],
-          dataSources: Object.entries(dataIntegrity.data_sources || {}).map(([source, data]) => ({
-            source: source.replace(/_/g, ' ').toUpperCase(),
-            total: data.total,
-            contaminated: data.contaminated,
-            percentage: data.total > 0 ? ((data.contaminated / data.total) * 100).toFixed(1) + '%' : '0%'
-          }))
-        };
-      case 'all':
-      default:
-        return {
-          date: new Date().toISOString().split('T')[0],
-          timeRange: `${timeRange} day${timeRange > 1 ? 's' : ''}`,
-          userMetrics: prepareDataForExport('user'),
-          contentMetrics: prepareDataForExport('content'),
-          performanceMetrics: prepareDataForExport('performance'),
-          dataIntegrity: prepareDataForExport('integrity')
-        };
-    }
+  const getHealthColor = (percent) => {
+    if (percent >= 80) return 'error';
+    if (percent >= 60) return 'warning';
+    return 'success';
   };
 
-  const exportToCSV = (section) => {
+  const getHealthStatus = (status) => {
+    const statusMap = {
+      excellent: { color: 'success', icon: <CheckCircleOutlined /> },
+      good: { color: 'processing', icon: <CheckCircleOutlined /> },
+      warning: { color: 'warning', icon: <WarningOutlined /> },
+      critical: { color: 'error', icon: <WarningOutlined /> },
+      error: { color: 'error', icon: <WarningOutlined /> }
+    };
+    return statusMap[status] || { color: 'default', icon: <DashboardOutlined /> };
+  };
+
+  // Chart data formatters
+  const userChartData = useMemo(() => {
+    if (!dashboardData?.user_metrics?.daily_active_users) return [];
+    return dashboardData.user_metrics.daily_active_users.map(day => ({
+      date: day.date,
+      users: day.count
+    }));
+  }, [dashboardData]);
+
+  const requestChartData = useMemo(() => {
+    if (!dashboardData?.request_throughput?.requests_per_minute) return [];
+    return dashboardData.request_throughput.requests_per_minute.map(min => ({
+      time: min.minute.split(' ')[1]?.substring(0, 5) || min.minute,
+      requests: min.count
+    }));
+  }, [dashboardData]);
+
+  const genreChartData = useMemo(() => {
+    if (!contentMetrics?.genre_popularity) return [];
+    return contentMetrics.genre_popularity.map(item => ({
+      name: item.genre,
+      value: item.count
+    }));
+  }, [contentMetrics]);
+
+  // Export functions
+  const exportToCSV = () => {
     setExportLoading(true);
     try {
-      const data = prepareDataForExport(section);
+      const date = new Date().toISOString().split('T')[0];
       let csvContent = 'data:text/csv;charset=utf-8,';
+      csvContent += `Amanflix Analytics Report - ${date}\r\n\r\n`;
       
-      // Add headers
-      csvContent += `Amanflix Analytics Report - ${data.date} (${data.timeRange})\r\n\r\n`;
-      
-      // Add User Metrics
+      // User metrics
       csvContent += 'USER METRICS\r\n';
-      csvContent += 'Metric,Value\r\n';
-      data.userMetrics.metrics.forEach(item => {
-        csvContent += `${item.key},${item.value}\r\n`;
-      });
+      csvContent += `Active Users,${dashboardData.user_metrics.daily_active_users.reduce((sum, d) => sum + d.count, 0)}\r\n`;
+      csvContent += `Total Sessions,${dashboardData.user_metrics.total_sessions}\r\n`;
+      csvContent += `New Users,${dashboardData.user_metrics.new_users}\r\n`;
+      csvContent += `Avg Session Duration,${formatDuration(dashboardData.user_metrics.avg_session_duration_seconds)}\r\n\r\n`;
       
-      // Add daily user data
-      csvContent += '\r\nDAILY ACTIVE USERS\r\n';
-      csvContent += 'Date,Users\r\n';
-      data.userMetrics.dailyUsers.forEach(day => {
-        csvContent += `${day.date},${day.count}\r\n`;
-      });
-      
-      // Add Content Metrics
-      csvContent += '\r\nCONTENT METRICS\r\n';
-      csvContent += 'Metric,Value\r\n';
-      data.contentMetrics.metrics.forEach(item => {
-        csvContent += `${item.key},${item.value}\r\n`;
-      });
-      
-      // Add performance metrics
-      csvContent += '\r\nPERFORMANCE METRICS\r\n';
-      csvContent += 'Metric,Value\r\n';
-      data.performanceMetrics.metrics.forEach(item => {
-        csvContent += `${item.key},${item.value}\r\n`;
-      });
-      
-      // Add system health
-      csvContent += '\r\nSYSTEM HEALTH\r\n';
-      csvContent += 'Metric,Value\r\n';
-      data.performanceMetrics.systemHealth.forEach(item => {
-        csvContent += `${item.key},${item.value}\r\n`;
-      });
-      
-      // Create download link
-      const encodedUri = encodeURI(csvContent);
+      // Performance
+      csvContent += 'PERFORMANCE\r\n';
+      csvContent += `P50 Latency,${dashboardData.performance.p50_latency_ms}ms\r\n`;
+      csvContent += `P90 Latency,${dashboardData.performance.p90_latency_ms}ms\r\n`;
+      csvContent += `P99 Latency,${dashboardData.performance.p99_latency_ms}ms\r\n`;
+
       const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `amanflix_analytics_${data.date}.csv`);
+      link.href = encodeURI(csvContent);
+      link.download = `amanflix_analytics_${date}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      notification.success({
-        message: 'Export Successful',
-        description: 'Analytics data has been exported to CSV successfully.',
-      });
+      notification.success({ message: 'Export Successful', description: 'Data exported to CSV' });
     } catch (error) {
-      notification.error({
-        message: 'Export Failed',
-        description: `Failed to export data: ${error.message}`,
-      });
+      notification.error({ message: 'Export Failed', description: error.message });
     } finally {
       setExportLoading(false);
       setExportModalVisible(false);
     }
   };
 
-  const exportToJSON = (section) => {
+  const exportToJSON = () => {
     setExportLoading(true);
     try {
-      const data = prepareDataForExport(section);
-      const jsonData = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
+      const date = new Date().toISOString().split('T')[0];
+      const data = {
+        exportDate: date,
+        timeRange: `${timeRange} day(s)`,
+        userMetrics: dashboardData.user_metrics,
+        contentMetrics: contentMetrics,
+        performance: dashboardData.performance,
+        systemHealth: dashboardData.system_health
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `amanflix_analytics_${data.date}.json`;
+      link.download = `amanflix_analytics_${date}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      notification.success({
-        message: 'Export Successful',
-        description: 'Analytics data has been exported to JSON successfully.',
-      });
+      notification.success({ message: 'Export Successful', description: 'Data exported to JSON' });
     } catch (error) {
-      notification.error({
-        message: 'Export Failed',
-        description: `Failed to export data: ${error.message}`,
-      });
+      notification.error({ message: 'Export Failed', description: error.message });
     } finally {
       setExportLoading(false);
       setExportModalVisible(false);
     }
   };
 
-  const renderExportModal = () => {
+  // Loading state
+  if (loading) {
     return (
-      <Modal
-        title="Export Analytics Data"
-        open={exportModalVisible}
-        onCancel={() => setExportModalVisible(false)}
-        footer={null}
-        className="analytics-export-modal"
-      >
-        <div className="export-options">
-          <h3>Choose Export Format</h3>
-          <div className="export-buttons">
-            <Button 
-              type="primary" 
-              icon={<FileTextOutlined />} 
-              onClick={() => exportToCSV('all')}
-              loading={exportLoading}
-              className="export-button"
-            >
-              Export as CSV
-            </Button>
-            <Button 
-              type="primary" 
-              icon={<DownloadOutlined />} 
-              onClick={() => exportToJSON('all')}
-              loading={exportLoading}
-              className="export-button"
-            >
-              Export as JSON
-            </Button>
-          </div>
-          
-          <div className="export-section-select">
-            <h3>Choose Section to Export</h3>
-            <div className="section-buttons">
-              <Button 
-                type={exportSection === 'all' ? 'primary' : 'default'} 
-                onClick={() => setExportSection('all')}
-                className="section-button"
-              >
-                All Data
-              </Button>
-              <Button 
-                type={exportSection === 'user' ? 'primary' : 'default'} 
-                onClick={() => setExportSection('user')}
-                className="section-button"
-              >
-                User Metrics Only
-              </Button>
-              <Button 
-                type={exportSection === 'content' ? 'primary' : 'default'} 
-                onClick={() => setExportSection('content')}
-                className="section-button"
-              >
-                Content Metrics Only
-              </Button>
-              <Button 
-                type={exportSection === 'performance' ? 'primary' : 'default'} 
-                onClick={() => setExportSection('performance')}
-                className="section-button"
-              >
-                Performance Metrics Only
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Modal>
-    );
-  };
-
-  if (loading || !dashboardData || !contentMetrics || !dataIntegrity) {
-    return (
-      <div style={{ textAlign: 'center', padding: '100px', borderRadius: '8px', height: '100%' }}>
+      <div className="analytics-loading">
         <Spin size="large" />
-        <p style={{ marginTop: '20px', color: '#8c8c8c' }}>Loading analytics data...</p>
+        <Text className="loading-text">Loading analytics data...</Text>
       </div>
     );
   }
-  
-  // Format data for charts
-  const formatUserMetricsForChart = () => {
-    return dashboardData.user_metrics.daily_active_users.map(day => ({
-      date: day.date,
-      users: day.count
-    }));
-  };
-  
-  const formatRequestsForChart = () => {
-    return dashboardData.request_throughput.requests_per_minute.map(minute => ({
-      time: minute.minute.split(' ')[1], // Just get the time portion
-      requests: minute.count
-    }));
-  };
-  
-  const formatTopEndpointsForChart = () => {
-    return dashboardData.request_throughput.top_endpoints;
-  };
 
-  // Update the average session duration display with a more robust formatter
-  const formatDuration = (seconds) => {
-    if (!seconds || isNaN(seconds)) return '0m 0s';
-    
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    
-    if (hrs > 0) {
-      return `${hrs}h ${mins}m ${secs}s`;
-    } else {
-      return `${mins}m ${secs}s`;
-    }
-  };
+  // Error state
+  if (!dashboardData || !contentMetrics || !dataIntegrity) {
+    return (
+      <div className="analytics-error">
+        <Empty description="Failed to load analytics data" />
+        <Button type="primary" onClick={handleRefresh} icon={<ReloadOutlined />}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
-  // Get system health status color
-  const getSystemHealthColor = (percent) => {
-    if (percent >= 80) return 'danger';
-    if (percent >= 60) return 'warning';
-    return '';
-  };
-
-  // Get data integrity status color
-  const getDataIntegrityColor = (healthStatus) => {
-    switch (healthStatus) {
-      case 'excellent': return '';
-      case 'good': return '';
-      case 'warning': return 'warning';
-      case 'critical': return 'danger';
-      case 'error': return 'danger';
-      default: return '';
-    }
-  };
-
-  // Get health status icon
-  const getHealthStatusIcon = (healthStatus) => {
-    switch (healthStatus) {
-      case 'excellent': return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      case 'good': return <CheckCircleOutlined style={{ color: '#1890ff' }} />;
-      case 'warning': return <WarningOutlined style={{ color: '#faad14' }} />;
-      case 'critical': return <WarningOutlined style={{ color: '#ff4d4f' }} />;
-      case 'error': return <WarningOutlined style={{ color: '#ff4d4f' }} />;
-      default: return <DashboardOutlined />;
-    }
-  };
-
-  // Add helper functions for content metrics
-  const formatGenreData = () => {
-    if (!contentMetrics?.genre_popularity) return [];
-    
-    // Map backend data structure to what the chart expects
-    return contentMetrics.genre_popularity.map(item => ({
-      genre: item.genre,
-      value: item.count // Convert "count" to "value" for the chart
-    }));
-  };
-  
-  const formatDailyViewingTrends = () => {
-    return contentMetrics?.daily_viewing_trends || [];
-  };
-  
-  const COLORS = ['#e50914', '#ff9800', '#4caf50', '#2196f3', '#9c27b0', '#607d8b', '#ff5722', '#795548'];
-  
-  // Verify in React DevTools or with console logs
-  console.log("Content metrics data:", contentMetrics);
-  console.log("Shows data:", contentMetrics.most_watched.shows);
-  console.log("Genre data:", contentMetrics.genre_popularity);
+  const totalViews = (contentMetrics.content_type_distribution?.[0]?.value || 0) + 
+                     (contentMetrics.content_type_distribution?.[1]?.value || 0);
 
   return (
-    <div className="analytics-dashboard">
-      <Flex justify={"space-between"} align="center" style={{marginTop: "20px", marginBottom: "20px"}}>
-          <h1>Admin Dashboard</h1>
-          <Flex gap={"5px"}>
-              <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                onClick={() => setExportModalVisible(true)}
-                className="export-button"
-              >
-                  Export Data
-              </Button>
-          </Flex>
-      </Flex>
-      {/* <Title level={2}>Analytics Dashboard</Title> */}
-      
-      <Tabs 
-        defaultActiveKey="1" 
-        onChange={handleTimeRangeChange}
-        onTabClick={(key) => {
-          // Prefetch data for the next tab
-          if (key !== timeRange.toString()) {
-            prefetchNextTimeRange(parseInt(key));
-          }
-        }}
-        className="analytics-tabs"
-        tabBarStyle={{ marginBottom: 24 }}
-      >
-        <TabPane tab="Last 24 Hours" key="1"></TabPane>
-        <TabPane tab="Last 7 Days" key="7"></TabPane>
-        <TabPane tab="Last 30 Days" key="30"></TabPane>
-      </Tabs>
-      
-      {refreshing && (
-        <div style={{
-          padding: '8px 0',
-          textAlign: 'center',
-          marginBottom: '16px',
-          background: 'rgba(0, 0, 0, 0.25)',
-          borderRadius: '4px'
-        }}>
-          <Spin size="small" /> <span style={{ marginLeft: '8px', color: '#a3a3a3' }}>Refreshing data...</span>
+    <div className="analytics-dashboard-v2">
+      {/* Header */}
+      <div className="analytics-header">
+        <div className="header-left">
+          <Title level={2} className="page-title">Analytics Dashboard</Title>
+          <Text type="secondary" className="page-subtitle">Monitor your platform performance</Text>
         </div>
-      )}
-      
-      {/* User Metrics Section */}
-      <div className="section-header">
-        <h2><UserOutlined /> User Metrics</h2>
-      </div>
-      
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
-            <Statistic 
-              className="analytics-statistic primary"
-              title="Active Users" 
-              value={dashboardData.user_metrics.daily_active_users.reduce((sum, day) => sum + day.count, 0)} 
-              prefix={<UserOutlined />} 
+        <div className="header-right">
+          <Space size="middle">
+            <Segmented
+              options={[
+                { label: '24 Hours', value: '1' },
+                { label: '7 Days', value: '7' },
+                { label: '30 Days', value: '30' }
+              ]}
+              value={timeRange}
+              onChange={setTimeRange}
+              className="time-range-selector"
             />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="Total Sessions" 
-              value={dashboardData.user_metrics.total_sessions} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="New Users" 
-              value={dashboardData.user_metrics.new_users} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="Avg. Session Duration" 
-              value={formatDuration(
-                dashboardData.user_metrics && 
-                dashboardData.user_metrics.avg_session_duration_seconds != null
-                  ? dashboardData.user_metrics.avg_session_duration_seconds
-                  : 0
-              )} 
-              prefix={<ClockCircleOutlined />} 
-            />
-          </Card>
-        </Col>
-      </Row>
-      
-      <div className="chart-container">
-        <h3>Daily Active Users</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={formatUserMetricsForChart()} className="user-chart">
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="date" tick={{ fill: '#8c8c8c' }} />
-            <YAxis tick={{ fill: '#8c8c8c' }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="users" 
-              name="Active Users"
-              stroke="#e50914" 
-              strokeWidth={3}
-              dot={{ stroke: '#e50914', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 7 }} 
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      
-      {/* Request Throughput Section */}
-      <div className="section-header">
-        <h2><ApiOutlined /> Request Throughput</h2>
-      </div>
-      
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={12}>
-          <div className="chart-container">
-            <h3>Requests Over Time</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={formatRequestsForChart()} className="requests-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="time" tick={{ fill: '#8c8c8c' }} />
-                <YAxis tick={{ fill: '#8c8c8c' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="requests" 
-                  name="Requests"
-                  stroke="#1f2a40" 
-                  strokeWidth={2}
-                  dot={{ stroke: '#1f2a40', strokeWidth: 2, r: 3 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Col>
-        <Col xs={24} md={12}>
-          <div className="chart-container">
-            <h3>Top Endpoints</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={formatTopEndpointsForChart()} className="endpoints-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="endpoint" tick={{ fill: '#8c8c8c' }} />
-                <YAxis tick={{ fill: '#8c8c8c' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Bar 
-                  dataKey="count" 
-                  name="Count"
-                  fill="#8884d8" 
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Col>
-      </Row>
-      
-      {/* Performance Section */}
-      <div className="section-header">
-        <h2><LineChartOutlined /> Performance</h2>
-      </div>
-      
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card className="analytics-card performance-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="P50 Latency" 
-              value={dashboardData.performance.p50_latency_ms} 
-              suffix="ms" 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card className="analytics-card performance-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="P90 Latency" 
-              value={dashboardData.performance.p90_latency_ms} 
-              suffix="ms" 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card className="analytics-card performance-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="P99 Latency" 
-              value={dashboardData.performance.p99_latency_ms} 
-              suffix="ms" 
-            />
-          </Card>
-        </Col>
-      </Row>
-      
-      {/* System Health Section */}
-      <div className="section-header">
-        <h2><DashboardOutlined /> System Health</h2>
-      </div>
-      
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card className={`analytics-card system-card ${getSystemHealthColor(dashboardData.system_health.cpu_percent)}`}>
-            <Statistic 
-              className="analytics-statistic"
-              title="CPU Usage" 
-              value={dashboardData.system_health.cpu_percent} 
-              suffix="%" 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card className={`analytics-card system-card ${getSystemHealthColor(dashboardData.system_health.memory_percent)}`}>
-            <Statistic 
-              className="analytics-statistic"
-              title="Memory Usage" 
-              value={dashboardData.system_health.memory_percent} 
-              suffix="%" 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card className={`analytics-card system-card ${getSystemHealthColor(dashboardData.system_health.disk_usage_percent)}`}>
-            <Statistic 
-              className="analytics-statistic"
-              title="Disk Usage" 
-              value={dashboardData.system_health.disk_usage_percent} 
-              suffix="%" 
-            />
-          </Card>
-        </Col>
-      </Row>
-      
-      {/* Cache Statistics Section */}
-      {cacheStats && (
-        <>
-          <div className="section-header">
-            <h2><ThunderboltOutlined /> Cache Statistics</h2>
-            {adminRole === 'superadmin' && (
+            <AntTooltip title="Refresh Data">
               <Button 
-                type="default" 
-                danger
-                icon={<SyncOutlined spin={cacheLoading} />}
-                onClick={handleClearCache}
-                loading={cacheLoading}
-                style={{ marginLeft: 'auto' }}
-              >
-                Clear All Caches
-              </Button>
-            )}
-          </div>
-          
-          <Row gutter={[16, 16]}>
-            {Object.entries(cacheStats).map(([key, cache]) => (
-              <Col xs={24} sm={12} md={6} key={key}>
-                <Card className="analytics-card cache-card">
-                  <div style={{ marginBottom: '12px' }}>
-                    <Tag color={
-                      parseFloat(cache.hit_rate) >= 90 ? 'green' : 
-                      parseFloat(cache.hit_rate) >= 70 ? 'blue' : 
-                      parseFloat(cache.hit_rate) >= 50 ? 'orange' : 'red'
-                    }>
-                      {cache.hit_rate} hit rate
-                    </Tag>
-                  </div>
-                  <Statistic 
-                    className="analytics-statistic"
-                    title={cache.name}
-                    value={cache.size}
-                    suffix={`/ ${cache.max_size}`}
-                    prefix={<DatabaseOutlined />}
-                  />
-                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#8c8c8c' }}>
-                    <span>Hits: {cache.hits}</span>
-                    <span style={{ marginLeft: '12px' }}>Misses: {cache.misses}</span>
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-                    TTL: {cache.ttl_seconds}s
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </>
-      )}
-      
-      {/* Real-Time Section */}
-      <div className="section-header">
-        <h2><WarningOutlined /> Real-Time</h2>
+                icon={<ReloadOutlined spin={refreshing} />} 
+                onClick={handleRefresh}
+                loading={refreshing}
+              />
+            </AntTooltip>
+            <Button 
+              type="primary" 
+              icon={<DownloadOutlined />}
+              onClick={() => setExportModalVisible(true)}
+            >
+              Export
+            </Button>
+          </Space>
+        </div>
       </div>
+
+      {/* Quick Stats Overview */}
+      <Row gutter={[16, 16]} className="overview-section">
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Active Users"
+            value={dashboardData.user_metrics.daily_active_users.reduce((sum, d) => sum + d.count, 0)}
+            icon={<TeamOutlined />}
+            color="primary"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Total Sessions"
+            value={dashboardData.user_metrics.total_sessions}
+            icon={<DesktopOutlined />}
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Total Views"
+            value={totalViews}
+            icon={<EyeOutlined />}
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Active Now"
+            value={dashboardData.real_time.active_sessions}
+            icon={<Badge status="processing" />}
+            color="success"
+          />
+        </Col>
+      </Row>
+
+      {/* User Metrics Section */}
+      <SectionHeader 
+        icon={<UserOutlined />} 
+        title="User Metrics"
+      />
       
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card className="analytics-card realtime-card">
-            <Statistic 
-              className="analytics-statistic primary"
-              title="Active Sessions" 
-              value={dashboardData.real_time.active_sessions} 
-              prefix={<UserOutlined />} 
-            />
+        <Col xs={24} lg={16}>
+          <ChartCard title="Daily Active Users">
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={userChartData}>
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="date" tick={{ fill: '#999', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#999', fontSize: 12 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="users" 
+                  name="Users"
+                  stroke={COLORS.primary} 
+                  strokeWidth={2}
+                  fill="url(#colorUsers)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card className="metrics-card">
+            <div className="metric-item">
+              <div className="metric-label">
+                <UserOutlined /> New Users
+              </div>
+              <div className="metric-value">{dashboardData.user_metrics.new_users}</div>
+            </div>
+            <div className="metric-item">
+              <div className="metric-label">
+                <SyncOutlined /> Returning Users
+              </div>
+              <div className="metric-value">{dashboardData.user_metrics.returning_users || 0}</div>
+            </div>
+            <div className="metric-item">
+              <div className="metric-label">
+                <ClockCircleOutlined /> Avg. Session
+              </div>
+              <div className="metric-value">
+                {formatDuration(dashboardData.user_metrics.avg_session_duration_seconds)}
+              </div>
+            </div>
           </Card>
         </Col>
       </Row>
 
       {/* Content Metrics Section */}
-      <div className="section-header">
-        <h2><PlaySquareOutlined /> Content Metrics</h2>
-      </div>
+      <SectionHeader 
+        icon={<PlaySquareOutlined />} 
+        title="Content Performance"
+      />
       
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
+          <Card className="content-stat-card">
+            <div className="content-stat-icon movie">
+              <VideoCameraOutlined />
+            </div>
             <Statistic 
-              className="analytics-statistic"
-              title="Total Views" 
-              value={
-                (contentMetrics.content_type_distribution[0].value || 0) + 
-                (contentMetrics.content_type_distribution[1].value || 0)
-              } 
-              prefix={<VideoCameraOutlined />} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
-            <Statistic 
-              className="analytics-statistic"
               title="Movie Views" 
-              value={contentMetrics.content_type_distribution[0].value || 0}
-              prefix={<VideoCameraOutlined />} 
+              value={contentMetrics.content_type_distribution?.[0]?.value || 0}
+              className="content-statistic"
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
+          <Card className="content-stat-card">
+            <div className="content-stat-icon tv">
+              <PlaySquareOutlined />
+            </div>
             <Statistic 
-              className="analytics-statistic"
               title="TV Show Views" 
-              value={contentMetrics.content_type_distribution[1].value || 0}
-              prefix={<PlaySquareOutlined />} 
+              value={contentMetrics.content_type_distribution?.[1]?.value || 0}
+              className="content-statistic"
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
+          <Card className="content-stat-card">
+            <div className="content-stat-icon completion">
+              <CheckCircleOutlined />
+            </div>
             <Statistic 
-              className="analytics-statistic"
               title="Completion Rate" 
-              value={contentMetrics.completion_metrics.completion_rate}
-              suffix="%" 
-              prefix={<CheckCircleOutlined />}
+              value={contentMetrics.completion_metrics?.completion_rate || 0}
+              suffix="%"
+              className="content-statistic"
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="content-stat-card">
+            <div className="content-stat-icon total">
+              <TrophyOutlined />
+            </div>
+            <Statistic 
+              title="Total Content Views" 
+              value={totalViews}
+              className="content-statistic"
             />
           </Card>
         </Col>
       </Row>
-      
-      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-        <Col xs={24} md={12}>
-          <div className="chart-container">
-            <h3>Most Watched Movies</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={contentMetrics.most_watched.movies} className="content-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis dataKey="title" tick={{ fill: '#a3a3a3' }} />
-                <YAxis tick={{ fill: '#a3a3a3' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Bar 
-                  dataKey="views" 
-                  name="Views"
-                  fill="#8884d8" 
-                  radius={[4, 4, 0, 0]}
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={12}>
+          <ChartCard title="Most Watched Movies">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={contentMetrics.most_watched?.movies || []} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis type="number" tick={{ fill: '#999', fontSize: 11 }} />
+                <YAxis 
+                  dataKey="title" 
+                  type="category" 
+                  width={120} 
+                  tick={{ fill: '#999', fontSize: 11 }}
+                  tickFormatter={(value) => value?.length > 15 ? `${value.substring(0, 15)}...` : value}
                 />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="views" name="Views" fill={COLORS.primary} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
         </Col>
-        <Col xs={24} md={12}>
-          <div className="chart-container">
-            <h3>Most Watched TV Shows</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={contentMetrics.most_watched.shows} className="content-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis dataKey="title" tick={{ fill: '#a3a3a3' }} />
-                <YAxis tick={{ fill: '#a3a3a3' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Bar 
-                  dataKey="views" 
-                  name="Views"
-                  fill="#82ca9d" 
-                  radius={[4, 4, 0, 0]}
+        <Col xs={24} lg={12}>
+          <ChartCard title="Most Watched TV Shows">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={contentMetrics.most_watched?.shows || []} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis type="number" tick={{ fill: '#999', fontSize: 11 }} />
+                <YAxis 
+                  dataKey="title" 
+                  type="category" 
+                  width={120} 
+                  tick={{ fill: '#999', fontSize: 11 }}
+                  tickFormatter={(value) => value?.length > 15 ? `${value.substring(0, 15)}...` : value}
                 />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="views" name="Views" fill={COLORS.success} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
         </Col>
       </Row>
-      
-      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-        <Col xs={24} md={12}>
-          <div className="chart-container">
-            <h3>Genre Popularity</h3>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={12}>
+          <ChartCard title="Genre Popularity">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie 
-                  data={formatGenreData()} 
-                  dataKey="value"  // This expects a property named "value"
-                  nameKey="genre"  // This expects a property named "genre"
-                  cx="50%" 
-                  cy="50%" 
-                  outerRadius={100} 
-                  fill="#8884d8" 
-                  label
+                <Pie
+                  data={genreChartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={{ stroke: '#666' }}
                 >
-                  {formatGenreData().map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {genreChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS.chart[index % COLORS.chart.length]} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
-                <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
         </Col>
-        <Col xs={24} md={12}>
-          <div className="chart-container">
-            <h3>Daily Viewing Trends</h3>
+        <Col xs={24} lg={12}>
+          <ChartCard title="Daily Viewing Trends">
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={formatDailyViewingTrends()} className="content-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis dataKey="date" tick={{ fill: '#a3a3a3' }} />
-                <YAxis tick={{ fill: '#a3a3a3' }} />
+              <LineChart data={contentMetrics.daily_viewing_trends || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="date" tick={{ fill: '#999', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#999', fontSize: 12 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend />
                 <Line 
                   type="monotone" 
                   dataKey="views" 
                   name="Views"
-                  stroke="#8884d8" 
+                  stroke={COLORS.info} 
                   strokeWidth={2}
-                  dot={{ stroke: '#8884d8', strokeWidth: 2, r: 3 }}
+                  dot={{ fill: COLORS.info, strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
         </Col>
       </Row>
 
-      {/* Data Integrity Section */}
-      <div className="section-header">
-        <h2><WarningOutlined /> Data Integrity</h2>
-      </div>
+      {/* Request Throughput Section */}
+      <SectionHeader 
+        icon={<ApiOutlined />} 
+        title="API Performance"
+      />
       
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="analytics-card">
-            <Statistic 
-              className="analytics-statistic"
-              title="Total Items" 
-              value={dataIntegrity.total_items} 
-              prefix={<DashboardOutlined />} 
-            />
-          </Card>
+        <Col xs={24} lg={16}>
+          <ChartCard title="Request Throughput">
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={requestChartData}>
+                <defs>
+                  <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={COLORS.info} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={COLORS.info} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="time" tick={{ fill: '#999', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#999', fontSize: 12 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="requests" 
+                  name="Requests"
+                  stroke={COLORS.info}
+                  strokeWidth={2}
+                  fill="url(#colorRequests)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className={`analytics-card ${getDataIntegrityColor(dataIntegrity.health_status)}`}>
-            <Statistic 
-              className="analytics-statistic"
-              title="Contaminated Items" 
-              value={dataIntegrity.total_contaminated} 
-              prefix={<WarningOutlined />} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className={`analytics-card ${getDataIntegrityColor(dataIntegrity.health_status)}`}>
-            <Statistic 
-              className="analytics-statistic"
-              title="Contamination Rate" 
-              value={dataIntegrity.contamination_percentage.toFixed(2)} 
-              suffix="%" 
-              prefix={<WarningOutlined />} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className={`analytics-card ${getDataIntegrityColor(dataIntegrity.health_status)}`}>
-            <Statistic 
-              className="analytics-statistic"
-              title="Health Status" 
-              value={dataIntegrity.health_status.toUpperCase()} 
-              prefix={getHealthStatusIcon(dataIntegrity.health_status)} 
-            />
+        <Col xs={24} lg={8}>
+          <Card className="latency-card">
+            <Title level={5} className="latency-title">Response Latency</Title>
+            <div className="latency-item">
+              <div className="latency-label">P50</div>
+              <Progress 
+                percent={Math.min((dashboardData.performance.p50_latency_ms / 1000) * 100, 100)} 
+                strokeColor={COLORS.success}
+                showInfo={false}
+              />
+              <div className="latency-value">{dashboardData.performance.p50_latency_ms}ms</div>
+            </div>
+            <div className="latency-item">
+              <div className="latency-label">P90</div>
+              <Progress 
+                percent={Math.min((dashboardData.performance.p90_latency_ms / 1000) * 100, 100)} 
+                strokeColor={COLORS.warning}
+                showInfo={false}
+              />
+              <div className="latency-value">{dashboardData.performance.p90_latency_ms}ms</div>
+            </div>
+            <div className="latency-item">
+              <div className="latency-label">P99</div>
+              <Progress 
+                percent={Math.min((dashboardData.performance.p99_latency_ms / 1000) * 100, 100)} 
+                strokeColor={COLORS.error}
+                showInfo={false}
+              />
+              <div className="latency-value">{dashboardData.performance.p99_latency_ms}ms</div>
+            </div>
           </Card>
         </Col>
       </Row>
+
+      {/* System Health Section */}
+      <SectionHeader 
+        icon={<CloudServerOutlined />} 
+        title="System Health"
+      />
       
-      {/* Data Sources Breakdown */}
-      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-        <Col xs={24}>
-          <div className="chart-container">
-            <h3>Data Contamination by Source</h3>
-            <Row gutter={[16, 16]}>
-              {Object.entries(dataIntegrity.data_sources || {}).map(([source, data]) => (
-                <Col xs={24} sm={12} md={6} key={source}>
-                  <Card className="analytics-card" size="small">
-                    <Statistic 
-                      title={source.replace(/_/g, ' ').toUpperCase()}
-                      value={`${data.contaminated}/${data.total}`}
-                      suffix={data.total > 0 ? `(${((data.contaminated / data.total) * 100).toFixed(1)}%)` : '(0%)'}
-                      className="analytics-statistic"
-                      valueStyle={{ 
-                        color: data.contaminated > 0 ? '#ff4d4f' : '#52c41a',
-                        fontSize: '16px'
-                      }}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <Card className="health-card">
+            <div className="health-icon cpu">
+              <ThunderboltOutlined />
+            </div>
+            <div className="health-info">
+              <Text className="health-label">CPU Usage</Text>
+              <Progress 
+                type="dashboard" 
+                percent={dashboardData.system_health.cpu_percent}
+                strokeColor={getHealthColor(dashboardData.system_health.cpu_percent) === 'error' ? COLORS.error : 
+                            getHealthColor(dashboardData.system_health.cpu_percent) === 'warning' ? COLORS.warning : COLORS.success}
+                size={100}
+              />
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="health-card">
+            <div className="health-icon memory">
+              <DatabaseOutlined />
+            </div>
+            <div className="health-info">
+              <Text className="health-label">Memory Usage</Text>
+              <Progress 
+                type="dashboard" 
+                percent={dashboardData.system_health.memory_percent}
+                strokeColor={getHealthColor(dashboardData.system_health.memory_percent) === 'error' ? COLORS.error : 
+                            getHealthColor(dashboardData.system_health.memory_percent) === 'warning' ? COLORS.warning : COLORS.success}
+                size={100}
+              />
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="health-card">
+            <div className="health-icon disk">
+              <HddOutlined />
+            </div>
+            <div className="health-info">
+              <Text className="health-label">Disk Usage</Text>
+              <Progress 
+                type="dashboard" 
+                percent={dashboardData.system_health.disk_usage_percent}
+                strokeColor={getHealthColor(dashboardData.system_health.disk_usage_percent) === 'error' ? COLORS.error : 
+                            getHealthColor(dashboardData.system_health.disk_usage_percent) === 'warning' ? COLORS.warning : COLORS.success}
+                size={100}
+              />
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Cache Statistics Section */}
+      {cacheStats && (
+        <>
+          <SectionHeader 
+            icon={<ThunderboltOutlined />} 
+            title="Cache Statistics"
+            action={
+              adminRole === 'superadmin' && (
+                <Button 
+                  danger
+                  icon={<SyncOutlined spin={cacheLoading} />}
+                  onClick={handleClearCache}
+                  loading={cacheLoading}
+                >
+                  Clear All Caches
+                </Button>
+              )
+            }
+          />
+          
+          <Row gutter={[16, 16]}>
+            {Object.entries(cacheStats).map(([key, cache]) => {
+              const hitRate = parseFloat(cache.hit_rate);
+              return (
+                <Col xs={24} sm={12} lg={6} key={key}>
+                  <Card className="cache-stat-card">
+                    <div className="cache-header">
+                      <Text className="cache-name">{cache.name}</Text>
+                      <Tag color={hitRate >= 90 ? 'green' : hitRate >= 70 ? 'blue' : hitRate >= 50 ? 'orange' : 'red'}>
+                        {cache.hit_rate}
+                      </Tag>
+                    </div>
+                    <Progress 
+                      percent={(cache.size / cache.max_size) * 100} 
+                      strokeColor={COLORS.info}
+                      showInfo={false}
+                      size="small"
                     />
+                    <div className="cache-stats">
+                      <span>Size: {cache.size}/{cache.max_size}</span>
+                      <span>TTL: {cache.ttl_seconds}s</span>
+                    </div>
+                    <div className="cache-hits">
+                      <span className="hits">Hits: {cache.hits}</span>
+                      <span className="misses">Misses: {cache.misses}</span>
+                    </div>
                   </Card>
+                </Col>
+              );
+            })}
+          </Row>
+        </>
+      )}
+
+      {/* Data Integrity Section */}
+      <SectionHeader 
+        icon={<WarningOutlined />} 
+        title="Data Integrity"
+      />
+      
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={8}>
+          <Card className="integrity-overview-card">
+            <div className="integrity-status">
+              {getHealthStatus(dataIntegrity.health_status).icon}
+              <div className="status-info">
+                <Text className="status-label">Health Status</Text>
+                <Tag color={getHealthStatus(dataIntegrity.health_status).color}>
+                  {dataIntegrity.health_status?.toUpperCase()}
+                </Tag>
+              </div>
+            </div>
+            <div className="integrity-stats">
+              <div className="integrity-stat">
+                <span className="stat-label">Total Items</span>
+                <span className="stat-value">{dataIntegrity.total_items?.toLocaleString()}</span>
+              </div>
+              <div className="integrity-stat">
+                <span className="stat-label">Contaminated</span>
+                <span className="stat-value error">{dataIntegrity.total_contaminated?.toLocaleString()}</span>
+              </div>
+              <div className="integrity-stat">
+                <span className="stat-label">Rate</span>
+                <span className="stat-value">{dataIntegrity.contamination_percentage?.toFixed(2)}%</span>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={16}>
+          <Card className="integrity-sources-card">
+            <Title level={5}>Data Sources Breakdown</Title>
+            <Row gutter={[12, 12]}>
+              {Object.entries(dataIntegrity.data_sources || {}).map(([source, data]) => (
+                <Col xs={12} sm={8} md={6} key={source}>
+                  <div className="source-item">
+                    <Text className="source-name">{source.replace(/_/g, ' ')}</Text>
+                    <div className="source-stats">
+                      <span className={data.contaminated > 0 ? 'error' : 'success'}>
+                        {data.contaminated}/{data.total}
+                      </span>
+                      <span className="source-percent">
+                        {data.total > 0 ? ((data.contaminated / data.total) * 100).toFixed(1) : 0}%
+                      </span>
+                    </div>
+                  </div>
                 </Col>
               ))}
             </Row>
-          </div>
+          </Card>
         </Col>
       </Row>
 
-      {renderExportModal()}
+      {/* Export Modal */}
+      <Modal
+        title="Export Analytics Data"
+        open={exportModalVisible}
+        onCancel={() => setExportModalVisible(false)}
+        footer={null}
+        className="export-modal"
+        centered
+      >
+        <div className="export-options">
+          <Text className="export-description">
+            Choose your preferred export format. The report will include data from the selected time range ({timeRange} day{timeRange > 1 ? 's' : ''}).
+          </Text>
+          <div className="export-buttons">
+            <Button 
+              size="large"
+              icon={<FileTextOutlined />} 
+              onClick={exportToCSV}
+              loading={exportLoading}
+              className="export-btn csv"
+            >
+              Export as CSV
+            </Button>
+            <Button 
+              size="large"
+              icon={<DownloadOutlined />} 
+              onClick={exportToJSON}
+              loading={exportLoading}
+              className="export-btn json"
+            >
+              Export as JSON
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
