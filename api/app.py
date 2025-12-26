@@ -40,6 +40,15 @@ from api.routes.notifications import notifications_bp
 from api.routes.analytics import analytics_bp
 from api.routes.file_parser import file_parser_bp
 from api.routes.discovery import discovery_bp
+from api.routes.service_control import service_control_bp
+
+# Service controller for checking service status
+from api.service_controller import (
+    get_service_config,
+    is_service_enabled,
+    is_maintenance_mode,
+    should_allow_admin_access
+)
 
 # Print server header with version and timestamp
 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -106,6 +115,57 @@ migrate = Migrate(app, db)
 
 bcrypt = Bcrypt(app)
 
+# Endpoints that should always be accessible even when service is down
+ALWAYS_ACCESSIBLE_ENDPOINTS = [
+    '/api/service/',      # Service status endpoints
+    '/api/admin/login',   # Admin login
+    '/api/admin/verify',  # Admin verification
+    '/api/admin/logout',  # Admin logout
+    '/api/admin/profile', # Admin profile
+    '/ip',                # IP endpoint
+]
+
+# Endpoint prefixes for admin-only routes (accessible when service is down if admin access is allowed)
+ADMIN_ENDPOINT_PREFIXES = [
+    '/api/admin/',
+]
+
+@app.before_request
+def check_service_status():
+    """
+    Check if the service is enabled before processing each request.
+    
+    - Admin endpoints remain accessible if allow_admin_access is True
+    - Service status endpoint is always accessible
+    - All other endpoints return 503 when service is disabled
+    """
+    path = request.path
+    
+    # Always allow certain endpoints
+    for endpoint in ALWAYS_ACCESSIBLE_ENDPOINTS:
+        if path.startswith(endpoint):
+            return None
+    
+    # Check if service is enabled
+    if is_service_enabled():
+        return None
+    
+    # Service is down - check if this is an admin endpoint
+    if should_allow_admin_access():
+        for prefix in ADMIN_ENDPOINT_PREFIXES:
+            if path.startswith(prefix):
+                return None
+    
+    # Service is down and this is not an allowed endpoint
+    config = get_service_config()
+    return jsonify({
+        'error': 'service_unavailable',
+        'message': config.get('maintenance_message', 'Service is temporarily unavailable'),
+        'title': config.get('maintenance_title', 'Service Down'),
+        'estimated_downtime': config.get('estimated_downtime'),
+        'maintenance_mode': config.get('maintenance_mode', False)
+    }), 503
+
 # Add session cleanup handler to prevent session poisoning
 @app.teardown_request
 def cleanup_session(exception=None):
@@ -152,6 +212,8 @@ app.register_blueprint(notifications_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(file_parser_bp)
 app.register_blueprint(discovery_bp)
+app.register_blueprint(service_control_bp)
+log_substep("Service control endpoints registered")
 log_section_end()
 
 # Content catalog loading with improved progress indicators

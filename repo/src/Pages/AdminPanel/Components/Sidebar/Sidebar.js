@@ -13,7 +13,8 @@ import {
     BellOutlined, 
     LineChartOutlined, 
     UserSwitchOutlined,
-    CloudServerOutlined // Add this import for the CDN icon
+    CloudServerOutlined, // Add this import for the CDN icon
+    PoweroffOutlined // Service control icon
 } from '@ant-design/icons';
 import { Tooltip, notification } from 'antd';
 
@@ -134,6 +135,12 @@ const Sidebar = ({user}) => {
             links: [
                 {name: 'Dashboard', path: '/admin/analytics', requiredRoleLevel: 1, icon: LineChartOutlined, description: "View site analytics and metrics"},
                 {name: 'Active Sessions', path: '/admin/analytics/sessions', requiredRoleLevel: 2, icon: UserSwitchOutlined, description: "View active user sessions"},
+            ]
+        },
+        {
+            name: "System",
+            links: [
+                {name: 'Service Control', path: '/admin/service-control', requiredRoleLevel: 3, icon: PoweroffOutlined, description: "Enable/disable service and maintenance mode (Superadmin only)"},
             ]
         },
     ];

@@ -21,6 +21,7 @@ import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import ActiveSessions from './pages/Analytics/ActiveSessions';
 import CdnManagementPage from './pages/CDNManagement/CDNManagementPage'; // Add this import
 import AddByFile from './pages/UploadByFile/AddByFile';
+import ServiceControlPage from './pages/ServiceControl/ServiceControlPage';
 
 const AdminPage = () => {
     const token = localStorage.getItem('admin_token');
@@ -100,6 +101,8 @@ const AdminPage = () => {
                         <Route path="/analytics/sessions" element={<ActiveSessions />} />
                         {/* Add the new CDN Management route */}
                         <Route path="/cdn" element={<AdminPrivateRoute requiredRoleLevel={"moderator"}><CdnManagementPage/></AdminPrivateRoute>}/>
+                        {/* Service Control - Superadmin only */}
+                        <Route path="/service-control" element={<AdminPrivateRoute requiredRoleLevel={"superadmin"}><ServiceControlPage/></AdminPrivateRoute>}/>
                         <Route path="*" element={<NotFoundPage/>}/>
                     </Routes>
                 </div>

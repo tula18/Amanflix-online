@@ -129,16 +129,8 @@ const ErrorHandler = (error, navigate, json={}) => {
                 }}});
                 break;
             case "service_unavailable":
-                navigate('/error', {state: { error: {
-                    title: "Service Unavailable", 
-                    message: "The service you're trying to access isn't quite ready to be enjoyed. Check back soon!",
-                    with_divider: false,
-                    buttons: [{
-                        text: "Refresh",
-                        type: "primary",
-                        onClick: "refreshPage",
-                    }]
-                }}});
+                // Redirect to maintenance page for service unavailable errors
+                navigate('/maintenance');
                 break;
             case "admin_token_missing":
                 navigate('/admin/login', {state: { message: "Please log in to continue." }})

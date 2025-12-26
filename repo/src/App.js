@@ -25,14 +25,38 @@ import ShowCategoryPage from './Pages/ShowCategoryPage/ShowCategoryPage';
 import ScrollToTop from './Utils/ScrolltoTop';
 import { API_URL } from './config';
 import ComingSoonPage from './Pages/ComingSoonPage/ComingSoonPage';
+import MaintenancePage from './Pages/ErrorsPages/MaintenancePage/MaintenancePage';
 
 function App() {
   const [clientIp, setClientIp] = useState('');
   const [showComingSoon, setShowComingSoon] = useState(false)
+  const [serviceStatus, setServiceStatus] = useState({ is_available: true, checked: false });
 
   const AllowedIPS = [
     '221.51.39.33'
   ]
+
+  // Check service status on app load
+  useEffect(() => {
+    const checkServiceStatus = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/service/status`);
+        if (response.ok) {
+          const data = await response.json();
+          setServiceStatus({ ...data, checked: true });
+        } else {
+          // If we can't check status, assume service is available
+          setServiceStatus({ is_available: true, checked: true });
+        }
+      } catch (error) {
+        console.error('Error checking service status:', error);
+        // If we can't reach the server at all, we'll show maintenance
+        setServiceStatus({ is_available: false, checked: true, maintenance_mode: true });
+      }
+    };
+
+    checkServiceStatus();
+  }, []);
 
   useEffect(() => {
     const getIP = async () => {
@@ -192,6 +216,18 @@ function App() {
     )
   }
 
+  // Show maintenance page if service is unavailable (but allow admin panel access)
+  // We need to check if the current path is an admin route
+  const isAdminRoute = window.location.pathname.startsWith('/admin');
+  
+  if (serviceStatus.checked && !serviceStatus.is_available && !isAdminRoute) {
+    return (
+      <Router>
+        <MaintenancePage />
+      </Router>
+    );
+  }
+
   return (
     <div className="App">
       <Router>
@@ -211,6 +247,7 @@ function App() {
           <Route path='/profile' element={<PrivateRoute><ProfilePage/></PrivateRoute>} />
           <Route path='/admin/*' element={<AdminPage/>} />
           <Route path='/error' element={<ServiceDownPage/>} />
+          <Route path='/maintenance' element={<MaintenancePage/>} />
           <Route path='/list' element={<MyListPage/>} />
           <Route path='/help' element={<HelpPage/>} />
           <Route path='*' element={<NotFoundPage/>} />
