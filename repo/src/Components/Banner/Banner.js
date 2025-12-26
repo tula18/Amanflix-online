@@ -363,9 +363,9 @@ function Banner() {
       return <LoadingBanner />;
     }
 
-    const title = movie.media_type === 'tv' ? movie.name : movie.title
+    const title = movie.name || movie.title || 'Title not available';
 
-    const fontSize = title ? (title.length > 10 ? '5vh' : '7vh') : '7vh';
+    const fontSize = '5vh';
 
     const firstDate = movie.media_type === 'tv' ? new Date(movie.first_air_date) : new Date(movie.release_date)
 
