@@ -197,7 +197,8 @@ def disable_service(message=None, title=None, estimated_downtime=None, updated_b
         dict: Updated configuration
     """
     updates = {
-        'service_enabled': False
+        'service_enabled': False,
+        'maintenance_mode': False  # Disable maintenance mode when disabling service
     }
     
     if message:
@@ -224,6 +225,7 @@ def enable_maintenance_mode(message=None, title=None, estimated_downtime=None, u
         dict: Updated configuration
     """
     updates = {
+        'service_enabled': True,  # Ensure service is enabled for maintenance mode
         'maintenance_mode': True
     }
     

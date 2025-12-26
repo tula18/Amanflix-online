@@ -134,6 +134,7 @@ def enable_service_route(current_admin):
 def disable_service_route(current_admin):
     """
     Disable the service (superadmin only).
+    This will disable the service and automatically disable maintenance mode.
     
     Expected form data:
         - message: Custom maintenance message (optional)
@@ -169,7 +170,7 @@ def disable_service_route(current_admin):
 def enable_maintenance_route(current_admin):
     """
     Enable maintenance mode (superadmin only).
-    Service will still be "enabled" but users will see maintenance message.
+    This will enable the service (if not already enabled) and activate maintenance mode.
     
     Expected form data:
         - message: Custom maintenance message (optional)

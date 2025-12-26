@@ -559,16 +559,19 @@ const ServiceControlPage = () => {
                   Disable Maintenance Mode
                 </Button>
               ) : (
-                <Button 
-                  size="large"
-                  type="default"
-                  icon={<ToolOutlined />}
-                  onClick={handleEnableMaintenance}
-                  loading={saving}
-                  style={{ borderColor: '#faad14', color: '#faad14' }}
-                >
-                  Enable Maintenance Mode
-                </Button>
+                <Tooltip title={!config.service_enabled ? "Service must be enabled to activate maintenance mode" : ""}>
+                  <Button 
+                    size="large"
+                    type="default"
+                    icon={<ToolOutlined />}
+                    onClick={handleEnableMaintenance}
+                    loading={saving}
+                    disabled={!config.service_enabled}
+                    style={{ borderColor: '#faad14', color: '#faad14' }}
+                  >
+                    Enable Maintenance Mode
+                  </Button>
+                </Tooltip>
               )}
             </Space>
             

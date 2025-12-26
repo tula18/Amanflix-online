@@ -1,10 +1,10 @@
 {
     "service_enabled": true,
-    "maintenance_mode": false,
-    "maintenance_message": "Amanflix is taking a short break. Grab some popcorn and we'll be back before you know it! \ud83c\udf7f",
-    "maintenance_title": "We'll Be Back Soon",
-    "estimated_downtime": null,
-    "last_updated": "2025-12-26T19:07:31.324384",
+    "maintenance_mode": true,
+    "maintenance_message": "We'll be right back! Just a quick service interruption.",
+    "maintenance_title": "Brief Service Interruption",
+    "estimated_downtime": "5 minutes",
+    "last_updated": "2025-12-27T01:54:57.194378",
     "updated_by": "almog1920",
     "allow_admin_access": true
 }
