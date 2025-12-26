@@ -410,7 +410,20 @@ function Banner() {
                 </div>
                 <div className='banner_buttons'>
                     <button className='banner_play_button' onClick={() => handlePlay(movie)}>
-                        <FaPlay style={{fontSize:25, paddingRight:'5px'}}/>Play
+                        <FaPlay style={{fontSize:25, paddingRight:'5px'}}/>
+                        {movie.media_type === 'tv' ? (
+                          watchHistory ? (
+                            watchHistory.is_completed && watchHistory.next_episode ? (
+                              watchHistory.next_episode.restarted ? 'Play' : 'Play Next Episode'
+                            ) : (
+                              'Resume'
+                            )
+                          ) : (
+                            'Play'
+                          )
+                        ) : (
+                          watchHistory && watchHistory.progress_percentage < 98 ? 'Resume' : 'Play'
+                        )}
                     </button>
                     <button className='banner_info_button' onClick={(event) => handleMovieClick(movie, event)}>
                         <MdInfoOutline style={{fontSize:32, paddingRight:'5px' }}/>
