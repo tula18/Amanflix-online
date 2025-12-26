@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MdExpandLess, MdExpandMore } from 'react-icons/md';
+import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 import { API_URL } from '../../../../config';
@@ -20,9 +21,19 @@ const Sidebar = ({user}) => {
     const [collapsedCategories, setCollapsedCategories] = useState({})
     const [reportCount, setReportCount] = useState(0)
     const [requestsCount, setRequestsCount] = useState(0)
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        const saved = localStorage.getItem('sidebar_collapsed');
+        return saved ? JSON.parse(saved) : false;
+    });
     const token = localStorage.getItem('admin_token')
     const location = useLocation();
     const navigate = useNavigate();
+
+    const toggleSidebarCollapse = () => {
+        const newState = !isSidebarCollapsed;
+        setIsSidebarCollapsed(newState);
+        localStorage.setItem('sidebar_collapsed', JSON.stringify(newState));
+    };
 
     useEffect(() => {
         const fetchBugsCount = async () => {
@@ -163,13 +174,26 @@ const Sidebar = ({user}) => {
 
     
     return (
-        <div className='sidebar'>
+        <div className={`sidebar ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             <div className='sidebar_top'>
-            <span className={`sidebar__logo`} onClick={() => navigate('/admin')}>Admin Panel</span>
+                <div className='sidebar_header'>
+                    {!isSidebarCollapsed && (
+                        <span className='sidebar__logo' onClick={() => navigate('/admin')}>
+                            Admin Panel
+                        </span>
+                    )}
+                    <button className='sidebar_toggle_btn' onClick={toggleSidebarCollapse} title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                        {isSidebarCollapsed ? <HiChevronDoubleRight /> : <HiChevronDoubleLeft />}
+                    </button>
+                </div>
                 <div className={`sidebar_profile ${location.pathname === "/admin/profile" ? "profile_highlighted" : ""}`} onClick={() => navigate('/admin/profile')}>
-                    <img style={{width: '100px', height: "100px", borderRadius: '50%'}} alt="Profile Avatar" loading={'lazy'} draggable="false" src={`${API_URL}/cdn/images/profile.png`} />
-                    <h1 className='admin_username'>{String(user.username)}</h1>
-                    <h3 className='admin_role'>{String(user.role).toUpperCase()}</h3>
+                    <img className='sidebar_profile_img' alt="Profile Avatar" loading={'lazy'} draggable="false" src={`${API_URL}/cdn/images/profile.png`} />
+                    {!isSidebarCollapsed && (
+                        <div className='sidebar_profile_info'>
+                            <h1 className='admin_username'>{String(user.username)}</h1>
+                            <h3 className='admin_role'>{String(user.role).toUpperCase()}</h3>
+                        </div>
+                    )}
                 </div>
                 <div className='sidebar_links'>
                     {categories.map((category) => {
@@ -181,51 +205,51 @@ const Sidebar = ({user}) => {
                             return null;
                         }
 
-                        // if (accessibleLinks.length === 1) {
-                        //     return accessibleLinks.map((link) => (
-                        //         <NavLink
-                        //         key={link.name}
-                        //         to={link.path}
-                        //         className={`sidebar-link alone ${location.pathname === link.path ? 'active-link' : ''}`}
-                        //         >
-                        //             {link.name}
-                        //         </NavLink>
-                        //     ))
-                        // }
-
-                        const isCollapsed = collapsedCategories[category.name]
+                        const isCategoryCollapsed = collapsedCategories[category.name]
 
                         return (
-                            <div key={category.name}>
-                                <div className={`category-header`} onClick={() =>toggleCategory(category.name)}>
-                                    {category.name}
-                                    <span className='collapsed-icon'>
-                                        {/* {isCollapsed ? <MdExpandMore/> : <MdExpandLess/>} */}
-                                        <MdExpandLess className={`coll_icon ${isCollapsed ? 'collapsed' : ''}`} />
-                                    </span>
-                                </div>
-                                {!isCollapsed &&
-                                    accessibleLinks.map((link) => (
-                                        <NavLink
-                                        key={link.name}
-                                        to={link.path}
-                                        className={`sidebar-link ${location.pathname === link.path ? 'active-link' : ''}`}
+                            <div key={category.name} className='sidebar_category'>
+                                {!isSidebarCollapsed && (
+                                    <div className='category-header' onClick={() => toggleCategory(category.name)}>
+                                        <span>{category.name}</span>
+                                        <MdExpandLess className={`coll_icon ${isCategoryCollapsed ? 'collapsed' : ''}`} />
+                                    </div>
+                                )}
+                                <div className={`category_links ${isCategoryCollapsed && !isSidebarCollapsed ? 'category_links_hidden' : ''}`}>
+                                    {accessibleLinks.map((link) => (
+                                        <Tooltip 
+                                            key={link.name}
+                                            title={isSidebarCollapsed ? link.name : ''}
+                                            placement='right'
                                         >
-                                            <Tooltip title={link.description || ''}>
+                                            <NavLink
+                                                to={link.path}
+                                                className={`sidebar-link ${location.pathname === link.path ? 'active-link' : ''}`}
+                                            >
                                                 <link.icon className='sidebar_link_icon'/>
-                                                {link.name}
-                                            </Tooltip>
-                                        </NavLink>
+                                                {!isSidebarCollapsed && <span className='sidebar_link_text'>{link.name}</span>}
+                                            </NavLink>
+                                        </Tooltip>
                                     ))}
+                                </div>
                             </div>
                         )
                     })}
-
                 </div>
             </div>
             <div className='sidebar_bottom'>
-                <span className={`route_mobile ${location.pathname === '/profile' ? 'cur_route' : ''}`}><button className='link_mobile' onClick={() => navigate('/')}>Go Home</button></span>
-                <span className={`route_mobile ${location.pathname === '/profile' ? 'cur_route' : ''}`}><button className='link_mobile' onClick={handleLogOut}>Sign Out</button></span>
+                <Tooltip title={isSidebarCollapsed ? 'Go Home' : ''} placement='right'>
+                    <button className='sidebar_bottom_btn' onClick={() => navigate('/')}>
+                        <GoHome className='sidebar_bottom_icon' />
+                        {!isSidebarCollapsed && <span>Go Home</span>}
+                    </button>
+                </Tooltip>
+                <Tooltip title={isSidebarCollapsed ? 'Sign Out' : ''} placement='right'>
+                    <button className='sidebar_bottom_btn sidebar_logout_btn' onClick={handleLogOut}>
+                        <LuUser className='sidebar_bottom_icon' />
+                        {!isSidebarCollapsed && <span>Sign Out</span>}
+                    </button>
+                </Tooltip>
             </div>
         </div>
     )
