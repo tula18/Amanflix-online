@@ -1,10 +1,10 @@
 {
     "service_enabled": true,
-    "maintenance_mode": true,
+    "maintenance_mode": false,
     "maintenance_message": "We'll be right back! Just a quick service interruption.",
     "maintenance_title": "Brief Service Interruption",
-    "estimated_downtime": "5 minutes",
-    "last_updated": "2025-12-27T01:54:57.194378",
+    "estimated_downtime": null,
+    "last_updated": "2025-12-27T01:57:53.810242",
     "updated_by": "almog1920",
     "allow_admin_access": true
 }

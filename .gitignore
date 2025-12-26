@@ -7,6 +7,7 @@ api/instance/amanflix_db.db
 api/logs/
 api/logs/*
 api/instance/amanflix_db.db
+api/config/service_config.json
 api/logs/amanflix.log
 api/logs/api_requests.log
 repo/node_modules/
