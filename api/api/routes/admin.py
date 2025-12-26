@@ -13,8 +13,28 @@ from io import StringIO
 from werkzeug.utils import secure_filename
 from base64 import b85encode
 import hashlib
+import re
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
+
+def sanitize_json_data(data):
+    """
+    Recursively sanitize JSON data by removing invisible control characters and special symbols
+    that can corrupt data functionality, especially in URLs and text fields.
+    """
+    if isinstance(data, str):
+        # Remove invisible control characters and zero-width characters
+        # Control characters: \x00-\x1F, \x7F-\x9F
+        # Zero-width characters: \u200B-\u200F, \uFEFF
+        # Other problematic invisible characters
+        invisible_chars = re.compile(r'[\x00-\x1F\x7F-\x9F\u200B-\u200F\uFEFF\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u2000-\u200A\u2028-\u202F\u205F-\u206F\u2800\u3164\uFE00-\uFE0F\uFFF0-\uFFFF]')
+        return invisible_chars.sub('', data)
+    elif isinstance(data, list):
+        return [sanitize_json_data(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: sanitize_json_data(value) for key, value in data.items()}
+    else:
+        return data
 
 @admin_bp.route('/create', methods=['POST'])
 @admin_token_required('admin')
@@ -862,6 +882,11 @@ def import_cdn_data(current_admin):
                     except Exception as e:
                         log_error(f"JSON parsing error: {str(e)}")
                         return jsonify({'success': False, 'message': f'Error parsing JSON: {str(e)}'}), 400
+                
+                # Sanitize the JSON data to remove invisible control characters
+                log_info("Sanitizing JSON data to remove invisible control characters")
+                content_data = sanitize_json_data(content_data)
+                log_info("JSON data sanitized successfully")
             elif data_file.filename.endswith('.csv'):
                 log_info("Processing as CSV file")
                 csv_data = data_file.read().decode('utf-8')
@@ -872,6 +897,11 @@ def import_cdn_data(current_admin):
                 except Exception as e:
                     log_error(f"CSV conversion error: {str(e)}")
                     return jsonify({'success': False, 'message': f'Error converting CSV: {str(e)}'}), 400
+                
+                # Sanitize the CSV data to remove invisible control characters
+                log_info("Sanitizing CSV data to remove invisible control characters")
+                content_data = sanitize_json_data(content_data)
+                log_info("CSV data sanitized successfully")
             else:
                 log_warning(f"Unsupported file format: {data_file.filename}")
                 return jsonify({'success': False, 'message': 'Unsupported file format. Supported formats: JSON, CSV (TXT files are converted to JSON in frontend)'}), 400
