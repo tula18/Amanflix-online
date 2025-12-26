@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, abort
 
 from api.utils import generate_token, token_required
 from models import User, db, BlacklistToken
+from api.db_utils import safe_commit, safe_rollback
+from api.cache import add_to_blacklist_cache, invalidate_user
 
 auth_bp = Blueprint('auth_bp', __name__, url_prefix='/api/auth')
 
@@ -32,7 +34,8 @@ def register():
     new_user = User(username=data['username'], email=email, password=hashed_password)
 
     db.session.add(new_user)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Registration failed due to database error. Please try again.'}), 500
 
     api_key = generate_token(new_user.id)
 
@@ -59,7 +62,8 @@ def login():
     if blacklisted_token:
         # Token is blacklisted, so delete it and generate a new one
         db.session.delete(blacklisted_token)
-        db.session.commit()
+        if not safe_commit():
+            safe_rollback()
     else:
         new_token = token
 
@@ -73,10 +77,15 @@ def logout(current_user):
 
     try:
         db.session.add(blacklist_token)
-        db.session.commit()
+        if not safe_commit():
+            return jsonify({'message': 'Failed to blacklist the token.'}), 500
+        
+        # Add to blacklist cache for immediate effect
+        add_to_blacklist_cache(token)
         return jsonify({'message': 'Successfully logged out.'})
 
-    except:
+    except Exception as e:
+        safe_rollback()
         return jsonify({'message': 'Failed to blacklist the token.'}), 500
 
 @auth_bp.route('/verify', methods=['POST'])
@@ -100,8 +109,14 @@ def delete_user(current_user):
 
     if not current_user or not bcrypt.check_password_hash(current_user.password, data.get('password')):
         return jsonify({'message': 'Password incorrect! Check your credentials.'}), 401
+    
+    user_id = current_user.id
     db.session.delete(current_user)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to delete account due to database error. Please try again.'}), 500
+    
+    # Invalidate user cache
+    invalidate_user(user_id)
     return jsonify({'message': 'Your account has been deleted successfully.'}), 200
 
 @auth_bp.route('/update', methods=['POST'])
@@ -149,6 +164,10 @@ def update_user(current_user):
     current_user.username = data.get('username', current_user.username)
     current_user.email = data.get('email', current_user.email)
 
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to update profile due to database error. Please try again.'}), 500
+    
+    # Invalidate user cache since user data changed
+    invalidate_user(current_user.id)
 
     return jsonify({'message': message, 'username': current_user.username, 'email': current_user.email})

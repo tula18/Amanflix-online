@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, abort
 from api.utils import token_required
 from cdn.utils import paginate
 from models import User, MyList, db, Movie, TVShow
+from api.db_utils import safe_commit
 
 mylist_bp = Blueprint('mylist_bp', __name__, url_prefix='/api/mylist')
 
@@ -21,7 +22,8 @@ def add_to_mylist(current_user):
 
     mylist_item = MyList(user_id=current_user.id, content_type=content_type, content_id=content_id)
     db.session.add(mylist_item)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to add to watchlist due to database error'}), 500
 
     return jsonify({'message': 'Item added to watchlist successfully.', 'action': 'add', 'exist': True})
 
@@ -42,7 +44,8 @@ def delete_from_mylist(current_user):
         return jsonify({'message': 'This item is not in your watchlist', 'action': 'delete', 'exist': False}), 400
 
     db.session.delete(mylist_item)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to remove from watchlist due to database error'}), 500
 
     return jsonify({'message': 'Item removed to watchlist successfully.', 'action': 'delete', 'exist': False})
 

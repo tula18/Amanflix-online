@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, abort
 from api.utils import token_required
 from cdn.utils import paginate
 from models import User, UploadRequest, db, Movie, TVShow
+from api.db_utils import safe_commit
 
 upload_request_bp = Blueprint('upload_request_bp', __name__, url_prefix='/api/uploadRequest')
 
@@ -21,7 +22,8 @@ def add_to_uploadRequest(current_user):
 
     uploadRequest_item = UploadRequest(user_id=current_user.id, content_type=content_type, content_id=content_id)
     db.session.add(uploadRequest_item)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to add upload request due to database error'}), 500
 
     return jsonify({'message': 'Item added to Upload Requests successfully.', 'action': 'add', 'exist': True})
 
@@ -41,7 +43,8 @@ def delete_from_uploadRequest(current_user):
         return jsonify({'message': 'This item is not in your Upload Requests', 'action': 'delete', 'exist': False}), 400
 
     db.session.delete(uploadRequest_item)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to remove upload request due to database error'}), 500
 
     return jsonify({'message': 'Item removed from Upload Requests successfully.', 'action': 'delete', 'exist': False})
 

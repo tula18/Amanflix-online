@@ -6,7 +6,8 @@ import {
   PlaySquareOutlined, FireOutlined, VideoCameraOutlined,
   CheckCircleOutlined, DesktopOutlined, PieChartOutlined,
   DownloadOutlined, FileExcelOutlined, FilePdfOutlined,
-  FileTextOutlined, FileJpgOutlined
+  FileTextOutlined, FileJpgOutlined, DatabaseOutlined,
+  SyncOutlined, ThunderboltOutlined
 } from '@ant-design/icons';
 import { API_URL } from '../../../../config';
 import {
@@ -40,9 +41,36 @@ const AnalyticsDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [contentMetrics, setContentMetrics] = useState(null);
   const [dataIntegrity, setDataIntegrity] = useState(null);
+  const [cacheStats, setCacheStats] = useState(null);
+  const [cacheLoading, setCacheLoading] = useState(false);
+  const [adminRole, setAdminRole] = useState(null);
   const [timeRange, setTimeRange] = useState(1); // days
   const [refreshing, setRefreshing] = useState(false);
   const token = localStorage.getItem('admin_token');
+  
+  // Fetch admin profile to get role
+  const fetchAdminProfile = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/profile`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setAdminRole(data.role);
+      }
+    } catch (error) {
+      console.error("Error fetching admin profile:", error);
+    }
+  };
+  
+  // Fetch admin profile on mount
+  useEffect(() => {
+    fetchAdminProfile();
+  }, []);
   
   // Add fetch function for content metrics
   const fetchContentMetrics = async () => {
@@ -88,6 +116,63 @@ const AnalyticsDashboard = () => {
     }
   };
   
+  // Fetch cache statistics
+  const fetchCacheStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/cache/stats`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Cache stats:", data);
+        setCacheStats(data.caches);
+      } else {
+        console.error("Failed to fetch cache statistics");
+      }
+    } catch (error) {
+      console.error("Error fetching cache statistics:", error);
+    }
+  };
+  
+  // Clear all caches
+  const handleClearCache = async () => {
+    setCacheLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/cache/clear`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        notification.success({
+          message: 'Cache Cleared',
+          description: 'All caches have been cleared successfully.'
+        });
+        // Refresh cache stats
+        await fetchCacheStats();
+      } else {
+        const errorData = await res.json();
+        notification.error({
+          message: 'Failed to Clear Cache',
+          description: errorData.message || 'An error occurred while clearing cache.'
+        });
+      }
+    } catch (error) {
+      notification.error({
+        message: 'Error',
+        description: error.message
+      });
+    } finally {
+      setCacheLoading(false);
+    }
+  };
+  
   // Update useEffect to fetch both datasets
   useEffect(() => {
     const fetchData = async () => {
@@ -98,7 +183,7 @@ const AnalyticsDashboard = () => {
         setRefreshing(true); // Use a lighter refresh indicator for tab changes
       }
       
-      await Promise.all([fetchDashboardData(), fetchContentMetrics(), fetchDataIntegrity()]);
+      await Promise.all([fetchDashboardData(), fetchContentMetrics(), fetchDataIntegrity(), fetchCacheStats()]);
       
       setLoading(false);
       setRefreshing(false);
@@ -738,6 +823,59 @@ const AnalyticsDashboard = () => {
           </Card>
         </Col>
       </Row>
+      
+      {/* Cache Statistics Section */}
+      {cacheStats && (
+        <>
+          <div className="section-header">
+            <h2><ThunderboltOutlined /> Cache Statistics</h2>
+            {adminRole === 'superadmin' && (
+              <Button 
+                type="default" 
+                danger
+                icon={<SyncOutlined spin={cacheLoading} />}
+                onClick={handleClearCache}
+                loading={cacheLoading}
+                style={{ marginLeft: 'auto' }}
+              >
+                Clear All Caches
+              </Button>
+            )}
+          </div>
+          
+          <Row gutter={[16, 16]}>
+            {Object.entries(cacheStats).map(([key, cache]) => (
+              <Col xs={24} sm={12} md={6} key={key}>
+                <Card className="analytics-card cache-card">
+                  <div style={{ marginBottom: '12px' }}>
+                    <Tag color={
+                      parseFloat(cache.hit_rate) >= 90 ? 'green' : 
+                      parseFloat(cache.hit_rate) >= 70 ? 'blue' : 
+                      parseFloat(cache.hit_rate) >= 50 ? 'orange' : 'red'
+                    }>
+                      {cache.hit_rate} hit rate
+                    </Tag>
+                  </div>
+                  <Statistic 
+                    className="analytics-statistic"
+                    title={cache.name}
+                    value={cache.size}
+                    suffix={`/ ${cache.max_size}`}
+                    prefix={<DatabaseOutlined />}
+                  />
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#8c8c8c' }}>
+                    <span>Hits: {cache.hits}</span>
+                    <span style={{ marginLeft: '12px' }}>Misses: {cache.misses}</span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                    TTL: {cache.ttl_seconds}s
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </>
+      )}
       
       {/* Real-Time Section */}
       <div className="section-header">

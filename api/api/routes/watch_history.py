@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import desc
 from api.utils import create_watch_id, parse_watch_id
 from utils.logger import log_error, log_info, log_debug
+from api.db_utils import safe_commit, safe_rollback, db_retry
 
 watch_history_bp = Blueprint('watch_history', __name__, url_prefix='/api/watch-history')
 
@@ -98,7 +99,8 @@ def update_watch_history(current_user):
         )
         db.session.add(watch_history)
     
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to update watch history due to database error'}), 500
     return jsonify(watch_history.serialize()), 200
 
 @watch_history_bp.route('/continue-watching', methods=['GET'])

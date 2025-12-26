@@ -106,6 +106,25 @@ migrate = Migrate(app, db)
 
 bcrypt = Bcrypt(app)
 
+# Add session cleanup handler to prevent session poisoning
+@app.teardown_request
+def cleanup_session(exception=None):
+    """
+    Clean up database session after each request.
+    
+    This prevents 'database is locked' errors from poisoning subsequent requests
+    by ensuring each request starts with a clean session state.
+    """
+    if exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+    try:
+        db.session.remove()
+    except Exception:
+        pass
+
 log_step("Registering endpoints")
 log_substep("CDN endpoints: movies, tv, search, cdn, admin, discovery")
 # CDN ENDPOINTS register

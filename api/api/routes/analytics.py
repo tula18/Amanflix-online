@@ -4,6 +4,7 @@ from api.utils import admin_token_required, token_required
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, and_, case  # Add case here
 from utils.logger import log_debug, log_info, log_error
+from api.db_utils import safe_commit
 import uuid
 import psutil
 import json
@@ -65,7 +66,8 @@ def create_session():
     )
     
     db.session.add(session)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'error': 'Failed to create session due to database error'}), 500
     
     return jsonify({
         'session_id': session_id,
@@ -115,7 +117,8 @@ def heartbeat():
         except Exception as e:
             log_debug(f"Error decoding token in heartbeat: {str(e)}")
     
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'error': 'Failed to update session'}), 500
     
     return jsonify({
         'status': 'success',
@@ -137,7 +140,8 @@ def end_session():
     
     if not session.ended_at:
         session.ended_at = datetime.utcnow()
-        db.session.commit()
+        if not safe_commit():
+            return jsonify({'error': 'Failed to end session'}), 500
     
     return jsonify({'status': 'success'}), 200
 

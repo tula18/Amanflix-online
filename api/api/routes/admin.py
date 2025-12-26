@@ -4,6 +4,8 @@ from cdn.utils import paginate
 from api.utils import generate_admin_token, role_hierarchy, admin_token_required
 from models import Admin, db, User, BlacklistToken, BugReport, UploadRequest
 from utils.logger import log_info, log_success, log_warning, log_error
+from api.db_utils import safe_commit, safe_rollback
+from api.cache import invalidate_user, invalidate_admin, add_to_blacklist_cache
 import os
 import json
 import csv
@@ -46,7 +48,8 @@ def create_admin(current_admin):
     new_admin = Admin(username=data['username'], email=data['email'], password=hashed_password, role=role_to_create)
 
     db.session.add(new_admin)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to create admin due to database error'}), 500
 
     api_key = generate_admin_token(new_admin.id, role_to_create)
     return jsonify({'message': f'{role_to_create} Admin registered successfully!', 'api_key': api_key})
@@ -83,7 +86,8 @@ def admin_login():
     if blacklisted_token:
         # Token is blacklisted, so delete it and generate a new one
         db.session.delete(blacklisted_token)
-        db.session.commit()
+        if not safe_commit():
+            safe_rollback()
     else:
         new_token = token
 
@@ -96,10 +100,15 @@ def logout(current_admin):
     blacklist_token = BlacklistToken(token=token)
     try:
         db.session.add(blacklist_token)
-        db.session.commit()
+        if not safe_commit():
+            return jsonify({'message': 'Failed to blacklist the token.'}), 500
+        
+        # Add to blacklist cache for immediate effect
+        add_to_blacklist_cache(token)
         return jsonify({'message': 'Successfully logged out.'})
 
-    except:
+    except Exception as e:
+        safe_rollback()
         return jsonify({'message': 'Failed to blacklist the token.'}), 500
 
 @admin_bp.route('/verify', methods=['POST'])
@@ -157,7 +166,11 @@ def update_self_admin(current_admin):
     current_admin.username = data.get('username', current_admin.username)
     current_admin.email = data.get('email', current_admin.email)
 
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to update profile due to database error'}), 500
+    
+    # Invalidate admin cache since admin data changed
+    invalidate_admin(current_admin.id)
 
     return jsonify({'message': message, 'username': current_admin.username, 'email': current_admin.email})
 
@@ -245,7 +258,11 @@ def update_admin(current_admin, admin_id):
     admin.username = data.get('username', admin.username)
     admin.email = data.get('email', admin.email)
     
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to update admin due to database error'}), 500
+    
+    # Invalidate admin cache since admin data changed
+    invalidate_admin(admin.id)
 
     return jsonify({'message': f"{admin.username}'s Profile {pwd_message}{role_message}updated successfully!", 'username': admin.username, 'email': admin.email, 'role': admin.role})
 
@@ -264,8 +281,11 @@ def delete_admin(current_admin, admin_id):
             return jsonify({'message': 'Password incorrect! Check your credentials.'}), 401
     
     if admin_to_delete.id == current_admin.id:
+        admin_id_to_invalidate = current_admin.id
         db.session.delete(current_admin)
-        db.session.commit()
+        if not safe_commit():
+            return jsonify({'message': 'Failed to delete account due to database error'}), 500
+        invalidate_admin(admin_id_to_invalidate)
         return jsonify({'message': 'Your account has been deleted successfully.'})
 
     if not admin_to_delete:
@@ -274,9 +294,13 @@ def delete_admin(current_admin, admin_id):
     if role_hierarchy[current_admin.role] <= role_hierarchy[admin_to_delete.role]:
         return jsonify({'message': 'Insufficient permissions to delete this role.'}), 403
 
+    admin_id_to_invalidate = admin_to_delete.id
+    admin_username = admin_to_delete.username
     db.session.delete(admin_to_delete)
-    db.session.commit()
-    return jsonify({'message': f'Admin {admin_to_delete.username} deleted successfully.'})
+    if not safe_commit():
+        return jsonify({'message': 'Failed to delete admin due to database error'}), 500
+    invalidate_admin(admin_id_to_invalidate)
+    return jsonify({'message': f'Admin {admin_username} deleted successfully.'})
 
 @admin_bp.route('/disable/<int:admin_id>', methods=['POST'])
 @admin_token_required('superadmin')
@@ -305,7 +329,11 @@ def disable_admin(current_admin, admin_id):
             return jsonify({'message': 'Cannot disable the last active superadmin account.'}), 400
     
     admin_to_disable.disabled = True
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to disable admin due to database error'}), 500
+    
+    # Invalidate admin cache so disabled status takes effect immediately
+    invalidate_admin(admin_to_disable.id)
     
     log_warning(f"Admin {admin_to_disable.username} ({admin_to_disable.role}) disabled by superadmin {current_admin.username}")
     return jsonify({'message': f'Admin {admin_to_disable.username} has been disabled successfully.'})
@@ -327,7 +355,11 @@ def enable_admin(current_admin, admin_id):
         return jsonify({'message': f'Admin {admin_to_enable.username} is already enabled.'}), 400
     
     admin_to_enable.disabled = False
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to enable admin due to database error'}), 500
+    
+    # Invalidate admin cache so enabled status takes effect immediately
+    invalidate_admin(admin_to_enable.id)
     
     log_success(f"Admin {admin_to_enable.username} ({admin_to_enable.role}) enabled by superadmin {current_admin.username}")
     return jsonify({'message': f'Admin {admin_to_enable.username} has been enabled successfully.'})
@@ -364,7 +396,11 @@ def ban_user(current_admin):
     else:
         user.ban_until = None
 
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to ban user due to database error'}), 500
+    
+    # Invalidate user cache so ban takes effect immediately
+    invalidate_user(user.id)
 
     return jsonify({'message': f'User {user.username} has been banned'})
 
@@ -382,7 +418,11 @@ def unban_user(current_admin):
     user.ban_reason = None
     user.ban_until = None
 
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to unban user due to database error'}), 500
+    
+    # Invalidate user cache so unban takes effect immediately
+    invalidate_user(user.id)
 
     return jsonify({'message': f'User {user.username} has been unbanned'})
 
@@ -424,7 +464,11 @@ def delete_user(current_admin):
         
         # Now delete the user
         db.session.delete(user)
-        db.session.commit()
+        if not safe_commit():
+            return jsonify({'message': 'Failed to delete user due to database error'}), 500
+        
+        # Invalidate user cache
+        invalidate_user(int(user_id))
         
         log_success(f"Admin {current_admin.username} deleted user {username} (ID: {user_id})")
         return jsonify({'message': f'The account {username} has been deleted successfully.'})
@@ -500,7 +544,11 @@ def update_user(current_admin):
     current_user.username = request.form.get('username', current_user.username)
     current_user.email = request.form.get('email', current_user.email)
 
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to update user due to database error'}), 500
+    
+    # Invalidate user cache since user data changed
+    invalidate_user(current_user.id)
 
 
     return jsonify({'message': message, 'username': current_user.username, 'email': current_user.email})
@@ -521,7 +569,8 @@ def delete_bug(current_admin, bug_id):
         return jsonify({'message': 'Bug report not found'}), 404
     
     db.session.delete(report)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to delete bug report due to database error'}), 500
 
     return jsonify({'message': 'Bug report deleted'}), 200
 
@@ -534,7 +583,8 @@ def resolve_bug(current_admin, bug_id):
         return jsonify({'message': 'Bug report not found'}), 404
 
     report.resolved = True
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to resolve bug report due to database error'}), 500
     log_success(f"Bug #{bug_id} resolved by admin: {current_admin.username}")
     
     return jsonify({'message': 'Bug report marked as resolved'}), 200
@@ -547,7 +597,8 @@ def reopen_bug(current_admin, bug_id):
         return jsonify({'message': 'Bug report not found'}), 404
 
     report.resolved = False
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to reopen bug report due to database error'}), 500
 
     return jsonify({'message': 'Bug report reopened'}), 200
 
@@ -645,7 +696,8 @@ def delete_upload_request(current_admin, request_id):
         return jsonify({'message': 'Upload request not found'}), 404
 
     db.session.delete(upload_request)
-    db.session.commit()
+    if not safe_commit():
+        return jsonify({'message': 'Failed to delete upload request due to database error'}), 500
 
     return jsonify({'message': 'Upload request deleted successfully'}), 200
 
@@ -1103,3 +1155,46 @@ def try_convert_value(value):
     
     # Return original string if no conversion applies
     return value
+
+
+# =============================================================================
+# Cache Statistics Endpoints (for monitoring cache performance)
+# =============================================================================
+
+@admin_bp.route('/cache/stats', methods=['GET'])
+@admin_token_required('moderator')
+def get_cache_stats(current_admin):
+    """
+    Get statistics for all caches.
+    
+    Returns cache hit rates, sizes, and configuration.
+    Useful for monitoring cache effectiveness and tuning TTLs.
+    """
+    from api.cache import get_all_cache_stats
+    
+    stats = get_all_cache_stats()
+    return jsonify({
+        'success': True,
+        'caches': stats,
+        'message': 'Cache statistics retrieved successfully'
+    }), 200
+
+
+@admin_bp.route('/cache/clear', methods=['POST'])
+@admin_token_required('superadmin')
+def clear_all_caches_endpoint(current_admin):
+    """
+    Clear all caches.
+    
+    Use with caution - this will cause temporary increased DB load
+    as caches are repopulated.
+    """
+    from api.cache import clear_all_caches
+    
+    clear_all_caches()
+    log_warning(f"All caches cleared by superadmin {current_admin.username}")
+    
+    return jsonify({
+        'success': True,
+        'message': 'All caches cleared successfully'
+    }), 200

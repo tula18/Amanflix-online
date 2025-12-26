@@ -259,3 +259,33 @@
 .analytics-export-modal .ant-modal-close {
   color: #ffffff;
 }
+
+/* Cache Statistics Styles */
+.cache-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.cache-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1890ff, #52c41a);
+}
+
+.cache-card .ant-statistic-content {
+  font-size: 22px !important;
+}
+
+.cache-card .ant-statistic-content-suffix {
+  font-size: 14px;
+  color: #8c8c8c;
+}
+
+.cache-card .ant-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+}
