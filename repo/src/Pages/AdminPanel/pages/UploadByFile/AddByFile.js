@@ -46,6 +46,28 @@ const AddByFile = () => {
         setCurrentStep(2);
     };
 
+    const handleItemUploaded = (uploadedItem, type) => {
+        if (!parsedData) return;
+        
+        const updatedData = { ...parsedData };
+        
+        if (type === 'movie') {
+            updatedData.movies = updatedData.movies.filter(movie => movie !== uploadedItem);
+        } else if (type === 'tv_show') {
+            updatedData.tv_shows = updatedData.tv_shows.filter(show => show !== uploadedItem);
+        }
+        
+        setParsedData(updatedData);
+        
+        // Check if all items have been uploaded
+        const remainingMovies = updatedData.movies?.length || 0;
+        const remainingShows = updatedData.tv_shows?.length || 0;
+        
+        if (remainingMovies === 0 && remainingShows === 0) {
+            handleUploadComplete();
+        }
+    };
+
     const handleUploadComplete = () => {
         message.success('Upload completed successfully!');
         // Reset the component
@@ -84,6 +106,7 @@ const AddByFile = () => {
                         parsedData={parsedData}
                         selectedFiles={selectedFiles}
                         onUploadComplete={handleUploadComplete}
+                        onItemUploaded={handleItemUploaded}
                         onBack={() => handleBackToStep(1)}
                     />
                 );

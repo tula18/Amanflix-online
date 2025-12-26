@@ -7,11 +7,12 @@ import '../AddByFile.css';
 
 const { Text, Title } = Typography;
 
-const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }) => {
+const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUploaded, onBack }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [currentUploadData, setCurrentUploadData] = useState(null);
     const [currentUploadType, setCurrentUploadType] = useState(null); // 'movie' or 'tv_show'
+    const [currentOriginalItem, setCurrentOriginalItem] = useState(null); // Store the original parsed item
     const navigate = useNavigate();
 
     // Function to find matching file by filename
@@ -24,6 +25,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
         const transformedMovieData = transformMovieDataForModal(movie);
         setCurrentUploadData(transformedMovieData);
         setCurrentUploadType('movie');
+        setCurrentOriginalItem(movie);
         setShowUploadModal(true);
     };
 
@@ -31,6 +33,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
         const transformedShowData = transformShowDataForModal(show);
         setCurrentUploadData(transformedShowData);
         setCurrentUploadType('tv_show');
+        setCurrentOriginalItem(show);
         setShowUploadModal(true);
     };
 
@@ -149,11 +152,17 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onBack }
         setShowUploadModal(false);
         setCurrentUploadData(null);
         setCurrentUploadType(null);
+        setCurrentOriginalItem(null);
     };
 
     const handleUploadSuccess = () => {
         message.success('Upload completed successfully!');
-        // Optionally refresh the parent component or update state
+        // Remove the uploaded item from the list
+        if (onItemUploaded && currentOriginalItem && currentUploadType) {
+            onItemUploaded(currentOriginalItem, currentUploadType);
+        }
+        // Close the modal
+        handleModalClose();
     };
 
     const handleBulkUpload = () => {
