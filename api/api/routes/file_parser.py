@@ -462,7 +462,7 @@ def group_episodes(parsed_files):
     # Sort episodes within each season and convert sets to lists for JSON serialization
     for show in shows.values():
         for season_episodes in show['episodes'].values():
-            season_episodes.sort(key=lambda ep: ep.get('episode', 0))
+            season_episodes.sort(key=lambda ep: ep.get('episode') or 0)
         
         # Convert sets to sorted lists for JSON compatibility
         show['parsing_summary']['methods_used'] = sorted(list(show['parsing_summary']['methods_used']))
