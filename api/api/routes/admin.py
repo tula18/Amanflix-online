@@ -796,6 +796,54 @@ def delete_upload_request(current_admin, request_id):
 
     return jsonify({'message': 'Upload request deleted successfully'}), 200
 
+@admin_bp.route('/uploadRequests/validate', methods=['POST'])
+@admin_token_required('admin')
+def validate_upload_requests(current_admin):
+    from models import Movie, TVShow
+    
+    # Get all movies and TV shows for efficient lookup
+    all_movies = Movie.query.all()
+    all_tv_shows = TVShow.query.all()
+    
+    # Create sets for fast lookup
+    movie_ids = {movie.movie_id for movie in all_movies}
+    tv_show_ids = {tv.show_id for tv in all_tv_shows}
+    
+    upload_requests = UploadRequest.query.all()
+    deleted_count = 0
+    deleted_requests = []
+    
+    for request_item in upload_requests:
+        is_uploaded = False
+        
+        if request_item.content_type == 'movie':
+            # Check if movie exists using set lookup
+            is_uploaded = request_item.content_id in movie_ids
+        elif request_item.content_type == 'tv':
+            # Check if TV show exists using set lookup
+            is_uploaded = request_item.content_id in tv_show_ids
+        
+        if is_uploaded:
+            deleted_requests.append({
+                'id': request_item.id,
+                'content_type': request_item.content_type,
+                'content_id': request_item.content_id,
+                'user_id': request_item.user_id
+            })
+            db.session.delete(request_item)
+            deleted_count += 1
+    
+    if not safe_commit():
+        return jsonify({'message': 'Failed to delete upload requests due to database error'}), 500
+    
+    log_info(f"Admin {current_admin.username} validated upload requests. Deleted {deleted_count} requests for already uploaded titles.")
+    
+    return jsonify({
+        'message': f'Successfully validated upload requests. Deleted {deleted_count} requests for already uploaded titles.',
+        'deleted_count': deleted_count,
+        'deleted_requests': deleted_requests
+    }), 200
+
 @admin_bp.route('/import/cdn_data', methods=['POST'])
 @admin_token_required('admin')
 def import_cdn_data(current_admin):

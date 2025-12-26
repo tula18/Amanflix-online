@@ -178,6 +178,40 @@ const ManageUploadRequests = () => {
         }
     }
 
+    const validateUploadRequests = async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/admin/uploadRequests/validate`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                notification.success({
+                    message: data.message,
+                    placement: "topRight",
+                    duration: 0
+                });
+                // Reload the requests list
+                getRequests();
+            } else {
+                const data = await res.json();
+                notification.error({
+                    message: data.message || 'Failed to validate upload requests',
+                    placement: "topRight"
+                });
+            }
+        } catch (error) {
+            console.error('Error validating upload requests:', error);
+            notification.error({
+                message: 'Error validating upload requests. Please try again later.',
+                placement: "topRight"
+            });
+        }
+    }
+
     const getRequestsMemoized = useCallback(getRequests, [token])
 
     useEffect(() => {
@@ -494,6 +528,19 @@ const ManageUploadRequests = () => {
                     <Button type="primary" onClick={showModal}>
                         Export
                     </Button>
+                    <Tooltip title="Validate and remove requests for already uploaded titles">
+                        <Button 
+                            type="primary" 
+                            icon={<CheckOutlined />}
+                            onClick={validateUploadRequests}
+                            style={{
+                                backgroundColor: '#52c41a',
+                                borderColor: '#52c41a',
+                            }}
+                        >
+                            Validate Requests
+                        </Button>
+                    </Tooltip>
                     <Tooltip title="Reload List">
                         <Button
                         type="primary"
