@@ -3,7 +3,7 @@ import { Button, Flex, Input, Select, Tooltip, notification } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../../../../config";
 import Card from "../../../../Components/Card/Card";
-import TvShowEditModal from "./ShowModal/ShowModal";
+import UnifiedUploadModal from "../UploadByFile/components/UnifiedUploadModal";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
 // Add this new component
@@ -162,12 +162,13 @@ const ManageShows = () => {
 
     const handleShowClick = (event, show) => {
         console.log("Clicked show object:", show);
-        console.log("Show ID value:", show?.show_id);
-        console.log("Selected show before setting:", selectedShow);
         
         if (typeof(show) === "object") {
-            setSelectedShow(show.show_id);
-            console.log("Set selected show to:", show.show_id);
+            // CDN shows use 'id', API shows use 'show_id'
+            const showId = show.show_id || show.id;
+            console.log("Show ID value:", showId);
+            setSelectedShow(showId);
+            console.log("Set selected show to:", showId);
         }
         setShowEditModal(true);
         console.log("showType set to:", fetchType);
@@ -280,9 +281,11 @@ const ManageShows = () => {
                 ))}
             </div>
             {showEditModal && (
-                <TvShowEditModal
+                <UnifiedUploadModal
+                    isVisible={showEditModal}
                     onClose={handleModalClose}
-                    ShowID={selectedShow}
+                    type="tv_show"
+                    contentId={selectedShow}
                     openDelForm={handleDelOpen}
                     refresh={fetchShows}
                     fetchType={showType}

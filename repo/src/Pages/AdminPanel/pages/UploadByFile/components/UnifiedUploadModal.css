@@ -114,3 +114,8 @@
     background-color: #393939;
     margin: 20px 0;
 }
+
+/* Episode list styling from ShowModal */
+.modal_show_episode_list {
+    margin-left: 25%;
+}

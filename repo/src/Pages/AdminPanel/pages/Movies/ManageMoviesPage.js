@@ -4,7 +4,7 @@ import './ManageMoviesPage.css'
 import Card from "../../../../Components/Card/Card";
 import { API_URL } from "../../../../config";
 import { CloseOutlined, PlusCircleOutlined } from "@ant-design/icons";
-import MovieEditModal from "./MovieModal/MovieModal";
+import UnifiedUploadModal from "../UploadByFile/components/UnifiedUploadModal";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
 function NewCard() {
@@ -294,9 +294,11 @@ const ManageMovies = () => {
                 ))}
             </div>
             {showEditModal && (
-                <MovieEditModal
+                <UnifiedUploadModal
+                    isVisible={showEditModal}
                     onClose={handleModalClose}
-                    movieID={selectedMovie}
+                    type="movie"
+                    contentId={selectedMovie}
                     openDelForm={handleDelOpen}
                     refresh={fetchMovies}
                     fetchType={movieType}

@@ -1,6 +1,8 @@
 import { CloseOutlined, UploadOutlined, ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import React, { useState, useEffect, useRef } from "react";
-import { Alert, Progress, Upload, notification, Button, Flex, Tooltip, Popconfirm, Image } from "antd";
+import { Alert, Progress, Upload, notification, Button, Flex, Tooltip, Popconfirm, Image, AutoComplete } from "antd";
+import { FaPlay } from "react-icons/fa6";
+import { useLocation, useNavigate } from "react-router-dom";
 import { API_URL } from "../../../../../config";
 import './UnifiedUploadModal.css';
 import FormGroup from "../../../Components/FormGroup/FormGroup";
@@ -12,10 +14,22 @@ const UnifiedUploadModal = ({
     onClose, 
     onSuccess, 
     type, // 'movie' or 'tv_show'
-    prefilledData 
+    prefilledData,
+    // New props for edit mode (to replace MovieEditModal and TvShowEditModal)
+    contentId,      // movieID or ShowID
+    fetchType = 'new', // 'new', 'api', 'cdn'
+    openDelForm,    // Delete form callback
+    refresh         // Refresh callback
 }) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Determine if we're in edit mode
+    const isEdit = contentId !== undefined && fetchType !== 'cdn' && fetchType !== 'new';
+    
     const token = localStorage.getItem('admin_token');
     const [saveLoading, setSaveLoading] = useState(false);
+    const [fetchLoading, setFetchLoading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [remainingTime, setRemainingTime] = useState(0);
     const [uploadSpeed, setUploadSpeed] = useState(0);
@@ -25,6 +39,18 @@ const UnifiedUploadModal = ({
     const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
     const [showBackdrop, setShowBackdrop] = useState(false);
     const [showPoster, setShowPoster] = useState(false);
+    
+    // Video existence state (for edit mode)
+    const [vidExist, setVidExist] = useState({
+        message: "",
+        exist: false,
+        return_reason: ""
+    });
+    const [episodeExists, setEpisodeExists] = useState({});
+    
+    // AutoComplete suggestions
+    const [suggestions, setSuggestions] = useState([]);
+    const [loadingSearch, setLoadingSearch] = useState(false);
 
     // Validation function for upload pre-check
     const validateUpload = async (contentType, contentId, episodes = null, contentData = null) => {
@@ -153,15 +179,26 @@ const UnifiedUploadModal = ({
     const [showPreviewEpisodes, setShowPreviewEpisodes] = useState({});
     const [errors, setErrors] = useState({});
     const [success, setSuccess] = useState({});
-    const [episodeExists, setEpisodeExists] = useState({});
     const [uploadedSize, setUploadedSize] = useState(0);
 
     const modalContentRef = useRef(null);
     const seasonRef = useRef(null);
     const episodeRef = useRef(null);
 
+    // Fetch content details for edit mode
     useEffect(() => {
-        if (isVisible && prefilledData) {
+        if (isVisible && (isEdit || fetchType === 'cdn') && contentId) {
+            if (type === 'movie') {
+                fetchMovieDetails();
+            } else if (type === 'tv_show') {
+                fetchShowDetails();
+            }
+        }
+    }, [isVisible, isEdit, fetchType, contentId, type]);
+
+    // Initialize from prefilledData when available
+    useEffect(() => {
+        if (isVisible && prefilledData && !contentId) {
             if (type === 'movie') {
                 initializeMovieForm();
             } else if (type === 'tv_show') {
@@ -169,6 +206,239 @@ const UnifiedUploadModal = ({
             }
         }
     }, [isVisible, prefilledData, type]);
+
+    // Check video existence for movies
+    useEffect(() => {
+        if (type === 'movie' && movieData.id && fetchType !== 'new') {
+            checkVideoExist();
+        }
+    }, [movieData.id, fetchType, type]);
+
+    // Check episodes existence for shows
+    useEffect(() => {
+        if (type === 'tv_show' && showData.show_id && fetchType !== 'new') {
+            checkEpisodesExist();
+        }
+    }, [showData.show_id, fetchType, type]);
+
+    // Fetch movie details for edit mode
+    const fetchMovieDetails = async () => {
+        try {
+            setFetchLoading(true);
+            const userToken = localStorage.getItem('token');
+            if (!userToken) {
+                console.log("No authentication token found");
+                setFetchLoading(false);
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/${isEdit ? "api" : fetchType}/movies/${contentId}`, {
+                headers: {
+                    'Authorization': `Bearer ${userToken}`
+                }
+            });
+            const data = await response.json();
+            console.log("Fetched movie data:", data);
+            const newMovieData = { ...movieData };
+
+            for (const key in data) {
+                if (data.hasOwnProperty(key) && movieData.hasOwnProperty(key)) {
+                    if (key === "release_date") {
+                        newMovieData[key] = fixReleaseDateFormat(data[key]);
+                    } else {
+                        newMovieData[key] = data[key];
+                    }
+                }
+            }
+
+            setMovieData(newMovieData);
+            validateForm(newMovieData, true);
+
+        } catch (error) {
+            console.error('Error fetching movie details:', error);
+        } finally {
+            setFetchLoading(false);
+        }
+    };
+
+    // Fetch show details for edit mode
+    const fetchShowDetails = async () => {
+        try {
+            setFetchLoading(true);
+            const userToken = localStorage.getItem('token');
+            
+            // API uses /api/shows/, CDN uses /cdn/tv/
+            const endpoint = isEdit ? `api/shows/${contentId}` : `cdn/tv/${contentId}`;
+            const response = await fetch(`${API_URL}/${endpoint}`, {
+                headers: {
+                    'Authorization': `Bearer ${userToken}`
+                }
+            });
+            const data = await response.json();
+            console.log("Fetched show data:", data);
+            
+            const newShowData = { ...showData };
+
+            // Handle special mappings first (CDN uses different field names)
+            if (data.name) {
+                newShowData.title = data.name;
+            }
+            if (data.id) {
+                newShowData.show_id = data.id;
+            }
+
+            for (const key in data) {
+                if (data.hasOwnProperty(key) && showData.hasOwnProperty(key)) {
+                    if (key === "first_air_date" || key === "last_air_date") {
+                        newShowData[key] = fixReleaseDateFormat(data[key]);
+                    } else if (key === "seasons" && Array.isArray(data[key])) {
+                        newShowData.seasons = data[key].map(season => ({
+                            seasonNumber: season.season_number,
+                            episodes: Array.isArray(season.episodes) ? season.episodes.map(episode => ({
+                                episodeNumber: episode.episode_number,
+                                title: episode.title,
+                                overview: episode.overview,
+                                has_subtitles: episode.has_subtitles || false,
+                                force: false,
+                                videoFile: null
+                            })) : []
+                        }));
+                    } else {
+                        newShowData[key] = data[key];
+                    }
+                }
+            }
+
+            setShowData(newShowData);
+
+        } catch (error) {
+            console.error('Error fetching show details:', error);
+            setErrors({general: `Error fetching show: ${error.message}`});
+        } finally {
+            setFetchLoading(false);
+        }
+    };
+
+    // Check if movie video exists
+    const checkVideoExist = async () => {
+        if (movieData.id) {
+            try {
+                const userToken = localStorage.getItem('token');
+                if (!userToken) return;
+
+                const res = await fetch(`${API_URL}/api/movies/${movieData.id}/check`, {
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`
+                    }
+                });
+                const json = await res.json();
+                setVidExist(json);
+            } catch (error) {
+                console.error(`Couldn't check video: ${String(error)}`);
+            }
+        }
+    };
+
+    // Check if episode files exist
+    const checkEpisodesExist = async () => {
+        if (!showData.show_id) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/api/upload/show/${showData.show_id}/check`, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('admin_token')
+                }
+            });
+            const json = await response.json();
+            console.log("Episode existence check:", json);
+            setEpisodeExists(json);
+        } catch (error) {
+            console.error(`Couldn't check episodes: ${String(error)}`);
+        }
+    };
+
+    // AutoComplete search for movies
+    const processMovieData = data => {
+        return data.map(movie => ({
+            value: `${movie.title} | ${new Date(movie.release_date).getFullYear() || 'Unknown'}`,
+            label: `${movie.title} | ${new Date(movie.release_date).getFullYear() || 'Unknown'}`,
+            movie: movie
+        }));
+    };
+
+    const fetchMoviesForSearch = async (query = '') => {
+        if (query) {
+            try {
+                setLoadingSearch(true);
+                const res = await fetch(`${API_URL}/cdn/search?q=${encodeURIComponent(decodeURIComponent(query))}&max_results=10&media_type=movies`);
+                const data = await res.json();
+                setSuggestions(processMovieData(data));
+            } catch (error) {
+                console.error('Error searching movies:', error);
+            } finally {
+                setLoadingSearch(false);
+            }
+        }
+    };
+
+    const handleMovieSearchSelect = (value, option) => {
+        const selectedMovie = option.movie;
+        const newMovieData = { ...movieData };
+        for (const key in selectedMovie) {
+            if (selectedMovie.hasOwnProperty(key) && movieData.hasOwnProperty(key)) {
+                if (key === "release_date") {
+                    newMovieData[key] = fixReleaseDateFormat(selectedMovie[key]);
+                } else {
+                    newMovieData[key] = selectedMovie[key];
+                }
+            }
+        }
+        setMovieData(newMovieData);
+        validateForm(newMovieData, true);
+    };
+
+    // AutoComplete search for shows
+    const processShowData = data => data.map(show => ({ value: show.name, label: show.name, show }));
+
+    const fetchShowsForSearch = async (query = '') => {
+        if (query) {
+            try {
+                setLoadingSearch(true);
+                const newQuery = decodeURIComponent(query);
+                const res = await fetch(`${API_URL}/cdn/search?q=${encodeURIComponent(newQuery)}&max_results=10&media_type=tv`);
+                const data = await res.json();
+                setSuggestions(processShowData(data));
+            } catch (error) {
+                console.error('Error searching shows:', error);
+            } finally {
+                setLoadingSearch(false);
+            }
+        }
+    };
+
+    const handleShowSearchSelect = (value, option) => {
+        const selectedShow = option.show;
+        const newShowData = { ...showData };
+        for (const key in selectedShow) {
+            if (selectedShow.hasOwnProperty(key) && showData.hasOwnProperty(key)) {
+                newShowData[key] = key === "release_date" ? fixReleaseDateFormat(selectedShow[key]) : selectedShow[key];
+            } else if (key === 'name') {
+                newShowData['title'] = selectedShow['name'];
+            } else if (key === 'id') {
+                newShowData['show_id'] = selectedShow['id'];
+            }
+        }
+        setShowData(newShowData);
+    };
+
+    // Navigate to watch page (for edit mode)
+    const navigateToContent = () => {
+        if (type === 'movie' && movieData.id) {
+            navigate(`/watch/m-${movieData.id}`);
+        } else if (type === 'tv_show' && showData.show_id) {
+            navigate(`/watch/t-${showData.show_id}-1-1`);
+        }
+    };
 
     // Cleanup when component unmounts or modal closes
     useEffect(() => {
@@ -674,13 +944,89 @@ const UnifiedUploadModal = ({
                         formData.append(key, movieData[key]);
                     }
                 });
+
+                // Pre-upload validation (only for new uploads)
+                if (!isEdit) {
+                    const validationResult = await validateUpload('movie', movieData.id, null, movieData);
+                    if (validationResult && !validationResult.can_upload) {
+                        const errorMessages = validationResult.errors.map(error => error.message).join('\n');
+                        notification.error({
+                            message: 'Upload Blocked',
+                            description: errorMessages,
+                            duration: 8,
+                        });
+                        setSaveLoading(false);
+                        return;
+                    }
+                    if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                        const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                        notification.warning({
+                            message: 'Upload Warnings',
+                            description: warningMessages,
+                        });
+                    }
+                }
+
+                // Use XHR for better progress tracking
+                const method = isEdit ? 'PUT' : 'POST';
+                const url = isEdit ? `${API_URL}/api/upload/movie/${movieData.id}` : `${API_URL}/api/upload/movie`;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open(method, url, true);
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+                let startTime = Date.now();
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        setProgress(progress);
+                        const elapsedTime = (Date.now() - startTime) / 1000;
+                        const uploadSpeed = event.loaded / elapsedTime;
+                        setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
+                        const remainingSize = event.total - event.loaded;
+                        const estimatedTime = remainingSize / uploadSpeed;
+                        setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)));
+                        setUploadedSize(event.loaded);
+                    }
+                };
+
+                xhr.onload = function() {
+                    const json = JSON.parse(xhr.responseText);
+                    if (xhr.status === 200 || xhr.status === 201) {
+                        notification.success({message: json.message, duration: 0});
+                        if (onSuccess) onSuccess();
+                        if (refresh) refresh();
+                        onClose();
+                    } else {
+                        notification.error({message: json.message, duration: 0});
+                    }
+                    setSaveLoading(false);
+                };
+
+                xhr.onerror = function() {
+                    notification.error({message: 'An error occurred during upload', duration: 0});
+                    setSaveLoading(false);
+                };
+
+                xhr.onabort = () => {
+                    notification.info({message: 'Upload canceled.'});
+                    setSaveLoading(false);
+                };
+
+                xhr.send(formData);
+
             } else {
                 // TV Show validation and formData preparation
                 let hasFiles = false;
+                let hasEpisodes = false;
+                
                 showData.seasons.forEach((season) => {
                     season.episodes.forEach((episode) => {
-                        // Check for either uploaded video files OR pre-filled filenames
-                        if (episode.videoFile || (episode.filename && episode.filename.trim() !== '')) {
+                        hasEpisodes = true;
+                        // Check for either uploaded video files OR pre-filled filenames OR existing episodes on server
+                        const episodeExistsOnServer = episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists;
+                        if (episode.videoFile || (episode.filename && episode.filename.trim() !== '') || episodeExistsOnServer) {
                             hasFiles = true;
                             if (episode.videoFile) {
                                 formData.append(`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`, episode.videoFile);
@@ -689,10 +1035,20 @@ const UnifiedUploadModal = ({
                     });
                 });
     
-                if (!hasFiles) {
+                // For edit mode, we don't require files if episodes already exist
+                if (!hasFiles && !isEdit) {
                     notification.error({
                         message: 'Upload Error',
                         description: 'Please select at least one video file or ensure pre-filled data contains valid filenames.',
+                    });
+                    setSaveLoading(false);
+                    return;
+                }
+
+                if (!hasEpisodes) {
+                    notification.error({
+                        message: 'Validation Error',
+                        description: 'At least one season with one episode is required.',
                     });
                     setSaveLoading(false);
                     return;
@@ -719,86 +1075,90 @@ const UnifiedUploadModal = ({
                 }));
                 
                 formData.append('seasons', JSON.stringify(seasonsData));
-            }
-    
-            // Pre-upload validation
-            let validationResult = null;
-            if (type === 'movie' && movieData.id) {
-                validationResult = await validateUpload('movie', movieData.id, null, movieData);
-            } else if (type === 'tv_show' && showData.show_id) {
-                // Prepare episodes data for validation
-                const episodes = [];
-                showData.seasons.forEach(season => {
-                    season.episodes.forEach(episode => {
-                        if (episode.videoFile || episode.filename) {
-                            episodes.push({
-                                season_number: season.seasonNumber,
-                                episode_number: episode.episodeNumber
-                            });
-                        }
+
+                // Pre-upload validation (only for new uploads)
+                if (!isEdit && showData.show_id) {
+                    const episodes = [];
+                    showData.seasons.forEach(season => {
+                        season.episodes.forEach(episode => {
+                            if (episode.videoFile || episode.filename) {
+                                episodes.push({
+                                    season_number: season.seasonNumber,
+                                    episode_number: episode.episodeNumber
+                                });
+                            }
+                        });
                     });
-                });
-                validationResult = await validateUpload('tv', showData.show_id, episodes, showData);
-            }
-    
-            // Check validation result
-            if (validationResult && !validationResult.can_upload) {
-                const errorMessages = validationResult.errors.map(error => error.message).join('\n');
-                notification.error({
-                    message: 'Upload Blocked',
-                    description: errorMessages,
-                    duration: 8,
-                });
-                setSaveLoading(false);
-                return;
-            }
-    
-            // Show warnings if any
-            if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
-                const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
-                notification.warning({
-                    message: 'Upload Warnings',
-                    description: warningMessages,
-                });
-            }
-    
-            const config = {
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'multipart/form-data'
-                },
-                onUploadProgress: (progressEvent) => {
-                    const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-                    setProgress(progress);
-                    const elapsedTime = (Date.now() - startTime) / 1000;
-                    const uploadSpeed = progressEvent.loaded / elapsedTime;
-                    setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
-                    const remainingSize = progressEvent.total - progressEvent.loaded;
-                    const estimatedTime = remainingSize / uploadSpeed;
-                    setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)));
-                    setUploadedSize(progressEvent.loaded);
+                    const validationResult = await validateUpload('tv', showData.show_id, episodes, showData);
+                    
+                    if (validationResult && !validationResult.can_upload) {
+                        const errorMessages = validationResult.errors.map(error => error.message).join('\n');
+                        notification.error({
+                            message: 'Upload Blocked',
+                            description: errorMessages,
+                            duration: 8,
+                        });
+                        setSaveLoading(false);
+                        return;
+                    }
+                    if (validationResult && validationResult.warnings && validationResult.warnings.length > 0) {
+                        const warningMessages = validationResult.warnings.map(warning => warning.message).join('\n');
+                        notification.warning({
+                            message: 'Upload Warnings',
+                            description: warningMessages,
+                        });
+                    }
                 }
-            };
-    
-            let startTime = Date.now();
-    
-            const response = await axios.post(`${API_URL}/api/upload/${type === 'movie' ? 'movie' : 'show'}`, formData, config);
-    
-            if (response.status === 200 || response.status === 201) {
-                notification.success({
-                    message: 'Success',
-                    description: `${type === 'movie' ? 'Movie' : 'Show'} uploaded successfully!`,
-                });
-                setSaveLoading(false);
-                setProgress(100);
-                if (onSuccess) onSuccess();
-                onClose();
-            } else {
-                notification.error({
-                    message: 'Upload Error',
-                    description: response.data.message || 'An error occurred during upload',
-                });
-                setSaveLoading(false);
+
+                // Use XHR for better progress tracking
+                const method = isEdit ? 'PUT' : 'POST';
+                const url = isEdit ? `${API_URL}/api/upload/show/${showData.show_id}` : `${API_URL}/api/upload/show`;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open(method, url, true);
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+                let startTime = Date.now();
+                setTimeStart(startTime);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        setProgress(progress);
+                        const elapsedTime = (Date.now() - startTime) / 1000;
+                        const uploadSpeed = event.loaded / elapsedTime;
+                        setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
+                        const remainingSize = event.total - event.loaded;
+                        const estimatedTime = remainingSize / uploadSpeed;
+                        setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)));
+                        setUploadedSize(event.loaded);
+                    }
+                };
+
+                xhr.onload = function() {
+                    const json = JSON.parse(xhr.responseText);
+                    if (xhr.status === 200 || xhr.status === 201) {
+                        notification.success({message: json.message, duration: 0});
+                        if (onSuccess) onSuccess();
+                        if (refresh) refresh();
+                        onClose();
+                    } else {
+                        notification.error({message: json.message, duration: 0});
+                    }
+                    setSaveLoading(false);
+                };
+
+                xhr.onerror = function() {
+                    notification.error({message: 'An error occurred during upload', duration: 0});
+                    setSaveLoading(false);
+                };
+
+                xhr.onabort = () => {
+                    notification.info({message: 'Upload canceled.'});
+                    setSaveLoading(false);
+                };
+
+                xhr.send(formData);
             }
         } catch (error) {
             notification.error({
@@ -809,20 +1169,71 @@ const UnifiedUploadModal = ({
         }
     };
 
+    // Loading state while fetching data
+    if (fetchLoading) {
+        return (
+            <div className={`modal`} id="unifiedModal">
+                <div className={`modal-content`}>
+                    <div className="spinner-container" style={{display:"flex"}}>
+                        <div className="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!isVisible) return null;
 
     return (
         <div className={`modal`} id="unifiedModal">
             <div className={`modal-content`} id="modal-content" ref={modalContentRef}>
                 <div className='header' style={{ width: '100%', backgroundSize: 'cover', backgroundPosition: 'center', minHeight: '50px', marginBottom: 10, marginTop: 10 }}>
-                    <h1 style={{paddingBottom: 10, paddingLeft: 10}}>Upload {type === 'movie' ? 'Movie' : 'TV Show'}</h1>
+                    <h1 style={{paddingBottom: 10, paddingLeft: 10}}>{isEdit ? "Edit" : "Upload"} {type === 'movie' ? 'Movie' : 'TV Show'}</h1>
+                    {/* Play button for edit mode when video exists */}
+                    {type === 'movie' && vidExist.exist && isEdit && (
+                        <button className='banner_play_button' style={{marginBottom: 12, marginLeft: 10}} onClick={navigateToContent}>
+                            <FaPlay style={{fontSize:20, paddingRight:'0px'}}/>Play
+                        </button>
+                    )}
                     <span className="closeButton" onClick={handleCloseForm} style={{ position: 'absolute', top: '0', right: '0', margin: '10px' }}><CloseOutlined /></span>
                 </div>
 
                 <form required className="upload__form">
+                    {/* AutoComplete search for new uploads */}
+                    {fetchType === 'new' && type === 'movie' && (
+                        <AutoComplete
+                            style={{
+                                width: "80%",
+                                placeholderColor: '#1890ff',
+                                paddingLeft: 16,
+                                marginBottom: 16
+                            }}
+                            options={suggestions}
+                            loading={loadingSearch}
+                            onSearch={fetchMoviesForSearch}
+                            onSelect={handleMovieSearchSelect}
+                            placeholder="Search for movies from CDN"
+                        />
+                    )}
+                    {fetchType === 'new' && type === 'tv_show' && (
+                        <AutoComplete
+                            style={{
+                                width: "80%",
+                                placeholderColor: '#1890ff',
+                                paddingLeft: 16,
+                                marginBottom: 16
+                            }}
+                            options={suggestions}
+                            loading={loadingSearch}
+                            onSearch={fetchShowsForSearch}
+                            onSelect={handleShowSearchSelect}
+                            placeholder="Search for shows from CDN"
+                        />
+                    )}
+                    
                     {type === 'movie' ? (
                         <>
-                            <FormGroup label="Movie ID" name="id" type="number" value={movieData.id} onChange={handleChange} error={inputErrors} success={inputSuccess} required />
+                            <FormGroup label="Movie ID" name="id" type="number" value={movieData.id} onChange={handleChange} error={inputErrors} success={inputSuccess} required disabled={contentId !== undefined} />
                             <FormGroup label="Movie Title" name="title" value={movieData.title} onChange={handleChange} error={inputErrors} success={inputSuccess} required />
                             <TextareaFormGroup label="Movie Overview" name="overview" value={movieData.overview} onChange={handleChange} error={inputErrors} success={inputSuccess} required />
                             <FormGroup label="Movie Tagline" name="tagline" value={movieData.tagline} onChange={handleChange} error={inputErrors} success={inputSuccess} />
@@ -896,40 +1307,52 @@ const UnifiedUploadModal = ({
                             </div>
                             <div className="form-group">
                                 <label htmlFor="vid_movie">Upload File:</label>
-                                <Upload
-                                    id="vid_movie"
-                                    name="vid_movie"
-                                    fileList={movieData.vid_movie ? [{
-                                        uid: '-1',
-                                        name: movieData.vid_movie.name,
-                                        status: 'done',
-                                    }] : []}
-                                    beforeUpload={(file, fileList) => {
-                                        setMovieData({
-                                            ...movieData,
-                                            vid_movie: file
-                                        });
-                                        const url = URL.createObjectURL(file);
-                                        setVideoPreviewUrl(url);
-                                        return false;
-                                    }}
-                                    onRemove={(file) => {
-                                        setVideoPreviewUrl(null);
-                                        setMovieData({
-                                            ...movieData,
-                                            vid_movie: null
-                                        });
-                                    }}
-                                >
-                                    <Button id="vid_movie" icon={<UploadOutlined />}>
-                                        {movieData.vid_movie ? 'Change Video File' : 'Upload a video'}
-                                    </Button>
-                                </Upload>
+                                {/* Show upload only if force is enabled, it's a new upload, or video doesn't exist */}
+                                {(movieData.force === true || fetchType === 'new' || !vidExist.exist) && (
+                                    <Upload
+                                        id="vid_movie"
+                                        name="vid_movie"
+                                        fileList={movieData.vid_movie ? [{
+                                            uid: '-1',
+                                            name: movieData.vid_movie.name,
+                                            status: 'done',
+                                        }] : []}
+                                        beforeUpload={(file, fileList) => {
+                                            setMovieData({
+                                                ...movieData,
+                                                vid_movie: file
+                                            });
+                                            const url = URL.createObjectURL(file);
+                                            setVideoPreviewUrl(url);
+                                            return false;
+                                        }}
+                                        onRemove={(file) => {
+                                            setVideoPreviewUrl(null);
+                                            setMovieData({
+                                                ...movieData,
+                                                vid_movie: null
+                                            });
+                                        }}
+                                    >
+                                        <Button id="vid_movie" icon={<UploadOutlined />}>
+                                            {movieData.vid_movie ? 'Change Video File' : 'Upload a video'}
+                                        </Button>
+                                    </Upload>
+                                )}
+                                {/* Video existence message */}
+                                {vidExist.message && (movieData.force !== true || !vidExist.exist) && (
+                                    <Alert
+                                        closable={true}
+                                        message={vidExist.message}
+                                        type={vidExist.exist ? 'success' : 'error'}
+                                        style={{marginTop: '10px'}}
+                                    />
+                                )}
                             </div>
                         </>
                     ) : (
                         <>
-                            <FormGroup label="Show ID" name="show_id" type="number" value={showData.show_id} onChange={handleChange} error={errors} success={success} required />
+                            <FormGroup label="Show ID" name="show_id" type="number" value={showData.show_id} onChange={handleChange} error={errors} success={success} required disabled={contentId !== undefined} />
                             <FormGroup label="Show Title" name="title" value={showData.title} onChange={handleChange} error={errors} success={success} required />
                             <TextareaFormGroup label="Show Overview" name="overview" value={showData.overview} onChange={handleChange} error={errors} success={success} required />
                             <FormGroup label="Show Tagline" name="tagline" value={showData.tagline} onChange={handleChange} error={errors} success={success} />
@@ -1064,6 +1487,19 @@ const UnifiedUploadModal = ({
                                                     {`Episode ${episode.episodeNumber} File`} <span style={{fontSize: "1.1rem", color: 'gold', marginLeft: 5, cursor: 'help'}}>*</span>
                                                 </label>
                                                 
+                                                {/* Episode existence message for edit mode */}
+                                                {episodeExists?.episodes && 
+                                                episodeExists.episodes[season.seasonNumber] && 
+                                                episodeExists.episodes[season.seasonNumber][episode.episodeNumber] && 
+                                                !episode.force && (
+                                                    <Alert
+                                                        closable={true}
+                                                        message={episodeExists.episodes[season.seasonNumber][episode.episodeNumber].message}
+                                                        type={episodeExists.episodes[season.seasonNumber][episode.episodeNumber].exists ? 'success' : 'error'}
+                                                        style={{marginBottom: '10px'}}
+                                                    />
+                                                )}
+                                                
                                                 {/* Display expected filename if available */}
                                                 {episode.filename && (
                                                     <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#2a304d', borderRadius: '4px', fontSize: '12px', color: '#a0a0a0' }}>
@@ -1083,6 +1519,9 @@ const UnifiedUploadModal = ({
                                                     />
                                                 </div>
                                                 
+                                                {/* Show upload only if force is enabled or episode doesn't exist */}
+                                                {(episode.force === true || 
+                                                !episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists) && (
                                                 <Upload
                                                     id={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}
                                                     name={`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`}
@@ -1173,6 +1612,7 @@ const UnifiedUploadModal = ({
                                                         {episode.videoFile ? `Change file for Episode ${episode.episodeNumber}` : `Upload video for Episode ${episode.episodeNumber}`}
                                                     </Button>
                                                 </Upload>
+                                                )}
                                                 
                                                 {errors[`S${season.seasonNumber}E${episode.episodeNumber}-file`] && (
                                                     <Alert
@@ -1203,7 +1643,8 @@ const UnifiedUploadModal = ({
                                                 />
                                             </div>
                                             
-                                            {episode.videoFile && (
+                                            {/* Show preview button when there's a video file or episode exists on server */}
+                                            {(episode.videoFile || episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists) && (
                                                 <div className="form-group" style={{ marginTop: '10px' }}>
                                                     <Button 
                                                         type={showPreviewEpisodes[`S${season.seasonNumber}E${episode.episodeNumber}`] ? 'primary' : 'default'}
@@ -1220,15 +1661,20 @@ const UnifiedUploadModal = ({
                                                 </div>
                                             )}
 
+                                            {/* Video preview - show from server if exists, or local file preview */}
                                             {showPreviewEpisodes[`S${season.seasonNumber}E${episode.episodeNumber}`] && 
-                                            episodePreviews[`S${season.seasonNumber}E${episode.episodeNumber}`] && (
+                                            (episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists || 
+                                            (episode.videoFile && episodePreviews[`S${season.seasonNumber}E${episode.episodeNumber}`])) && (
                                                 <div className="video-container" style={{ marginTop: '20px' }}>
                                                     <div className="divider"/>
                                                     <video
                                                         controls
                                                         autoPlay
                                                         muted
-                                                        src={episodePreviews[`S${season.seasonNumber}E${episode.episodeNumber}`]}
+                                                        width="420" height="340"
+                                                        src={episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists 
+                                                            ? `${API_URL}/api/stream/t-${showData.show_id}-${season.seasonNumber}-${episode.episodeNumber}` 
+                                                            : episodePreviews[`S${season.seasonNumber}E${episode.episodeNumber}`]}
                                                         controlsList="nodownload nofullscreen"
                                                     >
                                                         Your browser does not support the video tag.
@@ -1264,7 +1710,8 @@ const UnifiedUploadModal = ({
                     )}
                 </form>
 
-                {(videoPreviewUrl || (type === 'movie' && movieData.vid_movie)) && type === 'movie' && (
+                {/* Movie video preview - show existing video from server or local file */}
+                {type === 'movie' && (videoPreviewUrl || vidExist.exist) && (
                     <div className="video-container" style={{ marginTop: '20px' }}>
                         <div className="divider"/>
                         <video
@@ -1272,7 +1719,7 @@ const UnifiedUploadModal = ({
                             autoPlay
                             muted
                             width="420" height="340"
-                            src={videoPreviewUrl}
+                            src={vidExist.exist && !videoPreviewUrl ? `${API_URL}/api/stream/m-${movieData.id}` : videoPreviewUrl}
                             controlsList="nodownload nofullscreen"
                         >
                             Your browser does not support the video tag.
@@ -1302,8 +1749,23 @@ const UnifiedUploadModal = ({
                             }} 
                             disabled={saveLoading}
                         >
-                            {saveLoading ? "Uploading" : "Upload"}
+                            {isEdit ? (saveLoading ? "Saving" : "Save") : (saveLoading ? "Uploading" : "Upload")}
                         </button>
+                        {/* Delete button for edit mode */}
+                        {isEdit && openDelForm && (
+                            <button 
+                                className="profile_delete_btn" 
+                                onClick={() => {
+                                    if (type === 'movie') {
+                                        openDelForm(movieData.id, movieData.title);
+                                    } else {
+                                        openDelForm(showData.show_id, showData.title);
+                                    }
+                                }}
+                            >
+                                Delete {type === 'movie' ? 'Movie' : 'Show'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

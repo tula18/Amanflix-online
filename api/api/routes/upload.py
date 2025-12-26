@@ -904,7 +904,7 @@ def update_tvshow(current_admin, show_id):
     try:
         # Update the database with new show info
         db.session.commit()
-        log_success(f"Updated TV show {show.name} (ID: {show_id})")
+        log_success(f"Updated TV show {show.title} (ID: {show_id})")
 
         ensure_upload_folder_exists()
 
