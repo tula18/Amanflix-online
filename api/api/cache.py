@@ -96,11 +96,32 @@ class TTLCache(Generic[T]):
                 return True
             return False
     
-    def contains(self, key: str) -> bool:
+    def contains(self, key: str, count_stats: bool = True) -> bool:
         """
         Check if a non-expired key exists in cache.
+        
+        Args:
+            key: The cache key to check
+            count_stats: If False, don't count this as a hit/miss in statistics
         """
-        return self.get(key) is not None
+        with self._lock:
+            entry = self._cache.get(key)
+            
+            if entry is None:
+                if count_stats:
+                    self._misses += 1
+                return False
+            
+            # Check expiration
+            if time.time() > entry.expires_at:
+                del self._cache[key]
+                if count_stats:
+                    self._misses += 1
+                return False
+            
+            if count_stats:
+                self._hits += 1
+            return True
     
     def clear(self) -> None:
         """Clear all entries from cache."""
@@ -214,14 +235,22 @@ def is_token_blacklisted(token: str) -> bool:
     Check if a token is blacklisted, using cache.
     
     Returns True if blacklisted, False otherwise.
+    
+    Cache strategy:
+    - blacklist_cache: Positive cache for tokens that ARE blacklisted (rare)
+    - valid_token_cache: Negative cache for tokens that are NOT blacklisted (common)
+    
+    Stats are only counted for valid_token_cache since that's where we expect hits.
     """
     from models import BlacklistToken
     
     # Check blacklist cache (positive cache - token IS blacklisted)
-    if blacklist_cache.contains(token):
+    # Don't count stats here since most tokens won't be blacklisted
+    if blacklist_cache.contains(token, count_stats=False):
         return True
     
     # Check valid token cache (negative cache - token is NOT blacklisted)
+    # This is where we expect cache hits
     if valid_token_cache.contains(token):
         return False
     
