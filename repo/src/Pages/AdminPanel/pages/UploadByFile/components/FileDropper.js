@@ -86,11 +86,6 @@ const FileDropper = ({ onFilesSelected, onParseComplete, selectedFiles, isLoadin
             message.warning(`Only video files were selected (${videoFiles.length} out of ${files.length})`);
         }
 
-        if (videoFiles.length > 100) {
-            message.error('Maximum 100 files allowed');
-            return;
-        }
-
         onFilesSelected(videoFiles);
     };
 
@@ -261,7 +256,6 @@ const FileDropper = ({ onFilesSelected, onParseComplete, selectedFiles, isLoadin
 
             <div style={{ marginTop: '24px', color: '#a0a0a0', fontSize: '14px' }}>
                 <p><strong>Supported formats:</strong> MP4, AVI, MKV, MOV, WMV, FLV, WEBM, M4V, 3GP</p>
-                <p><strong>Max files:</strong> 100 files per batch</p>
                 <p><strong>GuessIt will analyze:</strong> Movie titles, TV show names, seasons, episodes, years, and more from filenames</p>
             </div>
         </div>

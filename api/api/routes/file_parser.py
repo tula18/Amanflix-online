@@ -489,9 +489,6 @@ def parse_files(current_admin):
         if not filenames:
             return jsonify({'error': 'No filenames provided'}), 400
         
-        if len(filenames) > 100:  # Limit to prevent abuse
-            return jsonify({'error': 'Too many files. Maximum 100 files per request'}), 400
-        
         log_info(f"Admin {current_admin.username} is parsing {len(filenames)} files")
         
         # Parse files concurrently for better performance
