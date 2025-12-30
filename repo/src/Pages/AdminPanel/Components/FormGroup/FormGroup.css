@@ -47,3 +47,20 @@
 .maxLength-label_active {
     display: flex;
 }
+
+/* Keep background dark when browser autofill or internal autofill is applied */
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:hover,
+input:-internal-autofill-selected {
+    -webkit-box-shadow: 0 0 0 1000px #333 inset !important;
+    box-shadow: 0 0 0 1000px #333 inset !important;
+    -webkit-text-fill-color: #fff !important;
+    background-color: #333 !important;
+}
+
+/* Ensure focused state doesn't change the background */
+.form-group input.focused,
+.form-group input:focus {
+    background: #333 !important;
+}
