@@ -170,14 +170,6 @@ def get_continue_watching(current_user):
             if movie:
                 content = movie.serialize
                 content['source'] = 'database'
-            else:
-                # If not in DB, try from CDN
-                from app import movies, item_index
-                if item.content_id in item_index:
-                    content = movies[item_index[item.content_id]].copy()
-                    content['source'] = 'cdn'
-                    
-            if content:
                 content['watch_history'] = item.serialize()
                 result.append(content)
                 
@@ -188,20 +180,13 @@ def get_continue_watching(current_user):
             if item.progress_percentage < 90 and not item.is_completed:
                 # Try to get from DB first
                 tv_show = TVShow.query.filter_by(show_id=item.content_id).first()
-                
+
                 if tv_show:
                     content = tv_show.serialize
                     content['source'] = 'database'
                     content['watch_history'] = item.serialize()
                     result.append(content)
-                else:
-                    # If not in DB, try from CDN
-                    from app import tv_series, item_index
-                    if item.content_id in item_index:
-                        content = tv_series[item_index[item.content_id]].copy()
-                        content['source'] = 'cdn'
-                        content['watch_history'] = item.serialize()
-                        result.append(content)
+                # If not in DB, skip (no CDN fallback)
             
             # If episode is completed, check if there's a next episode
             else:
@@ -227,24 +212,13 @@ def get_continue_watching(current_user):
                     if tv_show:
                         content = tv_show.serialize
                         content['source'] = 'database'
-                        
+
                         # Create a copy of the watch history with next episode info
                         watch_history_data = item.serialize()
                         watch_history_data['next_episode'] = next_episode_info
                         content['watch_history'] = watch_history_data
                         result.append(content)
-                    else:
-                        # If not in DB, try from CDN
-                        from app import tv_series, item_index
-                        if item.content_id in item_index:
-                            content = tv_series[item_index[item.content_id]].copy()
-                            content['source'] = 'cdn'
-                            
-                            # Create a copy of the watch history with next episode info
-                            watch_history_data = item.serialize()
-                            watch_history_data['next_episode'] = next_episode_info
-                            content['watch_history'] = watch_history_data
-                            result.append(content)
+                    # If not in DB, skip (no CDN fallback)
                 else:
                     # No next episode found, skip this show
                     continue
@@ -406,32 +380,11 @@ def get_next_episode_info(current_user, watch_history):
                                 'restarted': True
                             }
     else:
-        # Check CDN for single episode shows
-        from app import tv_series, item_index
-        if content_id in item_index:
-            show_info = tv_series[item_index[content_id]]
-            seasons_count = show_info.get('number_of_seasons', 0)
-            episodes_count = show_info.get('number_of_episodes', 0)
-            
-            
-            if seasons_count == 1 and episodes_count == 1 and watch_history.is_completed:
-                # Single episode show and it's completed
-                return None
+        # No CDN fallback: if show not in DB, we'll rely on estimation below
+        pass
     
     if not next_episode_info:
-        # Fallback for CDN or incomplete DB info - check if we should generate an estimate
-        from app import tv_series, item_index
-        if content_id in item_index:
-            show_info = tv_series[item_index[content_id]]
-            seasons_count = show_info.get('number_of_seasons', 0)
-            episodes_count = show_info.get('number_of_episodes', 0)
-            
-            
-            # If it's a single episode show that's completed, don't suggest anything
-            if seasons_count == 1 and episodes_count == 1 and watch_history.is_completed:
-                return None
-        
-        # For other cases, generate an estimate
+        # No CDN fallback — generate an estimate based on watch history
         season_number = watch_history.season_number
         episode_number = watch_history.episode_number + 1
         
@@ -525,10 +478,8 @@ def get_next_episode(current_user, show_id):
     show = TVShow.query.filter_by(show_id=show_id).first()
     
     if not show:
-        # If not in DB, get from CDN
-        from app import tv_series, item_index
-        if show_id not in item_index:
-            return jsonify({'message': 'Show not found'}), 404
+        # Show not in database and CDN fallback is disabled
+        return jsonify({'message': 'Show not found'}), 404
 
     # Get the last watched episode
     last_watched = WatchHistory.query.filter_by(
