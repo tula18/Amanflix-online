@@ -1,3 +1,19 @@
+/* ============================================
+   FormGroup Component Styles
+   ============================================ */
+
+/* Base form group container */
+.form-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* ============================================
+   Floating Labels
+   ============================================ */
+
 .placeholder-label {
     background: #333;
     color: #fff;
@@ -5,28 +21,31 @@
     display: none;
     position: absolute;
     top: -8px;
+    left: 0;
     margin: 0 10px;
     padding: 0 5px;
     border-radius: 10px;
-    left: 0;
     z-index: 1000;
     text-align: center;
-    /* pointer-events: none; */
-    transition: all 0.3s ease, left 0.3s ease, font-size 0.3s ease, color 0.3s ease;
-}
-
-.form-group input {
-    background: #333 !important;
+    align-items: center;
+    transition: all 0.3s ease;
 }
 
 .placeholder-label_active {
     display: flex;
 }
 
-.focused {
-    border: 2px solid white !important;
+/* Required field indicator */
+.required-indicator {
+    font-size: 1.1rem;
+    color: gold;
+    margin-left: 5px;
+    cursor: help;
+    display: flex;
+    align-items: center;
 }
 
+/* Character count label */
 .maxLength-label {
     background: #333;
     color: #fff;
@@ -34,33 +53,208 @@
     display: none;
     position: absolute;
     top: -8px;
+    right: 0;
     margin: 0 10px;
     padding: 0 5px;
     border-radius: 10px;
-    right: 0;
     z-index: 1000;
     text-align: center;
-    /* pointer-events: none; */
-    transition: all 0.3s ease, left 0.3s ease, font-size 0.3s ease, color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .maxLength-label_active {
     display: flex;
 }
 
-/* Keep background dark when browser autofill or internal autofill is applied */
+/* ============================================
+   Input Styles
+   ============================================ */
+
+.form-group input {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 45px;
+    padding: 0 16px;
+    font-size: 1rem;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    outline: none;
+    border: 2px solid transparent;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-group input::placeholder {
+    color: #999;
+}
+
+/* ============================================
+   Textarea Styles
+   ============================================ */
+
+.form-group textarea {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    min-height: 90px;
+    padding: 10px 16px;
+    font-size: 1rem;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    outline: none;
+    border: 2px solid transparent;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-group textarea::placeholder {
+    color: #999;
+}
+
+/* ============================================
+   Focus States
+   ============================================ */
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group input.focused,
+.form-group textarea.focused {
+    border: 2px solid white;
+    background: #333;
+}
+
+/* ============================================
+   Disabled States
+   ============================================ */
+
+.form-group input:disabled,
+.form-group textarea:disabled {
+    opacity: 0.8;
+    color: #7e7b7b;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   Validation States
+   ============================================ */
+
+.form-group input.is-invalid,
+.form-group textarea.is-invalid {
+    border: 2px solid #ff4d4d;
+}
+
+.form-group input.is-valid,
+.form-group textarea.is-valid {
+    border: 2px solid #28a745;
+}
+
+/* ============================================
+   Browser Autofill Override
+   ============================================ */
+
 input:-webkit-autofill,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:hover,
-input:-internal-autofill-selected {
+input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 1000px #333 inset !important;
     box-shadow: 0 0 0 1000px #333 inset !important;
     -webkit-text-fill-color: #fff !important;
     background-color: #333 !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Ensure focused state doesn't change the background */
-.form-group input.focused,
-.form-group input:focus {
-    background: #333 !important;
+/* ============================================
+   Password Toggle Button
+   ============================================ */
+
+.eye-icon-wrapper {
+    position: absolute;
+    right: 3%;
+    top: 0;
+    height: 45px;
+    background: transparent;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: color 0.3s ease, height 0.3s ease;
+}
+
+.eye-icon-wrapper:hover {
+    color: #fff;
+}
+
+.eye-icon-wrapper:focus {
+    outline: none;
+}
+
+.password-eye-icon {
+    font-size: 1.2rem;
+}
+
+/* ============================================
+   Messages (Error & Success)
+   ============================================ */
+
+.error-message {
+    background: #333;
+    color: #ff4d4d;
+    font-size: 0.8rem;
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    margin: 0 10px;
+    padding: 0 5px;
+    border-radius: 10px;
+    z-index: 1000;
+    text-align: center;
+}
+
+.success-message {
+    background: #333;
+    color: #28a745;
+    font-size: 0.8rem;
+    display: none;
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    margin: 0 10px;
+    padding: 0 5px;
+    border-radius: 10px;
+    z-index: 1000;
+    text-align: center;
+}
+
+.show-error {
+    display: block;
+}
+
+/* ============================================
+   Action Button
+   ============================================ */
+
+.show_image {
+    background-color: #333;
+    color: #fff;
+    font-size: 0.8rem;
+    display: block;
+    position: absolute;
+    bottom: 25px;
+    right: 0;
+    margin: 0 10px;
+    padding: 0 5px;
+    border-radius: 10px;
+    z-index: 1000;
+    text-align: center;
 }

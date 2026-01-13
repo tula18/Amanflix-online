@@ -1,57 +1,139 @@
 import React from 'react';
 import './FormGroup.css';
 import { Button, Tooltip } from 'antd';
+import useFormField from './hooks/useFormField';
 
-const FormGroup = ({ label, name, type = 'text', value, onChange, error, success, disabled=false, required=false, min=0, step=1, maxLength=null, showBtn=false, btnOnClick, btnText, style={}, className="" }) => {
-    const handleChange = (e) => {
-        onChange(e);
-    };
-    var errorMessage = (typeof(error) == "object" && Object.prototype.hasOwnProperty.call(error, name)) ? error[name] : undefined
-    var successMessage = (typeof(success) == "object" && Object.prototype.hasOwnProperty.call(success, name)) ? success[name] : undefined
+/**
+ * FormGroup - Reusable form input component
+ * 
+ * @param {string} label - Input label text
+ * @param {string} name - Input name/id attribute
+ * @param {string} type - Input type (text, number, date, email, etc.)
+ * @param {string} value - Controlled input value
+ * @param {function} onChange - Change handler
+ * @param {object|string} error - Error object with field names as keys, or error message
+ * @param {object|string} success - Success object with field names as keys, or success message
+ * @param {boolean} disabled - Whether input is disabled
+ * @param {boolean} required - Whether field is required
+ * @param {number} min - Minimum value (for number inputs)
+ * @param {number} step - Step value (for number inputs)
+ * @param {number|null} maxLength - Maximum character length
+ * @param {boolean} showBtn - Whether to show action button
+ * @param {function} btnOnClick - Button click handler
+ * @param {string} btnText - Button text
+ * @param {object} style - Custom styles
+ * @param {string} className - Additional CSS classes
+ */
+const FormGroup = ({ 
+    label, 
+    name, 
+    type = 'text', 
+    value, 
+    onChange, 
+    error, 
+    success, 
+    disabled = false, 
+    required = false, 
+    min = 0, 
+    step = 1, 
+    maxLength = null, 
+    showBtn = false, 
+    btnOnClick, 
+    btnText, 
+    style = {}, 
+    className = '' 
+}) => {
+    const {
+        safeValue,
+        hasValue,
+        errorMessage,
+        successMessage,
+        handleFocus,
+        handleBlur,
+        handleChange,
+        getInputClassName,
+        getAriaAttributes,
+    } = useFormField({ name, value, error, success, onChange });
 
-    const inputClass = `${errorMessage ? 'is-invalid' : ''} ${successMessage ? 'is-valid' : ''} ${className}`;
-    
+    // For date inputs, always show the label
+    const showPlaceholderLabel = hasValue || type === 'date';
+    const inputClassName = getInputClassName(className);
+    const ariaProps = getAriaAttributes(required);
+
     return (
         <div className="form-group">
-            <label htmlFor={name} className={`placeholder-label ${(value || type === 'date') ? 'placeholder-label_active' : ''}`}>
-                {label} {required && (<p style={{fontSize: "1.1rem", color: 'gold', marginLeft: 5, cursor: 'help', marginBottom: 0}}><Tooltip title="Required">*</Tooltip></p>)}
+            {/* Floating label */}
+            <label 
+                htmlFor={name} 
+                className={`placeholder-label ${showPlaceholderLabel ? 'placeholder-label_active' : ''}`}
+            >
+                {label}
+                {required && (
+                    <span className="required-indicator">
+                        <Tooltip title="Required">*</Tooltip>
+                    </span>
+                )}
             </label>
-            <label htmlFor={name} className={`maxLength-label ${(maxLength !== null) ? 'maxLength-label_active' : ''}`}>
-                ({(value ?? "").length} / {maxLength})
-            </label>
+
+            {/* Character count label */}
+            {maxLength !== null && (
+                <label 
+                    htmlFor={name} 
+                    className="maxLength-label maxLength-label_active"
+                >
+                    ({safeValue.length} / {maxLength})
+                </label>
+            )}
+
+            {/* Input field */}
             <input 
                 type={type}
+                id={name}
+                name={name}
+                value={safeValue}
+                onChange={handleChange}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                className={inputClassName}
+                disabled={disabled}
+                placeholder={`${label}${required ? ' *' : ''}`}
                 min={min}
                 step={step}
                 maxLength={maxLength}
-                id={name}
-                name={name}
                 style={style}
-                value={value}
-                onChange={handleChange}
-                className={inputClass}
-                disabled={disabled}
-                placeholder={`${label} ${required ? ("*") : ("")}`}
-                onFocus={(e) => e.target.classList.add('focused')}
-                onBlur={(e) => e.target.classList.remove('focused')}
+                {...ariaProps}
             />
+
+            {/* Error message */}
             {errorMessage && (
-                <span className="error-message show-error">
+                <span 
+                    id={`${name}-error`}
+                    className="error-message show-error"
+                    role="alert"
+                >
                     {errorMessage}
                 </span>
             )}
+
+            {/* Success message */}
             {successMessage && (
-                <span className="error-message show-error">
+                <span 
+                    id={`${name}-success`}
+                    className="success-message show-error"
+                    role="status"
+                >
                     {successMessage}
                 </span>
             )}
+
+            {/* Optional action button */}
             {showBtn && (
                 <span className="show_image">
                     <Button onClick={btnOnClick} type="link">{btnText}</Button>
                 </span>
             )}
         </div>
-    )
-}
+    );
+};
 
 export default FormGroup;

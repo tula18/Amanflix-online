@@ -707,7 +707,7 @@ const UnifiedUploadModal = ({
                 if (!value) errorMessage = 'ID cannot be empty';
                 break;
             case "title":
-                if (!value || value.length < 3) errorMessage = 'Title should be at least 3 characters';
+                if (!value || value.length < 3) successMessage = 'Title should be at least 3 characters';
                 break;
             case "overview":
                 if (!value || value.length < 3) errorMessage = 'Overview should be at least 3 characters';

@@ -57,7 +57,7 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 16px;
-    width: 97%;
+    /* width: 97%; */
     height: 45px;
     padding-left: 16px;
     font-size: 1rem;
@@ -118,8 +118,6 @@
     justify-content: center;
     margin-bottom: 16px;
     resize: vertical;
-    width: 97%;
-    max-width: 97%;
     min-height: 90px;
     height: 35px;
     padding-left: 16px;

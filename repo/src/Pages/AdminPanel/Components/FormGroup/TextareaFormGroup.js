@@ -1,47 +1,118 @@
 import React from 'react';
 import './FormGroup.css';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
+import useFormField from './hooks/useFormField';
 
-const TextareaFormGroup = ({ label, name, type = 'text', value, onChange, error, success, maxLength=null, disabled=false, required=false }) => {
-    const handleChange = (e) => {
-        onChange(e);
-    };
-    var errorMessage = (typeof(error) == "object" && Object.prototype.hasOwnProperty.call(error, name)) ? error[name] : undefined
-    var successMessage = (typeof(success) == "object" && Object.prototype.hasOwnProperty.call(success, name)) ? success[name] : undefined
+/**
+ * TextareaFormGroup - Multi-line text input component
+ * 
+ * @param {string} label - Input label text
+ * @param {string} name - Input name/id attribute
+ * @param {string} value - Controlled input value
+ * @param {function} onChange - Change handler
+ * @param {object|string} error - Error object with field names as keys
+ * @param {object|string} success - Success object with field names as keys
+ * @param {number|null} maxLength - Maximum character length
+ * @param {boolean} disabled - Whether input is disabled
+ * @param {boolean} required - Whether field is required
+ * @param {number} rows - Number of visible text rows
+ * @param {object} style - Custom styles
+ * @param {string} className - Additional CSS classes
+ */
+const TextareaFormGroup = ({ 
+    label, 
+    name, 
+    value, 
+    onChange, 
+    error, 
+    success, 
+    maxLength = null, 
+    disabled = false, 
+    required = false,
+    rows = 4,
+    style = {},
+    className = ''
+}) => {
+    const {
+        safeValue,
+        hasValue,
+        errorMessage,
+        successMessage,
+        handleFocus,
+        handleBlur,
+        handleChange,
+        getInputClassName,
+        getAriaAttributes,
+    } = useFormField({ name, value, error, success, onChange });
 
-    const inputClass = `${errorMessage ? 'is-invalid' : ''} ${successMessage ? 'is-valid' : ''}`;
-    
+    const inputClassName = getInputClassName(className);
+    const ariaProps = getAriaAttributes(required);
+
     return (
         <div className="form-group">
-            <label htmlFor={name} className={`placeholder-label ${value ? 'placeholder-label_active' : ''}`}>
-                {label} {required && (<p style={{fontSize: "1.1rem", color: 'gold', marginLeft: 5, cursor: 'help', marginBottom: 0}}><Tooltip title="Required">*</Tooltip></p>)}
+            {/* Floating label */}
+            <label 
+                htmlFor={name} 
+                className={`placeholder-label ${hasValue ? 'placeholder-label_active' : ''}`}
+            >
+                {label}
+                {required && (
+                    <span className="required-indicator">
+                        <Tooltip title="Required">*</Tooltip>
+                    </span>
+                )}
             </label>
-            <label htmlFor={name} className={`maxLength-label ${(maxLength !== null) ? 'maxLength-label_active' : ''}`}>
-                ({value.length} / {maxLength})
-            </label>
+
+            {/* Character count label */}
+            {maxLength !== null && (
+                <label 
+                    htmlFor={name} 
+                    className="maxLength-label maxLength-label_active"
+                >
+                    ({safeValue.length} / {maxLength})
+                </label>
+            )}
+
+            {/* Textarea field */}
             <textarea 
+                id={name}
                 name={name}
-                value={value}
+                value={safeValue}
                 onChange={handleChange}
-                className={inputClass}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                className={inputClassName}
                 maxLength={maxLength}
                 disabled={disabled}
-                placeholder={`${label} ${required && ("*")}`}
-                onFocus={(e) => e.target.classList.add('focused')}
-                onBlur={(e) => e.target.classList.remove('focused')}
+                placeholder={`${label}${required ? ' *' : ''}`}
+                rows={rows}
+                style={style}
+                {...ariaProps}
             />
+
+            {/* Error message */}
             {errorMessage && (
-                <span className="error-message show-error">
+                <span 
+                    id={`${name}-error`}
+                    className="error-message show-error"
+                    role="alert"
+                >
                     {errorMessage}
                 </span>
             )}
+
+            {/* Success message */}
             {successMessage && (
-                <span className="error-message show-error">
+                <span 
+                    id={`${name}-success`}
+                    className="success-message show-error"
+                    role="status"
+                >
                     {successMessage}
                 </span>
             )}
         </div>
-    )
-}
+    );
+};
 
 export default TextareaFormGroup;
