@@ -1,7 +1,9 @@
 import React from 'react';
 import './FormGroup.css';
-import { Button, Tooltip } from 'antd';
+import { Button, Tooltip, Spin } from 'antd';
+import { FaXmark } from 'react-icons/fa6';
 import useFormField from './hooks/useFormField';
+import useInputMask from './hooks/useInputMask';
 
 /**
  * FormGroup - Reusable form input component
@@ -21,6 +23,11 @@ import useFormField from './hooks/useFormField';
  * @param {boolean} showBtn - Whether to show action button
  * @param {function} btnOnClick - Button click handler
  * @param {string} btnText - Button text
+ * @param {boolean} loading - Show loading spinner
+ * @param {boolean} clearable - Show clear button when input has value
+ * @param {function} onClear - Clear button handler (if not provided, clears value automatically)
+ * @param {string} mask - Input mask pattern (phone, credit-card, date, or custom pattern)
+ * @param {boolean} returnUnmasked - Return unmasked value in onChange (default: false)
  * @param {object} style - Custom styles
  * @param {string} className - Additional CSS classes
  */
@@ -39,7 +46,12 @@ const FormGroup = ({
     maxLength = null, 
     showBtn = false, 
     btnOnClick, 
-    btnText, 
+    btnText,
+    loading = false,
+    clearable = false,
+    onClear,
+    mask,
+    returnUnmasked = false,
     style = {}, 
     className = '' 
 }) => {
@@ -55,10 +67,38 @@ const FormGroup = ({
         getAriaAttributes,
     } = useFormField({ name, value, error, success, onChange });
 
+    // Input masking hook
+    const { handleMaskedChange, getMaskedValue, hasMask } = useInputMask(mask, returnUnmasked);
+
+    // Handle input change with optional masking
+    const handleInputChange = (e) => {
+        if (hasMask) {
+            handleMaskedChange(e.target.value, onChange, name);
+        } else {
+            handleChange(e);
+        }
+    };
+
+    // Handle clear button click
+    const handleClearClick = () => {
+        if (onClear) {
+            onClear();
+        } else if (onChange) {
+            onChange({ target: { name, value: '' } });
+        }
+    };
+
     // For date inputs, always show the label
     const showPlaceholderLabel = hasValue || type === 'date';
     const inputClassName = getInputClassName(className);
     const ariaProps = getAriaAttributes(required);
+    
+    // Display value (apply mask if needed)
+    const displayValue = hasMask ? getMaskedValue(safeValue) : safeValue;
+    
+    // Show clear/loading buttons
+    const showClearButton = clearable && hasValue && !disabled && !loading;
+    const showLoadingSpinner = loading && !disabled;
 
     return (
         <div className="form-group">
@@ -90,8 +130,8 @@ const FormGroup = ({
                 type={type}
                 id={name}
                 name={name}
-                value={safeValue}
-                onChange={handleChange}
+                value={displayValue}
+                onChange={handleInputChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 className={inputClassName}
@@ -103,6 +143,26 @@ const FormGroup = ({
                 style={style}
                 {...ariaProps}
             />
+
+            {/* Loading spinner */}
+            {showLoadingSpinner && (
+                <span className="input-icon loading-icon">
+                    <Spin size="small" />
+                </span>
+            )}
+
+            {/* Clear button */}
+            {showClearButton && (
+                <button
+                    type="button"
+                    className="input-icon clear-button"
+                    onClick={handleClearClick}
+                    aria-label="Clear input"
+                    tabIndex={-1}
+                >
+                    <FaXmark />
+                </button>
+            )}
 
             {/* Error message */}
             {errorMessage && (

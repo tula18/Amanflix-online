@@ -5,3 +5,4 @@ export { default as TextareaFormGroup } from './TextareaFormGroup';
 
 // Hooks
 export { default as useFormField } from './hooks/useFormField';
+export { default as useInputMask } from './hooks/useInputMask';

@@ -1,6 +1,7 @@
 import React from 'react';
 import './FormGroup.css';
-import { Tooltip } from 'antd';
+import { Tooltip, Spin } from 'antd';
+import { FaXmark } from 'react-icons/fa6';
 import useFormField from './hooks/useFormField';
 
 /**
@@ -16,6 +17,9 @@ import useFormField from './hooks/useFormField';
  * @param {boolean} disabled - Whether input is disabled
  * @param {boolean} required - Whether field is required
  * @param {number} rows - Number of visible text rows
+ * @param {boolean} loading - Show loading spinner
+ * @param {boolean} clearable - Show clear button when input has value
+ * @param {function} onClear - Clear button handler (if not provided, clears value automatically)
  * @param {object} style - Custom styles
  * @param {string} className - Additional CSS classes
  */
@@ -30,6 +34,9 @@ const TextareaFormGroup = ({
     disabled = false, 
     required = false,
     rows = 4,
+    loading = false,
+    clearable = false,
+    onClear,
     style = {},
     className = ''
 }) => {
@@ -45,8 +52,21 @@ const TextareaFormGroup = ({
         getAriaAttributes,
     } = useFormField({ name, value, error, success, onChange });
 
+    // Handle clear button click
+    const handleClearClick = () => {
+        if (onClear) {
+            onClear();
+        } else if (onChange) {
+            onChange({ target: { name, value: '' } });
+        }
+    };
+
     const inputClassName = getInputClassName(className);
     const ariaProps = getAriaAttributes(required);
+    
+    // Show buttons conditionally
+    const showClearButton = clearable && hasValue && !disabled && !loading;
+    const showLoadingSpinner = loading && !disabled;
 
     return (
         <div className="form-group">
@@ -89,6 +109,26 @@ const TextareaFormGroup = ({
                 style={style}
                 {...ariaProps}
             />
+
+            {/* Loading spinner */}
+            {showLoadingSpinner && (
+                <span className="textarea-icon loading-icon">
+                    <Spin size="small" />
+                </span>
+            )}
+
+            {/* Clear button */}
+            {showClearButton && (
+                <button
+                    type="button"
+                    className="textarea-icon clear-button"
+                    onClick={handleClearClick}
+                    aria-label="Clear textarea"
+                    tabIndex={-1}
+                >
+                    <FaXmark />
+                </button>
+            )}
 
             {/* Error message */}
             {errorMessage && (
