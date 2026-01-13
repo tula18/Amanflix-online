@@ -397,9 +397,13 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
   }
 
   function formatMinutesToTime(minutes) {
-if (!minutes && minutes !== 0) return 'Unknown';
+    if (!minutes && minutes !== 0) return 'Unknown';
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
+
+    if (hours == 0) {
+      return `${remainingMinutes}m`;
+    }
 
     return `${hours}h ${remainingMinutes}m`;
   }
@@ -413,6 +417,8 @@ if (!minutes && minutes !== 0) return 'Unknown';
   const handleEpisodeSelect = (episodeId) => {
     navigate(`/watch/${episodeId}`);
   };
+
+  const number_of_seasons = (movie.seasons && movie.seasons.length) || 0
 
   const title = movie.media_type === 'tv' || movie.content_type === 'tv' ? 
     (movie.name || movie.title) : 
@@ -526,7 +532,7 @@ if (!minutes && minutes !== 0) return 'Unknown';
                   </p>
                   {(movie.media_type === 'tv') ? (
                       <p className="banner_release_year">
-                          {movie.number_of_seasons} Season{movie.number_of_seasons !== 1 ? 's' : ''}
+                          {number_of_seasons} Season{number_of_seasons !== 1 ? 's' : ''}
                       </p>
                   ) : ''}
                   {(movie.media_type === 'movie') ? (

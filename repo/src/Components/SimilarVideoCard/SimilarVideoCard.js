@@ -125,11 +125,18 @@ function SimilarVideoCard({ video, handleMovieClick, isFirstRender, fetchSimilar
       }
 
     function formatMinutesToTime(minutes) {
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-    
-        return `${hours}h ${remainingMinutes}m`;
+      if (!minutes && minutes !== 0) return 'Unknown';
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+
+      if (hours == 0) {
+        return `${remainingMinutes}m`;
       }
+
+      return `${hours}h ${remainingMinutes}m`;
+    }
+
+    const number_of_seasons = (video.seasons && video.seasons.length) || 0
 
     const mediaTitle = video.media_type === 'tv' ? video.name : video.title
 
@@ -192,7 +199,7 @@ function SimilarVideoCard({ video, handleMovieClick, isFirstRender, fetchSimilar
                 
                 {(video.media_type === 'tv') ? (
                     <div className='duration'>
-                        {video.number_of_seasons} Season{video.number_of_seasons !== 1 ? 's' : ''}
+                        {number_of_seasons} Season{number_of_seasons !== 1 ? 's' : ''}
                     </div>
                 ) : (
                     <div className='duration'>
