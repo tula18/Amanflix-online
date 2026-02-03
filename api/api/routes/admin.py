@@ -970,10 +970,10 @@ def import_cdn_data(current_admin):
             
             # Update the CDN files
             from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
-            temp_movies = get_movies(clean=False)
-            temp_tv_series = get_tv_shows(clean=False)
-            temp_movies_with_images = get_movies_with_images(clean=False)
-            temp_tv_series_with_images = get_tv_shows_with_images(clean=False)
+            temp_movies = get_movies(force_clean=False)
+            temp_tv_series = get_tv_shows(force_clean=False)
+            temp_movies_with_images = get_movies_with_images(force_clean=False)
+            temp_tv_series_with_images = get_tv_shows_with_images(force_clean=False)
             log_info(f"Current content - Movies: {len(temp_movies)}, TV Shows: {len(temp_tv_series)}")
             
             # Update the normal content files
