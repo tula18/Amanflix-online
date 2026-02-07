@@ -867,34 +867,38 @@ def export_menu():
     """Submenu for export options."""
     log_section("EXPORT ADMIN DATA")
     
-    try:
-        print(f"\n{Colors.BOLD}{Colors.WHITE}Export Options:{Colors.RESET}")
-        print(f"{Colors.GREEN}1.{Colors.RESET} Export to CSV")
-        print(f"{Colors.YELLOW}2.{Colors.RESET} Export to JSON")
-        print(f"{Colors.BLUE}3.{Colors.RESET} Export Both Formats")
-        print(f"{Colors.GRAY}4.{Colors.RESET} Back to Main Menu")
-        
-        choice = get_secure_input("Select export format (1-4): ", allow_empty=True)
-        
-        if choice == '1':
-            return export_admin_data('csv')
-        elif choice == '2':
-            return export_admin_data('json')
-        elif choice == '3':
-            csv_result = export_admin_data('csv')
-            json_result = export_admin_data('json')
-            return csv_result and json_result
-        elif choice == '4':
-            return True
-        else:
-            log_error("Invalid choice. Please select 1-4.")
-            return False
+    while True:
+        try:
+            print(f"\n{Colors.BOLD}{Colors.WHITE}Export Options:{Colors.RESET}")
+            print(f"{Colors.GREEN}1.{Colors.RESET} Export to CSV")
+            print(f"{Colors.YELLOW}2.{Colors.RESET} Export to JSON")
+            print(f"{Colors.BLUE}3.{Colors.RESET} Export Both Formats")
+            print(f"{Colors.GRAY}0.{Colors.RESET} Back to Main Menu")
             
-    except Exception as e:
-        log_error(f"Export menu failed: {e}")
-        return False
-    finally:
-        log_section_end()
+            choice = get_secure_input("Select export format (0-3): ", allow_empty=True)
+            
+            if choice == '1':
+                export_admin_data('csv')
+            elif choice == '2':
+                export_admin_data('json')
+            elif choice == '3':
+                export_admin_data('csv')
+                export_admin_data('json')
+            elif choice == '0':
+                log_section_end()
+                return True
+            else:
+                log_error("Invalid choice. Please select 0-3.")
+            
+            # Pause before showing submenu again
+            if choice and choice != '0':
+                input(f"\n{Colors.GRAY}Press Enter to continue...{Colors.RESET}")
+                print("\n")
+                
+        except Exception as e:
+            log_error(f"Export menu failed: {e}")
+            input(f"\n{Colors.GRAY}Press Enter to continue...{Colors.RESET}")
+            print("\n")
 
 def create_admin_any_role():
     """Create an admin account with any role (not just superadmin)."""
@@ -1176,45 +1180,50 @@ def run_database_migration():
     """Run database migrations using Flask-Migrate."""
     log_section("DATABASE MIGRATION")
     
-    try:
-        log_step("Database Migration Options")
-        print(f"\n{Colors.BOLD}{Colors.WHITE}Migration Options:{Colors.RESET}")
-        print(f"{Colors.GREEN}1.{Colors.RESET} Initialize Migration Repository (First Time Setup)")
-        print(f"{Colors.BLUE}2.{Colors.RESET} Generate New Migration")
-        print(f"{Colors.YELLOW}3.{Colors.RESET} Apply Migrations (Upgrade Database)")
-        print(f"{Colors.CYAN}4.{Colors.RESET} Show Current Migration Status")
-        print(f"{Colors.MAGENTA}5.{Colors.RESET} Show Migration History")
-        print(f"{Colors.RED}6.{Colors.RESET} Downgrade Database (Previous Migration)")
-        print(f"{Colors.GRAY}7.{Colors.RESET} Cleanup Migration Backups")
-        print(f"{Colors.YELLOW}8.{Colors.RESET} Back to Main Menu")
-        
-        choice = get_secure_input("Select migration operation (1-8): ", allow_empty=True)
-        
-        if choice == '1':
-            return initialize_migration_repo()
-        elif choice == '2':
-            return generate_migration()
-        elif choice == '3':
-            return apply_migrations()
-        elif choice == '4':
-            return show_migration_status()
-        elif choice == '5':
-            return show_migration_history()
-        elif choice == '6':
-            return downgrade_database()
-        elif choice == '7':
-            return cleanup_migration_backups()
-        elif choice == '8':
-            return True
-        else:
-            log_error("Invalid choice. Please select 1-8.")
-            return False
+    while True:
+        try:
+            log_step("Database Migration Options")
+            print(f"\n{Colors.BOLD}{Colors.WHITE}Migration Options:{Colors.RESET}")
+            print(f"{Colors.GREEN}1.{Colors.RESET} Initialize Migration Repository (First Time Setup)")
+            print(f"{Colors.BLUE}2.{Colors.RESET} Generate New Migration")
+            print(f"{Colors.YELLOW}3.{Colors.RESET} Apply Migrations (Upgrade Database)")
+            print(f"{Colors.CYAN}4.{Colors.RESET} Show Current Migration Status")
+            print(f"{Colors.MAGENTA}5.{Colors.RESET} Show Migration History")
+            print(f"{Colors.RED}6.{Colors.RESET} Downgrade Database (Previous Migration)")
+            print(f"{Colors.GRAY}7.{Colors.RESET} Cleanup Migration Backups")
+            print(f"{Colors.YELLOW}0.{Colors.RESET} Back to Main Menu")
             
-    except Exception as e:
-        log_error(f"Migration menu failed: {e}")
-        return False
-    finally:
-        log_section_end()
+            choice = get_secure_input("Select migration operation (0-7): ", allow_empty=True)
+            
+            if choice == '1':
+                initialize_migration_repo()
+            elif choice == '2':
+                generate_migration()
+            elif choice == '3':
+                apply_migrations()
+            elif choice == '4':
+                show_migration_status()
+            elif choice == '5':
+                show_migration_history()
+            elif choice == '6':
+                downgrade_database()
+            elif choice == '7':
+                cleanup_migration_backups()
+            elif choice == '0':
+                log_section_end()
+                return True
+            else:
+                log_error("Invalid choice. Please select 0-7.")
+            
+            # Pause before showing submenu again
+            if choice and choice != '0':
+                input(f"\n{Colors.GRAY}Press Enter to continue...{Colors.RESET}")
+                print("\n")
+                
+        except Exception as e:
+            log_error(f"Migration menu failed: {e}")
+            input(f"\n{Colors.GRAY}Press Enter to continue...{Colors.RESET}")
+            print("\n")
 
 def initialize_migration_repo():
     """Initialize Flask-Migrate repository."""
