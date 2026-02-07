@@ -144,6 +144,7 @@ class Movie(db.Model):
     video_id = db.Column(db.Integer, primary_key=True, unique=True)
     has_subtitles = db.Column(db.Boolean, nullable=True)
     in_production = db.Column(db.Boolean, nullable=True)
+    added_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
 
     def __init__(self, in_production, status, revenue, budget, production_countries, production_companies, has_subtitles, video_id, movie_id, title, overview, tagline=None, release_date=None, vote_average=None, genres=None, keywords=None, poster_path=None, backdrop_path=None, runtime=None, spoken_languages=None):
         self.movie_id = movie_id
@@ -194,6 +195,7 @@ class Movie(db.Model):
             'revenue': self.revenue,
             'status': self.status,
             'in_production': self.in_production,
+            'added_at': self.added_at.isoformat() if self.added_at else None,
             'media_type': 'movie'
         }
 
@@ -216,6 +218,7 @@ class TVShow(db.Model):
     production_countries = db.Column(db.String(255), nullable=True)
     networks = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(255), nullable=True)
+    added_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     seasons = db.relationship('Season', backref='tvshow', lazy=True)
 
     def __init__(self, show_id, title, genres, created_by, overview, poster_path, backdrop_path, vote_average, tagline, spoken_languages,first_air_date, last_air_date, production_companies, production_countries, networks, status, seasons):
@@ -260,6 +263,7 @@ class TVShow(db.Model):
             'production_countries': self.production_countries,
             'networks': self.networks,
             'status': self.status,
+            'added_at': self.added_at.isoformat() if self.added_at else None,
             'media_type': 'tv',
             'seasons': [season.serialize for season in self.seasons]
         }

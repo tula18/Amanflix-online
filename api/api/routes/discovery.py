@@ -3,6 +3,7 @@ from api.utils import token_required, serialize_watch_history
 from cdn.utils import paginate, check_images_existence
 from models import Movie, TVShow, db
 from sqlalchemy import func, text
+from datetime import datetime, timedelta
 import random
 
 discovery_bp = Blueprint('discovery_bp', __name__, url_prefix='/api')
@@ -282,5 +283,96 @@ def get_discovery_featured(current_user):
         
         return jsonify(paginated_content)
         
+    except Exception as e:
+        return jsonify({'error': f'Database query failed: {str(e)}'}), 500
+
+
+@discovery_bp.route('/discovery/new-titles', methods=['GET'])
+@token_required
+def get_discovery_new_titles(current_user):
+    """
+    Get the most recently added content (movies and TV shows).
+    Filters by the added_at timestamp so only titles added within
+    the last N days are returned (default 5 days).
+    """
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    days = request.args.get('days', 5, type=int)  # Only titles added in the last N days
+    with_images = request.args.get('with_images', False, type=bool)
+    include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    content_type = request.args.get('content_type', '')  # 'movie', 'tv', or '' for both
+
+    combined_content = []
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    try:
+        # --- Movies ---
+        if content_type != 'tv':
+            movie_query = Movie.query.filter(
+                Movie.added_at.isnot(None),
+                Movie.added_at >= cutoff
+            )
+
+            if with_images:
+                movie_query = movie_query.filter(
+                    Movie.poster_path.isnot(None),
+                    Movie.backdrop_path.isnot(None)
+                )
+
+            movie_query = movie_query.order_by(Movie.added_at.desc())
+
+            movies = movie_query.all()
+            for movie in movies:
+                movie_data = movie.serialize
+                movie_data['id'] = movie.movie_id
+                combined_content.append(movie_data)
+
+        # --- TV Shows ---
+        if content_type != 'movie':
+            tv_query = TVShow.query.filter(
+                TVShow.added_at.isnot(None),
+                TVShow.added_at >= cutoff
+            )
+
+            if with_images:
+                tv_query = tv_query.filter(
+                    TVShow.poster_path.isnot(None),
+                    TVShow.backdrop_path.isnot(None)
+                )
+
+            tv_query = tv_query.order_by(TVShow.added_at.desc())
+
+            tv_shows = tv_query.all()
+            for tv_show in tv_shows:
+                tv_data = tv_show.serialize
+                tv_data['id'] = tv_show.show_id
+                combined_content.append(tv_data)
+
+        # Sort all content together by added_at descending
+        combined_content.sort(
+            key=lambda x: x.get('added_at') or '',
+            reverse=True
+        )
+
+        # Paginate
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_content = combined_content[start:end]
+
+        # Add watch history if requested
+        if include_watch_history:
+            for item in paginated_content:
+                item_content_type = item.get('media_type', 'movie')
+                watch_history = serialize_watch_history(
+                    content_id=item['id'],
+                    content_type=item_content_type,
+                    current_user=current_user,
+                    include_next_episode=(item_content_type == 'tv')
+                )
+                if watch_history:
+                    item['watch_history'] = watch_history
+
+        return jsonify(paginated_content)
+
     except Exception as e:
         return jsonify({'error': f'Database query failed: {str(e)}'}), 500

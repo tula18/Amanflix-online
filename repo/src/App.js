@@ -22,6 +22,7 @@ import MyListPage from './Pages/MyListPage/MyListPage';
 import HelpPage from './Pages/HelpPage/HelpPage';
 import MoviesCategoryPage from './Pages/MovieCategoryPage/MovieCategoryPage';
 import ShowCategoryPage from './Pages/ShowCategoryPage/ShowCategoryPage';
+import NewTitlesPage from './Pages/NewTitlesPage/NewTitlesPage';
 import ScrollToTop from './Utils/ScrolltoTop';
 import { API_URL } from './config';
 import ComingSoonPage from './Pages/ComingSoonPage/ComingSoonPage';
@@ -242,6 +243,7 @@ function App() {
           <Route path='/shows/:categoryId' element={<PrivateRoute><ShowCategoryPage /></PrivateRoute>}/>
           <Route path='/movies' element={<PrivateRoute><MoviesPage /></PrivateRoute>}/>
           <Route path='/movies/:categoryId' element={<PrivateRoute><MoviesCategoryPage /></PrivateRoute>}/>
+          <Route path='/new-titles' element={<PrivateRoute><NewTitlesPage /></PrivateRoute>}/>
           <Route path="/watch/:watch_id" element={<PrivateRoute><Watch/></PrivateRoute>} />
           <Route path='/search' element={<PrivateRoute><SearchPage/></PrivateRoute>} />
           <Route path='/profile' element={<PrivateRoute><ProfilePage/></PrivateRoute>} />

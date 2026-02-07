@@ -202,6 +202,7 @@ function MovieSlider({title, apiUrl, lessItems=0, category="", mediaType="movies
     const navigateToCategory = () => {
       if (redirect !== null) {
         navigate(redirect)
+        return
       }
       if (category.trim() !== '') {
         console.log(`navigating to ${category}`);
