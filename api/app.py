@@ -9,7 +9,8 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
-from models import db, Movie, TVShow, Season, Episode, Admin
+from sqlalchemy import inspect, text
+from models import db, Movie, TVShow, Season, Episode, Admin, User, WatchHistory, MyList, UploadRequest, BugReport, BlacklistToken, Notification, UserSession, UserActivity
 from tqdm import tqdm
 from api.utils import check_ffmpeg_available, setup_request_logging
 # Import the logger functions instead of redefining them
@@ -464,10 +465,179 @@ def service_unavailable_error(error):
 # def handle_exception(error):
 #     return jsonify(error=str(error)), 500
 
+
+def check_database_schema():
+    """
+    Check if the database schema matches the SQLAlchemy models.
+    Returns a tuple (is_valid, errors_list)
+    """
+    errors = []
+    
+    try:
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        
+        # Get all model classes from imported models
+        models_to_check = [Movie, TVShow, Season, Episode, Admin, User, WatchHistory, MyList, UploadRequest, BugReport, BlacklistToken, Notification, UserSession, UserActivity]
+        
+        log_step("Checking database schema against models")
+        
+        for model in models_to_check:
+            table_name = model.__tablename__
+            
+            # Check if table exists
+            if table_name not in existing_tables:
+                errors.append(f"Table '{table_name}' does not exist in database but is defined in models")
+                continue
+            
+            # Get columns from database
+            db_columns = {col['name']: col for col in inspector.get_columns(table_name)}
+            
+            # Get columns from model
+            model_columns = {}
+            for column_name, column_obj in model.__table__.columns.items():
+                model_columns[column_name] = column_obj
+            
+            # Check for missing columns in database
+            for col_name, col_obj in model_columns.items():
+                if col_name not in db_columns:
+                    col_type = str(col_obj.type)
+                    nullable = "NULL" if col_obj.nullable else "NOT NULL"
+                    errors.append(
+                        f"Column '{table_name}.{col_name}' ({col_type}, {nullable}) "
+                        f"exists in model but not in database"
+                    )
+            
+            # Check for extra columns in database (optional warning)
+            for col_name in db_columns:
+                if col_name not in model_columns:
+                    log_warning(f"Column '{table_name}.{col_name}' exists in database but not in model (may be OK)")
+        
+        return len(errors) == 0, errors
+        
+    except Exception as e:
+        return False, [f"Error during schema validation: {str(e)}"]
+
+
 if __name__ == '__main__':
     # Create tables
     with app.app_context():
         db.create_all()
+    
+    # Validate database schema
+    log_section("DATABASE SCHEMA VALIDATION")
+    with app.app_context():
+        schema_valid, schema_errors = check_database_schema()
+        
+        if not schema_valid:
+            log_error("Database schema is out of sync with models!")
+            log_banner("MIGRATION REQUIRED", "Database schema does not match model definitions", "error")
+            
+            print(f"\n{Colors.RED}┌{'─' * 70}┐")
+            print(f"│{Colors.BOLD} ❌ CRITICAL ERROR: Database migration required{Colors.RED}{' ' * 25}│")
+            print(f"└{'─' * 70}┘{Colors.RESET}")
+            
+            print(f"\n{Colors.YELLOW}Schema Issues Detected:{Colors.RESET}")
+            for i, error in enumerate(schema_errors, 1):
+                print(f"{Colors.RED}  {i}. {error}{Colors.RESET}")
+            
+            # Generate migration message based on errors
+            missing_columns = []
+            missing_tables = []
+            table_column_map = {}
+            column_tables_map = {}  # Map columns to tables they're being added to
+            
+            for error in schema_errors:
+                if "Column" in error and "exists in model but not in database" in error:
+                    # Extract table.column from error message
+                    parts = error.split("'")
+                    if len(parts) >= 2:
+                        table_col = parts[1]
+                        table, column = table_col.split('.')
+                        if table not in table_column_map:
+                            table_column_map[table] = []
+                        table_column_map[table].append(column)
+                        
+                        # Also map column to tables for grouping
+                        if column not in column_tables_map:
+                            column_tables_map[column] = []
+                        column_tables_map[column].append(table)
+                        
+                        missing_columns.append(table_col)
+                elif "Table" in error and "does not exist" in error:
+                    parts = error.split("'")
+                    if len(parts) >= 2:
+                        missing_tables.append(parts[1])
+            
+            # Build migration message
+            migration_msg_parts = []
+            
+            if missing_tables:
+                table_names = [t.capitalize() for t in missing_tables]
+                if len(table_names) == 1:
+                    migration_msg_parts.append(f"Create {table_names[0]} table")
+                else:
+                    migration_msg_parts.append(f"Create {', '.join(table_names[:-1])} and {table_names[-1]} tables")
+            
+            # Group columns by which tables they're being added to
+            if column_tables_map:
+                processed_columns = set()
+                for column, tables in column_tables_map.items():
+                    if column in processed_columns:
+                        continue
+                    
+                    # Capitalize table names properly
+                    table_names = []
+                    for t in tables:
+                        if t == 'tvshow':
+                            table_names.append('TVShow')
+                        elif t == 'user_activity':
+                            table_names.append('UserActivity')
+                        elif t == 'user_session':
+                            table_names.append('UserSession')
+                        else:
+                            table_names.append(t.capitalize())
+                    
+                    # Format the table list
+                    if len(table_names) == 1:
+                        table_str = table_names[0]
+                    else:
+                        table_str = ', '.join(table_names[:-1]) + f" and {table_names[-1]}"
+                    
+                    migration_msg_parts.append(f"Add {column} to {table_str}")
+                    processed_columns.add(column)
+            
+            suggested_message = " and ".join(migration_msg_parts) if migration_msg_parts else "Update database schema"
+            
+            # Display suggested migration message
+            print(f"\n{Colors.GREEN}{Colors.BOLD}📋 Suggested Migration Message:{Colors.RESET}")
+            print(f"{Colors.CYAN}{Colors.BOLD}{suggested_message}{Colors.RESET}\n")
+            
+            print(f"\n{Colors.CYAN}To fix this issue:{Colors.RESET}")
+            print(f"1. Run: {Colors.YELLOW}python create_superadmin.py{Colors.RESET}")
+            print(f"2. Select option: {Colors.YELLOW}15{Colors.RESET} (Database Migration Management)")
+            
+            # Check if migrations directory exists
+            migrations_dir = os.path.join(os.getcwd(), 'migrations')
+            if not os.path.exists(migrations_dir):
+                print(f"3. Select option: {Colors.YELLOW}1{Colors.RESET} (Initialize Migration Repository)")
+                print(f"4. Then select: {Colors.YELLOW}2{Colors.RESET} (Generate New Migration)")
+                print(f"5. When prompted for message, paste: {Colors.CYAN}{suggested_message}{Colors.RESET}")
+                print(f"6. Finally select: {Colors.YELLOW}3{Colors.RESET} (Apply Migrations)")
+            else:
+                print(f"3. Select option: {Colors.YELLOW}2{Colors.RESET} (Generate New Migration)")
+                print(f"4. When prompted for message, paste: {Colors.CYAN}{suggested_message}{Colors.RESET}")
+                print(f"5. Then select: {Colors.YELLOW}3{Colors.RESET} (Apply Migrations)")
+            
+            print(f"6. Restart the application")
+            print(f"\n{Colors.RED}Application terminated.{Colors.RESET}\n")
+            
+            log_error("Application terminated due to schema mismatch")
+            log_section_end()
+            sys.exit(1)
+        else:
+            log_success("Database schema validation passed - all models match database")
+            log_section_end()
 
     # Check for superadmin after database initialization
     log_section("SUPERADMIN VERIFICATION")
