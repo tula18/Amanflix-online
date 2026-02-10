@@ -125,7 +125,7 @@ export interface IProps {
   onTimeUpdate?: (e: SyntheticEvent<HTMLVideoElement, Event>) => void;
   onLoadedMetadata?: (e: SyntheticEvent<HTMLVideoElement, Event>) => void;
   onEnded?: () => void;
-  onErrorVideo?: () => void;
+  onErrorVideo?: (errorInfo?: any) => void;
   onNextClick?: () => void;
   onClickItemListReproduction?: (id: string | number, playing: boolean) => void;
   onCrossClick?: () => void;
@@ -467,9 +467,26 @@ export default function ReactNetflixPlayer({
     }
   };
 
-  const errorVideo = () => {
+  const errorVideo = (e?: any) => {
+    const videoEl = videoComponent.current;
+    const mediaError = videoEl?.error;
+    const errorInfo = {
+      code: mediaError?.code,
+      message: mediaError?.message,
+      networkState: videoEl?.networkState,
+      readyState: videoEl?.readyState,
+      currentSrc: videoEl?.currentSrc,
+      currentTime: videoEl?.currentTime,
+      duration: videoEl?.duration,
+      buffered: videoEl?.buffered?.length ? Array.from({ length: videoEl.buffered.length }, (_, i) => ({
+        start: videoEl.buffered.start(i),
+        end: videoEl.buffered.end(i),
+      })) : [],
+    };
+    console.error('[NetflixPlayer] Video error details:', errorInfo);
+    console.error('[NetflixPlayer] MediaError codes: 1=ABORTED, 2=NETWORK, 3=DECODE, 4=SRC_NOT_SUPPORTED');
     if (onErrorVideo) {
-      onErrorVideo();
+      onErrorVideo(errorInfo);
     }
     setError(t('playError', { lng: playerLanguage }));
   };
@@ -1029,7 +1046,7 @@ export default function ReactNetflixPlayer({
         onCanPlay={() => startVideo()}
         onTimeUpdate={timeUpdate}
         onLoadedMetadata={onLoadedMetadata}
-        onError={errorVideo}
+        onError={(e: any) => errorVideo(e)}
         onEnded={onEndedFunction}
         muted={muted}
         crossOrigin="anonymous"

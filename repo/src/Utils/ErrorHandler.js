@@ -186,6 +186,22 @@ const ErrorHandler = (error, navigate, json={}) => {
                     }]
                 }}});
                 break;
+            case "video_processing":
+                navigate('/error', {state: { error: {
+                    title: "Video Being Processed", 
+                    message: "The video is undergoing a quick makeover behind the scenes to fix a playback hiccup. Our servers are working their magic to get it ready for you. Give it a few minutes and check back—it'll be worth the wait.",
+                    with_divider: false,
+                    buttons: [{
+                        text: "Retry",
+                        type: "primary",
+                        onClick: "refreshPage",
+                    }, {
+                        text: "Go Home",
+                        type: "default",
+                        onClick: "redirectHome",
+                    }]
+                }}});
+                break;
             default:
                 console.log("invalid error");
                 break;

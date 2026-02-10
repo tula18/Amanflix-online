@@ -320,9 +320,49 @@ const WatchPage = () => {
     }, [contentId, contentType, seasonNumber, episodeNumber, totalDuration]);
 
     // Handle errors
-    const handleError = (event) => {
+    const handleError = async (errorInfo) => {
+        // If it's a network error (code 2), check if the video is being re-encoded
+        if (errorInfo && errorInfo.code === 2) {
+            try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const response = await fetch(`${API_URL}/api/can-watch/${watch_id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.status === 503) {
+                        const data = await response.json();
+                        if (data.reason === 'processing') {
+                            ErrorHandler('video_processing', navigate);
+                            return;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check video processing status:', err);
+            }
+        }
+        
+        // If it's a decode error (code 3), report it to the API to trigger re-encoding
+        if (errorInfo && errorInfo.code === 3) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                fetch(`${API_URL}/api/report-error`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        watch_id: watch_id,
+                        error_code: errorInfo.code,
+                        error_message: errorInfo.message || ''
+                    })
+                }).catch(err => console.error('Failed to report video error:', err));
+            }
+        }
+        
         ErrorHandler("video_error", navigate);
-        console.error("Video playback error");
     };    const handleNextEpisode = () => {
         if (mediaDataNext && mediaDataNext.nextContentId && mediaDataNext.nextSeasonNumber && mediaDataNext.nextEpisodeNumber) {
             const { nextContentId, nextSeasonNumber, nextEpisodeNumber } = mediaDataNext;
@@ -362,7 +402,14 @@ const WatchPage = () => {
                     ref={videoRef}
                     src={`${API_URL}/api/stream/${watch_id}`}
                     controls={true}
-                    onError={handleError}
+                    onError={(e) => {
+                        const vid = e.target;
+                        const mediaError = vid?.error;
+                        handleError({
+                            code: mediaError?.code,
+                            message: mediaError?.message,
+                        });
+                    }}
                     onTimeUpdate={handleProgress}
                     onLoadedMetadata={handleMetadataLoaded}
                     autoPlay
