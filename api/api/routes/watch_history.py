@@ -6,6 +6,7 @@ from sqlalchemy import desc
 from api.utils import create_watch_id, parse_watch_id
 from utils.logger import log_error, log_info, log_debug
 from api.db_utils import safe_commit, safe_rollback, db_retry
+from api.cache import get_cached_movie, get_cached_show
 
 watch_history_bp = Blueprint('watch_history', __name__, url_prefix='/api/watch-history')
 
@@ -165,8 +166,8 @@ def get_continue_watching(current_user):
             if item.progress_percentage >= 90:
                 continue
                 
-            # Try to get from DB first
-            movie = Movie.query.filter_by(movie_id=item.content_id).first()
+            # Try to get from cache first
+            movie = get_cached_movie(item.content_id)
             if movie:
                 content = movie.serialize
                 content['source'] = 'database'
@@ -178,8 +179,8 @@ def get_continue_watching(current_user):
             
             # If episode is not completed, always show it
             if item.progress_percentage < 90 and not item.is_completed:
-                # Try to get from DB first
-                tv_show = TVShow.query.filter_by(show_id=item.content_id).first()
+                # Try to get from cache first
+                tv_show = get_cached_show(item.content_id)
 
                 if tv_show:
                     content = tv_show.serialize
@@ -206,8 +207,8 @@ def get_continue_watching(current_user):
                     if is_restart_same_episode:
                         continue
                         
-                    # Try to get from DB first
-                    tv_show = TVShow.query.filter_by(show_id=item.content_id).first()
+                    # Try to get from cache first
+                    tv_show = get_cached_show(item.content_id)
                     
                     if tv_show:
                         content = tv_show.serialize
@@ -237,8 +238,8 @@ def get_next_episode_info(current_user, watch_history):
     MAGENTA = '\033[95m'
     RESET = '\033[0m'
     
-    # Try to get show from DB
-    show = TVShow.query.filter_by(show_id=content_id).first()
+    # Try to get show from cache
+    show = get_cached_show(content_id)
     
     next_episode_info = None
     single_episode_show = False
@@ -474,8 +475,8 @@ def get_show_progress(current_user, show_id):
 @token_required
 def get_next_episode(current_user, show_id):
     """Get the next episode to watch for a TV show"""
-    # Try to get from DB first
-    show = TVShow.query.filter_by(show_id=show_id).first()
+    # Try to get from cache first
+    show = get_cached_show(show_id)
     
     if not show:
         # Show not in database and CDN fallback is disabled
@@ -719,7 +720,7 @@ def get_current_progress(current_user, content_type, content_id):
         # Get episode details if possible
         episode_details = None
         try:
-            show = TVShow.query.filter_by(show_id=content_id).first()
+            show = get_cached_show(content_id)
             if show:
                 season = Season.query.filter_by(
                     tvshow_id=content_id,

@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 from api.utils import ensure_upload_folder_exists, save_with_progress, validate_title_data, validate_episode_data, admin_token_required
 from models import Movie, TVShow, Season, Episode
+from api.cache import invalidate_movie, invalidate_show
 import os
 import subprocess
 import json
@@ -399,6 +400,10 @@ def upload_movie(current_admin):
         log_error(f"Failed to upload movie: {str(e)}")
         return jsonify(message=f"An error occurred while saving the movie to the database. Error: {str(e)}"), 500
 
+    try:
+        invalidate_movie(movie_data['id'])
+    except Exception:
+        pass
     log_success(f"Movie '{movie_data['title']}' (ID: {movie_data['id']}) uploaded successfully by {current_admin.username}")
     return jsonify(message=f"Movie '{movie_data['title']}' {forced_text} uploaded successfully."), 200
 
@@ -503,6 +508,10 @@ def update_movie(current_admin, movie_id):
     # except Exception as e:
     #     return jsonify(message=f"An error occurred while updating the movie. Error: {str(e)}"), 500
 
+    try:
+        invalidate_movie(movie_id)
+    except Exception:
+        pass
     return jsonify(message=f"Movie '{movie.title}' updated successfully."), 200
 
 @upload_bp.route('/movie/delete/<int:movie_id>', methods=['DELETE'])
@@ -534,7 +543,10 @@ def delete_movie(current_admin, movie_id):
     
     db.session.delete(movie)
     db.session.commit()
-    
+    try:
+        invalidate_movie(movie_id)
+    except Exception:
+        pass
     return jsonify(message=f"Movie {movie.title} deleted successfully")
 
 @upload_bp.route('/show', methods=['POST'])
@@ -719,6 +731,10 @@ def upload_tvshow(current_admin):
         
         return jsonify(message=f"An error occurred while saving the TV show and its seasons/episodes to the database. Error: {str(e)}"), 500
 
+    try:
+        invalidate_show(tvshow_data['show_id'])
+    except Exception:
+        pass
     return jsonify({'message': f'TV Show {new_show.title} uploaded successfully with all seasons and episodes'}), 200
 
 # Add this helper function to clean up files
@@ -801,7 +817,10 @@ def delete_tvshow(current_admin, show_id):
     # Delete show from database
     db.session.delete(show)
     db.session.commit()
-    
+    try:
+        invalidate_show(show_id)
+    except Exception:
+        pass
     return jsonify(message=f"TV show {show.title} deleted successfully")
 
 # Add this new endpoint near the other TV show routes
@@ -1029,7 +1048,10 @@ def update_tvshow(current_admin, show_id):
         
         # Commit all changes
         db.session.commit()
-        
+        try:
+            invalidate_show(show_id)
+        except Exception:
+            pass
         return jsonify({'message': f'TV Show {show.title} updated successfully'}), 200
     
     except Exception as e:

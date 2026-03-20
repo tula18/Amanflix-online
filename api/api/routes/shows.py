@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, abort
 from models import TVShow
 from api.utils import admin_token_required, token_required, serialize_watch_history
+from api.cache import get_all_shows, get_cached_show
 import os
 
 shows_bp = Blueprint('shows_bp', __name__, url_prefix='/api')
@@ -15,24 +16,23 @@ def get_shows(current_user):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     reverse = request.args.get('reverse', False, type=bool)
     
-    # Get all Shows first
-    query = TVShow.query
+    # Get all Shows from cache
+    all_shows = get_all_shows()
     
     # Apply sorting if sort_by_field is provided
     if sort_by_field:
-        sort_by = getattr(TVShow, sort_by_field, None)
-        if sort_by:
-            if order.lower() == 'desc':
-                query = query.order_by(sort_by.desc())
-            else:
-                query = query.order_by(sort_by.asc())
+        reverse_sort = (order.lower() == 'desc')
+        all_shows = sorted(
+            all_shows,
+            key=lambda s: getattr(s, sort_by_field, None) or '',
+            reverse=reverse_sort
+        )
                 
-    # Get all shows and reverse the list
-    all_shows = query.all()
+    # Reverse the list if requested
     if reverse:
-        all_shows.reverse()
+        all_shows = list(reversed(all_shows))
     
-    # Manual pagination on the reversed list
+    # Manual pagination on the list
     total = len(all_shows)
     start = (page - 1) * per_page
     end = start + per_page
@@ -61,7 +61,8 @@ def search_show(current_user):
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    shows = TVShow.query.filter(TVShow.title.ilike(f'%{query}%')).all()
+    all_shows = get_all_shows()
+    shows = [s for s in all_shows if isinstance(s.title, str) and query.lower() in s.title.lower()]
     result = [show.serialize for show in shows]
     limited_result = result[:max_results]
     
@@ -84,7 +85,7 @@ def search_show(current_user):
 def get_show(current_user, show_id):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    show = TVShow.query.filter_by(show_id=show_id).first()
+    show = get_cached_show(show_id)
     if show is None:
         return jsonify(message="The selected Show not found!"), 404
     
@@ -106,10 +107,9 @@ def get_show(current_user, show_id):
 @shows_bp.route('/shows/<int:show_id>/check', methods=['GET'])
 def check_show_exists(show_id):
     """Check if a TV show exists in the database and has video files"""
-    from models import TVShow, Season, Episode
     import os
     
-    show = TVShow.query.filter_by(show_id=show_id).first()
+    show = get_cached_show(show_id)
     if not show:
         return jsonify({
             "exist": False,

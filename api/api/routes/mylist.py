@@ -3,6 +3,7 @@ from api.utils import token_required
 from cdn.utils import paginate
 from models import User, MyList, db, Movie, TVShow
 from api.db_utils import safe_commit
+from api.cache import get_cached_movie, get_cached_show
 
 mylist_bp = Blueprint('mylist_bp', __name__, url_prefix='/api/mylist')
 
@@ -86,7 +87,7 @@ def get_all_mylist(current_user):
         content_item = None
         
         if title.content_type == 'movie':
-            movie = Movie.query.filter_by(movie_id=title.content_id).first()
+            movie = get_cached_movie(title.content_id)
             if movie:
                 content_item = movie.serialize
             else:
@@ -95,7 +96,7 @@ def get_all_mylist(current_user):
                     content_item = movie
         
         elif title.content_type == 'tv':
-            tv_show = TVShow.query.filter_by(show_id=title.content_id).first()
+            tv_show = get_cached_show(title.content_id)
             if tv_show:
                 content_item = tv_show.serialize
                 # Ensure TV shows have an id field (copy from show_id if needed)

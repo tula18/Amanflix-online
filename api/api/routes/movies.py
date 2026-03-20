@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, abort
 from models import Movie
 from api.utils import admin_token_required, sort, token_required, serialize_watch_history
+from api.cache import get_all_movies, get_cached_movie
 from cdn.utils import filter_valid_genres
 import os
 import random
@@ -18,24 +19,23 @@ def get_movies(current_user):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     reverse = request.args.get('reverse', False, type=bool)
     
-    # Get all Movies first
-    query = Movie.query
+    # Get all Movies from cache
+    all_movies = get_all_movies()
     
     # Apply sorting if sort_by_field is provided
     if sort_by_field:
-        sort_by = getattr(Movie, sort_by_field, None)
-        if sort_by:
-            if order.lower() == 'desc':
-                query = query.order_by(sort_by.desc())
-            else:
-                query = query.order_by(sort_by.asc())
+        reverse_sort = (order.lower() == 'desc')
+        all_movies = sorted(
+            all_movies,
+            key=lambda m: getattr(m, sort_by_field, None) or '',
+            reverse=reverse_sort
+        )
                 
-    # Get all movies and reverse the list
-    all_movies = query.all()
+    # Reverse the list if requested
     if reverse:
-        all_movies.reverse()
+        all_movies = list(reversed(all_movies))
     
-    # Manual pagination on the reversed list
+    # Manual pagination on the list
     total = len(all_movies)
     start = (page - 1) * per_page
     end = start + per_page
@@ -66,7 +66,7 @@ def get__random_movie(current_user):
     per_page = request.args.get('per_page', 20, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
 
-    movies = Movie.query.all()
+    movies = get_all_movies()
 
     def apply_filters(items, item_type):
         results = []
@@ -112,7 +112,8 @@ def search_movies(current_user):
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    movies = Movie.query.filter(Movie.title.ilike(f'%{query}%')).all()
+    all_movies = get_all_movies()
+    movies = [m for m in all_movies if isinstance(m.title, str) and query.lower() in m.title.lower()]
     result = [movie.serialize for movie in movies]
     limited_result = result[:max_results]
     
@@ -135,7 +136,7 @@ def search_movies(current_user):
 def get_movie(current_user, movie_id):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    movie = Movie.query.filter_by(movie_id=movie_id).first()
+    movie = get_cached_movie(movie_id)
     if movie is None:
         return jsonify(message="The selected Movie not found!"), 404
     
@@ -157,7 +158,7 @@ def get_movie(current_user, movie_id):
 @movies_bp.route('/movies/<int:movie_id>/check', methods=['GET'])
 # @admin_token_required('moderator')
 def check_movie(movie_id):
-    movie = Movie.query.filter_by(movie_id=movie_id).first()
+    movie = get_cached_movie(movie_id)
     if movie is None:
         mp4_filepath = os.path.join('uploads', str(movie_id) + '.mp4')
         if os.path.exists(mp4_filepath):
