@@ -158,7 +158,7 @@ def get_movie(current_user, movie_id):
 @movies_bp.route('/movies/<int:movie_id>/check', methods=['GET'])
 # @admin_token_required('moderator')
 def check_movie(movie_id):
-    movie = Movie.query.filter_by(movie_id=movie_id).first()
+    movie = get_cached_movie(movie_id)
     if movie is None:
         mp4_filepath = os.path.join('uploads', str(movie_id) + '.mp4')
         if os.path.exists(mp4_filepath):

@@ -799,11 +799,11 @@ def delete_upload_request(current_admin, request_id):
 @admin_bp.route('/uploadRequests/validate', methods=['POST'])
 @admin_token_required('admin')
 def validate_upload_requests(current_admin):
-    from models import Movie, TVShow
+    from api.cache import get_all_movies, get_all_shows
     
     # Get all movies and TV shows for efficient lookup
-    all_movies = Movie.query.all()
-    all_tv_shows = TVShow.query.all()
+    all_movies = get_all_movies()
+    all_tv_shows = get_all_shows()
     
     # Create sets for fast lookup
     movie_ids = {movie.movie_id for movie in all_movies}

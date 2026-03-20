@@ -107,10 +107,9 @@ def get_show(current_user, show_id):
 @shows_bp.route('/shows/<int:show_id>/check', methods=['GET'])
 def check_show_exists(show_id):
     """Check if a TV show exists in the database and has video files"""
-    from models import TVShow, Season, Episode
     import os
     
-    show = TVShow.query.filter_by(show_id=show_id).first()
+    show = get_cached_show(show_id)
     if not show:
         return jsonify({
             "exist": False,
