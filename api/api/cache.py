@@ -5,6 +5,8 @@ This module provides thread-safe TTL-based caches for:
 - User objects (reduces DB reads in token_required)
 - Admin objects (reduces DB reads in admin_token_required)
 - Blacklisted tokens (reduces DB reads for token validation)
+- Movie objects (reduces DB reads for content queries)
+- TVShow objects (reduces DB reads for content queries)
 
 Cache hit rates of 95%+ are expected, reducing DB load by ~96%.
 """
@@ -183,6 +185,24 @@ blacklist_cache: TTLCache[bool] = TTLCache(ttl_seconds=600, max_size=10000, name
 # Key: token hash, Value: user_id
 valid_token_cache: TTLCache[int] = TTLCache(ttl_seconds=120, max_size=10000, name="ValidTokenCache")
 
+# Movie cache: stores individual Movie objects by movie_id
+# TTL: 10 minutes - movie catalog changes infrequently
+movie_cache: TTLCache = TTLCache(ttl_seconds=600, max_size=5000, name="MovieCache")
+
+# Show cache: stores individual TVShow objects by show_id
+# TTL: 10 minutes - show catalog changes infrequently
+show_cache: TTLCache = TTLCache(ttl_seconds=600, max_size=2000, name="ShowCache")
+
+# All movies cache: stores the complete list of Movie objects
+# TTL: 5 minutes - invalidated on any movie create/update/delete
+# Key: "all", Value: list of Movie ORM objects
+all_movies_cache: TTLCache = TTLCache(ttl_seconds=300, max_size=1, name="AllMoviesCache")
+
+# All shows cache: stores the complete list of TVShow objects
+# TTL: 5 minutes - invalidated on any show create/update/delete
+# Key: "all", Value: list of TVShow ORM objects
+all_shows_cache: TTLCache = TTLCache(ttl_seconds=300, max_size=1, name="AllShowsCache")
+
 
 # =============================================================================
 # Cache Helper Functions
@@ -304,7 +324,11 @@ def get_all_cache_stats() -> dict:
         "user_cache": user_cache.stats(),
         "admin_cache": admin_cache.stats(),
         "blacklist_cache": blacklist_cache.stats(),
-        "valid_token_cache": valid_token_cache.stats()
+        "valid_token_cache": valid_token_cache.stats(),
+        "movie_cache": movie_cache.stats(),
+        "show_cache": show_cache.stats(),
+        "all_movies_cache": all_movies_cache.stats(),
+        "all_shows_cache": all_shows_cache.stats(),
     }
 
 
@@ -314,4 +338,111 @@ def clear_all_caches() -> None:
     admin_cache.clear()
     blacklist_cache.clear()
     valid_token_cache.clear()
+    movie_cache.clear()
+    show_cache.clear()
+    all_movies_cache.clear()
+    all_shows_cache.clear()
     log_info("All caches cleared")
+
+
+def get_all_movies():
+    """
+    Get all movies from cache or database.
+
+    Returns a list of Movie ORM objects.
+    Caches the full list to avoid repeated full-table scans.
+    """
+    from models import Movie
+
+    cached = all_movies_cache.get("all")
+    if cached is not None:
+        return cached
+
+    movies = Movie.query.all()
+    all_movies_cache.set("all", movies)
+    return movies
+
+
+def get_all_shows():
+    """
+    Get all TV shows from cache or database.
+
+    Returns a list of TVShow ORM objects with seasons and episodes
+    eagerly loaded so they remain accessible when detached from the session.
+    """
+    from models import TVShow, Season, Episode
+    from sqlalchemy.orm import joinedload
+
+    cached = all_shows_cache.get("all")
+    if cached is not None:
+        return cached
+
+    shows = TVShow.query.options(
+        joinedload(TVShow.seasons).joinedload(Season.episodes)
+    ).all()
+    all_shows_cache.set("all", shows)
+    return shows
+
+
+def get_cached_movie(movie_id: int):
+    """
+    Get a movie by ID from cache or database.
+
+    Returns the Movie ORM object or None if not found.
+    """
+    from models import Movie
+
+    cached = movie_cache.get(str(movie_id))
+    if cached is not None:
+        return cached
+
+    movie = Movie.query.filter_by(movie_id=movie_id).first()
+    if movie:
+        movie_cache.set(str(movie_id), movie)
+    return movie
+
+
+def get_cached_show(show_id: int):
+    """
+    Get a TV show by ID from cache or database.
+
+    Returns the TVShow ORM object with seasons and episodes eagerly loaded,
+    or None if not found.
+    """
+    from models import TVShow, Season, Episode
+    from sqlalchemy.orm import joinedload
+
+    cached = show_cache.get(str(show_id))
+    if cached is not None:
+        return cached
+
+    show = TVShow.query.options(
+        joinedload(TVShow.seasons).joinedload(Season.episodes)
+    ).filter_by(show_id=show_id).first()
+    if show:
+        show_cache.set(str(show_id), show)
+    return show
+
+
+def invalidate_movie(movie_id: int) -> None:
+    """
+    Invalidate movie cache entries.
+
+    Call this when a movie is created, updated, or deleted.
+    Clears both the individual movie entry and the full movie list.
+    """
+    movie_cache.delete(str(movie_id))
+    all_movies_cache.delete("all")
+    log_info(f"MovieCache: Invalidated movie {movie_id}")
+
+
+def invalidate_show(show_id: int) -> None:
+    """
+    Invalidate TV show cache entries.
+
+    Call this when a show is created, updated, or deleted.
+    Clears both the individual show entry and the full show list.
+    """
+    show_cache.delete(str(show_id))
+    all_shows_cache.delete("all")
+    log_info(f"ShowCache: Invalidated show {show_id}")

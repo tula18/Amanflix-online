@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, abort
 from models import Movie, TVShow
+from api.cache import get_all_movies, get_all_shows
 from cdn.utils import filter_valid_genres, check_images_existence
 import random
 
@@ -10,8 +11,8 @@ def autocomplete():
     query = request.args.get('q', '', type=str).lower()
     max_results = request.args.get('max_results', 10, type=int)
 
-    movies = Movie.query.all()
-    tv_series = TVShow.query.all()
+    movies = get_all_movies()
+    tv_series = get_all_shows()
 
     movie_suggestions = [
         {"id": item.id, "title": item.title} for item in movies if query in str(item.title.lower())
@@ -37,8 +38,8 @@ def advanced_search():
     is_random = request.args.get('random', False, type=bool)
     with_images = request.args.get('with_images', False, type=bool)
 
-    movies = Movie.query.all()
-    tv_series = TVShow.query.all()
+    movies = get_all_movies()
+    tv_series = get_all_shows()
 
 
     def apply_filters(items, item_type):

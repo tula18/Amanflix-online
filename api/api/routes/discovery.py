@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from api.utils import token_required, serialize_watch_history
+from api.cache import get_all_movies, get_all_shows
 from cdn.utils import paginate, check_images_existence
 from models import Movie, TVShow, db
 from sqlalchemy import func, text
@@ -28,50 +29,28 @@ def get_discovery_random(current_user):
     combined_content = []
     
     try:
-        # Query movies from database
+        # Query movies from cache
         if content_type != 'tv':
-            movie_query = Movie.query
-            
-            # Apply rating filters
-            if min_rating > 0:
-                movie_query = movie_query.filter(Movie.vote_average >= min_rating)
-            if max_rating < 10:
-                movie_query = movie_query.filter(Movie.vote_average <= max_rating)
-            
-            # Apply image filters if requested
-            if with_images:
-                movie_query = movie_query.filter(
-                    Movie.poster_path.isnot(None),
-                    Movie.backdrop_path.isnot(None)
-                )
-            
-            # Get all matching movies and serialize them
-            movies = movie_query.all()
-            for movie in movies:
+            for movie in get_all_movies():
+                if min_rating > 0 and (movie.vote_average or 0) < min_rating:
+                    continue
+                if max_rating < 10 and (movie.vote_average or 0) > max_rating:
+                    continue
+                if with_images and (not movie.poster_path or not movie.backdrop_path):
+                    continue
                 movie_data = movie.serialize
                 movie_data['id'] = movie.movie_id  # Ensure consistent id field
                 combined_content.append(movie_data)
         
-        # Query TV shows from database
+        # Query TV shows from cache
         if content_type != 'movie':
-            tv_query = TVShow.query
-            
-            # Apply rating filters
-            if min_rating > 0:
-                tv_query = tv_query.filter(TVShow.vote_average >= min_rating)
-            if max_rating < 10:
-                tv_query = tv_query.filter(TVShow.vote_average <= max_rating)
-            
-            # Apply image filters if requested
-            if with_images:
-                tv_query = tv_query.filter(
-                    TVShow.poster_path.isnot(None),
-                    TVShow.backdrop_path.isnot(None)
-                )
-            
-            # Get all matching TV shows and serialize them
-            tv_shows = tv_query.all()
-            for tv_show in tv_shows:
+            for tv_show in get_all_shows():
+                if min_rating > 0 and (tv_show.vote_average or 0) < min_rating:
+                    continue
+                if max_rating < 10 and (tv_show.vote_average or 0) > max_rating:
+                    continue
+                if with_images and (not tv_show.poster_path or not tv_show.backdrop_path):
+                    continue
                 tv_data = tv_show.serialize
                 tv_data['id'] = tv_show.show_id  # Ensure consistent id field
                 combined_content.append(tv_data)
@@ -119,22 +98,12 @@ def get_discovery_trending(current_user):
     combined_content = []
     
     try:
-        # Query movies from database
+        # Query movies from cache
         if content_type != 'tv':
-            movie_query = Movie.query
-            
-            # Apply image filters if requested
+            movies = [m for m in get_all_movies() if m.vote_average is not None]
             if with_images:
-                movie_query = movie_query.filter(
-                    Movie.poster_path.isnot(None),
-                    Movie.backdrop_path.isnot(None)
-                )
-            
-            # Order by vote_average descending as a proxy for popularity
-            movie_query = movie_query.filter(Movie.vote_average.isnot(None)).order_by(Movie.vote_average.desc())
-            
-            # Get movies and serialize them
-            movies = movie_query.all()
+                movies = [m for m in movies if m.poster_path and m.backdrop_path]
+            movies = sorted(movies, key=lambda m: m.vote_average or 0, reverse=True)
             for movie in movies:
                 movie_data = movie.serialize
                 movie_data['id'] = movie.movie_id
@@ -143,22 +112,12 @@ def get_discovery_trending(current_user):
                 movie_data['popularity_score'] = vote_average * 10  # Simple popularity calculation
                 combined_content.append(movie_data)
         
-        # Query TV shows from database
+        # Query TV shows from cache
         if content_type != 'movie':
-            tv_query = TVShow.query
-            
-            # Apply image filters if requested
+            tv_shows = [s for s in get_all_shows() if s.vote_average is not None]
             if with_images:
-                tv_query = tv_query.filter(
-                    TVShow.poster_path.isnot(None),
-                    TVShow.backdrop_path.isnot(None)
-                )
-            
-            # Order by vote_average descending
-            tv_query = tv_query.filter(TVShow.vote_average.isnot(None)).order_by(TVShow.vote_average.desc())
-            
-            # Get TV shows and serialize them
-            tv_shows = tv_query.all()
+                tv_shows = [s for s in tv_shows if s.poster_path and s.backdrop_path]
+            tv_shows = sorted(tv_shows, key=lambda s: s.vote_average or 0, reverse=True)
             for tv_show in tv_shows:
                 tv_data = tv_show.serialize
                 tv_data['id'] = tv_show.show_id
@@ -211,43 +170,23 @@ def get_discovery_featured(current_user):
     combined_content = []
     
     try:
-        # Query movies from database
+        # Query movies from cache
         if content_type != 'tv':
-            movie_query = Movie.query.filter(Movie.vote_average >= min_rating)
-            
-            # Apply image filters if requested
+            movies = [m for m in get_all_movies() if (m.vote_average or 0) >= min_rating]
             if with_images:
-                movie_query = movie_query.filter(
-                    Movie.poster_path.isnot(None),
-                    Movie.backdrop_path.isnot(None)
-                )
-            
-            # Order by vote_average descending for featured content
-            movie_query = movie_query.order_by(Movie.vote_average.desc())
-            
-            # Get movies and serialize them
-            movies = movie_query.all()
+                movies = [m for m in movies if m.poster_path and m.backdrop_path]
+            movies = sorted(movies, key=lambda m: m.vote_average or 0, reverse=True)
             for movie in movies:
                 movie_data = movie.serialize
                 movie_data['id'] = movie.movie_id
                 combined_content.append(movie_data)
         
-        # Query TV shows from database
+        # Query TV shows from cache
         if content_type != 'movie':
-            tv_query = TVShow.query.filter(TVShow.vote_average >= min_rating)
-            
-            # Apply image filters if requested
+            tv_shows = [s for s in get_all_shows() if (s.vote_average or 0) >= min_rating]
             if with_images:
-                tv_query = tv_query.filter(
-                    TVShow.poster_path.isnot(None),
-                    TVShow.backdrop_path.isnot(None)
-                )
-            
-            # Order by vote_average descending
-            tv_query = tv_query.order_by(TVShow.vote_average.desc())
-            
-            # Get TV shows and serialize them
-            tv_shows = tv_query.all()
+                tv_shows = [s for s in tv_shows if s.poster_path and s.backdrop_path]
+            tv_shows = sorted(tv_shows, key=lambda s: s.vote_average or 0, reverse=True)
             for tv_show in tv_shows:
                 tv_data = tv_show.serialize
                 tv_data['id'] = tv_show.show_id
@@ -308,20 +247,13 @@ def get_discovery_new_titles(current_user):
     try:
         # --- Movies ---
         if content_type != 'tv':
-            movie_query = Movie.query.filter(
-                Movie.added_at.isnot(None),
-                Movie.added_at >= cutoff
-            )
-
+            movies = [
+                m for m in get_all_movies()
+                if m.added_at is not None and m.added_at >= cutoff
+            ]
             if with_images:
-                movie_query = movie_query.filter(
-                    Movie.poster_path.isnot(None),
-                    Movie.backdrop_path.isnot(None)
-                )
-
-            movie_query = movie_query.order_by(Movie.added_at.desc())
-
-            movies = movie_query.all()
+                movies = [m for m in movies if m.poster_path and m.backdrop_path]
+            movies = sorted(movies, key=lambda m: m.added_at, reverse=True)
             for movie in movies:
                 movie_data = movie.serialize
                 movie_data['id'] = movie.movie_id
@@ -329,20 +261,13 @@ def get_discovery_new_titles(current_user):
 
         # --- TV Shows ---
         if content_type != 'movie':
-            tv_query = TVShow.query.filter(
-                TVShow.added_at.isnot(None),
-                TVShow.added_at >= cutoff
-            )
-
+            tv_shows = [
+                s for s in get_all_shows()
+                if s.added_at is not None and s.added_at >= cutoff
+            ]
             if with_images:
-                tv_query = tv_query.filter(
-                    TVShow.poster_path.isnot(None),
-                    TVShow.backdrop_path.isnot(None)
-                )
-
-            tv_query = tv_query.order_by(TVShow.added_at.desc())
-
-            tv_shows = tv_query.all()
+                tv_shows = [s for s in tv_shows if s.poster_path and s.backdrop_path]
+            tv_shows = sorted(tv_shows, key=lambda s: s.added_at, reverse=True)
             for tv_show in tv_shows:
                 tv_data = tv_show.serialize
                 tv_data['id'] = tv_show.show_id
