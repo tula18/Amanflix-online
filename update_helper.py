@@ -184,10 +184,9 @@ def cmd_configure():
     # Data folder
     print("Enter the path to the Data folder (uploads, posters, db, etc.).")
     print("This can be absolute (Z:\\Amanflix\\Data) or relative to this script.")
-    data_path = input("Data folder path: ").strip()
+    data_path = input("Data folder path [Data]: ").strip()
     if not data_path:
-        print("[ERROR] Data folder path is required.")
-        return
+        data_path = 'Data'
     full_data = resolve_path(data_path)
     if not os.path.exists(full_data):
         print(f"[WARN] Path does not exist yet: {full_data}")
@@ -205,6 +204,13 @@ def cmd_configure():
     prod_path = input("Production folder: ").strip()
     if not prod_path:
         prod_path = 'Amanflix_prod'
+    full_prod = resolve_path(prod_path)
+    if not os.path.exists(full_prod):
+        print(f"[WARN] Production folder not found: {full_prod}")
+        print(f"       Make sure the folder exists and is named '{os.path.basename(full_prod)}'.")
+        print(f"       If it has a different name, rename it before running an update.")
+    else:
+        print(f"[OK] Production folder found: {full_prod}")
     config['prod_folder'] = prod_path
 
     # New version folder
@@ -298,11 +304,24 @@ def cmd_update():
         sys.exit(1)
 
     if not os.path.exists(prod_path):
-        print(f"[WARN] Production folder not found: {prod_path}")
-        print("[INFO] This looks like a first-time setup. Will rename new version to prod.")
-        first_time = True
-    else:
-        first_time = False
+        print(f"[ERROR] Production folder not found: {prod_path}")
+        print(f"[INFO] Can't find the production folder. Please check that it exists")
+        print(f"       and is named correctly (expected: {os.path.basename(prod_path)}).")
+        print(f"       If the folder has a different name, rename it to '{os.path.basename(prod_path)}'.")
+        sys.exit(1)
+
+    # Check if new version already has a venv
+    new_venv_path = os.path.join(new_version_path, venv_rel)
+    restore_venv = True
+    if os.path.exists(new_venv_path):
+        print(f"[WARN] New version already contains a venv at: {new_venv_path}")
+        choice = input("Delete it and restore the current venv? (y = delete & restore, n = keep new venv): ").strip().lower()
+        if choice == 'y':
+            shutil.rmtree(new_venv_path)
+            print("  [OK] venv in new version deleted.")
+        else:
+            print("  [INFO] Will keep the new version's venv. Skipping venv transfer.")
+            restore_venv = False
 
     # ── Confirm ───────────────────────────────────────────────
     print(f"  Current prod:    {prod_path}")
@@ -318,20 +337,19 @@ def cmd_update():
 
     # ── Step 1: Stop app ──────────────────────────────────────
     print()
-    print("[Step 1/6] Stopping app.py...")
-    if not first_time:
-        stop_app(config)
+    print("[Step 1/5] Stopping app.py...")
+    stop_app(config)
 
     # ── Step 2: Extract venv + data_config from old prod ──────
     venv_temp_path = os.path.join(SCRIPT_DIR, '_venv_temp')
     data_config_content = None
 
-    if not first_time:
-        print("[Step 2/6] Extracting venv and data_config.json from current prod...")
-        venv_src = os.path.join(prod_path, venv_rel)
-        data_config_src = os.path.join(prod_path, 'api', 'config', 'data_config.json')
+    print("[Step 2/5] Extracting venv and data_config.json from current prod...")
+    venv_src = os.path.join(prod_path, venv_rel)
+    data_config_src = os.path.join(prod_path, 'api', 'config', 'data_config.json')
 
-        # Extract venv
+    # Extract venv (only if we need to restore it later)
+    if restore_venv:
         if os.path.exists(venv_src):
             if os.path.exists(venv_temp_path):
                 shutil.rmtree(venv_temp_path)
@@ -340,51 +358,53 @@ def cmd_update():
             print("  [OK] venv extracted.")
         else:
             print(f"  [WARN] venv not found at {venv_src}")
-
-        # Extract data_config.json content
-        if os.path.exists(data_config_src):
-            with open(data_config_src, 'r') as f:
-                data_config_content = json.load(f)
-            print("  [OK] data_config.json read.")
-        else:
-            print("  [INFO] No data_config.json found, will generate from update_config.")
-            data_config_content = generate_data_config(config)
     else:
-        print("[Step 2/6] First-time setup - no existing prod to extract from.")
+        print("  [SKIP] venv transfer skipped (keeping new version's venv).")
+
+    # Extract data_config.json content
+    if os.path.exists(data_config_src):
+        with open(data_config_src, 'r') as f:
+            data_config_content = json.load(f)
+        print("  [OK] data_config.json read.")
+    else:
+        print("  [INFO] No data_config.json found, will generate from update_config.")
         data_config_content = generate_data_config(config)
 
     # ── Step 3: Move old prod to backups ──────────────────────
-    if not first_time:
-        print("[Step 3/6] Archiving current production...")
-        backup_name = f"backup_{timestamp}"
-        backup_dest = os.path.join(backup_folder, backup_name)
-        os.makedirs(backup_folder, exist_ok=True)
-        print(f"  Moving {prod_path} -> {backup_dest}")
-        shutil.move(prod_path, backup_dest)
-        print(f"  [OK] Old prod archived as {backup_name}")
-    else:
-        print("[Step 3/6] No existing prod to archive (first-time setup).")
+    print("[Step 3/5] Archiving current production...")
+    backup_name = f"backup_{timestamp}"
+    backup_dest = os.path.join(backup_folder, backup_name)
+    os.makedirs(backup_folder, exist_ok=True)
+    print(f"  Moving {prod_path} -> {backup_dest}")
+    shutil.move(prod_path, backup_dest)
+    print(f"  [OK] Old prod archived as {backup_name}")
 
     # ── Step 4: Rename new version to prod ────────────────────
-    print("[Step 4/6] Activating new version...")
+    print("[Step 4/5] Activating new version...")
     print(f"  Renaming {new_version_path} -> {prod_path}")
     shutil.move(new_version_path, prod_path)
     print("  [OK] New version is now production.")
 
     # ── Step 5: Restore venv + data_config ────────────────────
-    print("[Step 5/6] Restoring venv and data_config.json...")
+    print("[Step 5/5] Restoring venv and data_config.json...")
 
     # Restore venv
     venv_dest = os.path.join(prod_path, venv_rel)
-    if os.path.exists(venv_temp_path):
-        # Ensure parent directory exists
-        venv_parent = os.path.dirname(venv_dest)
-        os.makedirs(venv_parent, exist_ok=True)
-        print(f"  Moving venv back: {venv_dest}")
-        shutil.move(venv_temp_path, venv_dest)
-        print("  [OK] venv restored.")
+    if restore_venv:
+        if os.path.exists(venv_temp_path):
+            # Remove any venv that came with the new version to avoid nesting
+            if os.path.exists(venv_dest):
+                shutil.rmtree(venv_dest)
+            # Ensure parent directory exists
+            venv_parent = os.path.dirname(venv_dest)
+            os.makedirs(venv_parent, exist_ok=True)
+            print(f"  Moving venv back: {venv_dest}")
+            shutil.move(venv_temp_path, venv_dest)
+            print("  [OK] venv restored.")
+        else:
+            print("  [WARN] No venv to restore. You may need to create one manually.")
     else:
-        print("  [WARN] No venv to restore. You may need to create one manually.")
+        print("  [SKIP] venv restore skipped (using new version's venv).")
 
     # Write data_config.json
     data_config_dest = os.path.join(prod_path, 'api', 'config', 'data_config.json')
@@ -394,14 +414,13 @@ def cmd_update():
             json.dump(data_config_content, f, indent=4)
         print(f"  [OK] data_config.json written to {data_config_dest}")
 
-    # ── Step 6: Start app ─────────────────────────────────────
-    print("[Step 6/6] Starting app.py...")
-    start_app(config)
-
     print()
     print("=" * 60)
     print(f"  Update complete! ({timestamp})")
     print("=" * 60)
+    print()
+    print("[INFO] App was NOT started automatically.")
+    print("[INFO] Start it manually when you're ready.")
 
 
 def cmd_status():
@@ -455,7 +474,9 @@ def cmd_status():
         print(f"  {status} {label}: {path}")
 
     print(f"  {'[OK]  ' if new_exists else '[----]'} New version folder: {new_version}")
-    if not new_exists:
+    if new_exists:
+        print(f"         --> New version detected! Run 'python update_helper.py update' to update.")
+    else:
         print(f"         (No new version waiting - this is normal)")
     print()
 
