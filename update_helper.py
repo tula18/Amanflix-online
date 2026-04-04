@@ -6,10 +6,12 @@ Automates production version updates by swapping code folders while preserving
 the virtual environment and data configuration.
 
 Usage:
-    python update_helper.py configure   - Set up paths interactively
-    python update_helper.py update      - Perform a version update
-    python update_helper.py status      - Show current config and system state
-    python update_helper.py rollback    - Restore from a backup
+    python update_helper.py configure       - Set up paths interactively
+    python update_helper.py update          - Perform a version update
+    python update_helper.py update --dry-run - Show what update would do
+    python update_helper.py status          - Show current config and system state
+    python update_helper.py rollback        - Restore from a backup
+    python update_helper.py clean           - Delete old backups
 
 Expected folder structure:
     Z:\\Amanflix\\
@@ -283,7 +285,7 @@ def cmd_configure():
     print("[DONE] Configuration complete. Run 'python update_helper.py update' to perform an update.")
 
 
-def cmd_update():
+def cmd_update(dry_run=False):
     """Perform a production version update."""
     config = load_config()
 
@@ -293,7 +295,10 @@ def cmd_update():
     venv_rel = config.get('venv_path', 'api/venv')
 
     print("=" * 60)
-    print("  Amanflix Production Update")
+    if dry_run:
+        print("  Amanflix Production Update (DRY RUN)")
+    else:
+        print("  Amanflix Production Update")
     print("=" * 60)
     print()
 
@@ -315,19 +320,34 @@ def cmd_update():
     restore_venv = True
     if os.path.exists(new_venv_path):
         print(f"[WARN] New version already contains a venv at: {new_venv_path}")
-        choice = input("Delete it and restore the current venv? (y = delete & restore, n = keep new venv): ").strip().lower()
-        if choice == 'y':
-            shutil.rmtree(new_venv_path)
-            print("  [OK] venv in new version deleted.")
+        if dry_run:
+            print("  [DRY RUN] Would ask whether to delete or keep new venv.")
         else:
-            print("  [INFO] Will keep the new version's venv. Skipping venv transfer.")
-            restore_venv = False
+            choice = input("Delete it and restore the current venv? (y = delete & restore, n = keep new venv): ").strip().lower()
+            if choice == 'y':
+                shutil.rmtree(new_venv_path)
+                print("  [OK] venv in new version deleted.")
+            else:
+                print("  [INFO] Will keep the new version's venv. Skipping venv transfer.")
+                restore_venv = False
 
     # ── Confirm ───────────────────────────────────────────────
     print(f"  Current prod:    {prod_path}")
     print(f"  New version:     {new_version_path}")
     print(f"  Backup folder:   {backup_folder}")
     print()
+
+    if dry_run:
+        print("[DRY RUN] The following steps would be performed:")
+        print("  1. Stop app.py")
+        print("  2. Extract venv and data_config.json from current prod")
+        print("  3. Archive current prod to backups")
+        print("  4. Rename new version folder to prod")
+        print("  5. Restore venv and data_config.json into new prod")
+        print()
+        print("[DRY RUN] No changes were made.")
+        return
+
     confirm = input("Proceed with the update? (y/N): ").strip().lower()
     if confirm != 'y':
         print("[INFO] Update cancelled.")
@@ -440,6 +460,7 @@ def cmd_status():
     print(f"  Backup folder:     {resolve_path(config['backup_folder'])}")
     print(f"  Venv path:         {config.get('venv_path', 'api/venv')}")
     print(f"  data_root (app):   {config.get('data_root_relative', 'N/A')}")
+    print()
     print()
 
     # Check paths
@@ -659,6 +680,76 @@ def cmd_rollback():
     print("=" * 60)
 
 
+def cmd_clean():
+    """Delete old backups, keeping the most recent N."""
+    config = load_config()
+    backup_folder = resolve_path(config['backup_folder'])
+
+    if not os.path.exists(backup_folder):
+        print("[ERROR] Backup folder not found.")
+        sys.exit(1)
+
+    backups = sorted([d for d in os.listdir(backup_folder)
+                     if os.path.isdir(os.path.join(backup_folder, d))],
+                    reverse=True)
+
+    if not backups:
+        print("[INFO] No backups to clean.")
+        return
+
+    print("=" * 60)
+    print("  Amanflix Backup Cleanup")
+    print("=" * 60)
+    print()
+    print(f"Found {len(backups)} backup(s):")
+    for i, b in enumerate(backups):
+        size = _get_dir_size_str(os.path.join(backup_folder, b))
+        print(f"  {i + 1}. {b} ({size})")
+    print()
+
+    keep_input = input("How many recent backups to keep? [3]: ").strip()
+    if not keep_input:
+        keep_count = 3
+    else:
+        try:
+            keep_count = int(keep_input)
+            if keep_count < 0:
+                raise ValueError
+        except ValueError:
+            print("[ERROR] Invalid number.")
+            return
+
+    to_delete = backups[keep_count:]
+    if not to_delete:
+        print(f"[INFO] Nothing to delete. You have {len(backups)} backup(s), keeping {keep_count}.")
+        return
+
+    print()
+    print(f"Will DELETE {len(to_delete)} backup(s):")
+    for b in to_delete:
+        print(f"  - {b}")
+    print(f"Will KEEP {min(keep_count, len(backups))} most recent backup(s).")
+    print()
+
+    confirm = input("Proceed with deletion? (y/N): ").strip().lower()
+    if confirm != 'y':
+        print("[INFO] Cleanup cancelled.")
+        return
+
+    deleted = 0
+    for b in to_delete:
+        path = os.path.join(backup_folder, b)
+        try:
+            shutil.rmtree(path)
+            print(f"  [OK] Deleted {b}")
+            deleted += 1
+        except Exception as e:
+            print(f"  [ERROR] Failed to delete {b}: {e}")
+
+    print()
+    print(f"[DONE] Deleted {deleted} backup(s). {min(keep_count, len(backups))} remaining.")
+
+
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 def main():
@@ -666,10 +757,12 @@ def main():
         print("Amanflix Update Helper")
         print()
         print("Usage:")
-        print("  python update_helper.py configure   - Set up paths interactively")
-        print("  python update_helper.py update      - Perform a version update")
-        print("  python update_helper.py status      - Show current config and state")
-        print("  python update_helper.py rollback    - Restore from a backup")
+        print("  python update_helper.py configure       - Set up paths interactively")
+        print("  python update_helper.py update          - Perform a version update")
+        print("  python update_helper.py update --dry-run - Show what update would do")
+        print("  python update_helper.py status          - Show current config and state")
+        print("  python update_helper.py rollback        - Restore from a backup")
+        print("  python update_helper.py clean           - Delete old backups")
         sys.exit(0)
 
     command = sys.argv[1].lower()
@@ -677,14 +770,17 @@ def main():
     if command == 'configure':
         cmd_configure()
     elif command == 'update':
-        cmd_update()
+        dry_run = '--dry-run' in sys.argv[2:]
+        cmd_update(dry_run=dry_run)
     elif command == 'status':
         cmd_status()
     elif command == 'rollback':
         cmd_rollback()
+    elif command == 'clean':
+        cmd_clean()
     else:
         print(f"[ERROR] Unknown command: {command}")
-        print("Valid commands: configure, update, status, rollback")
+        print("Valid commands: configure, update, status, rollback, clean")
         sys.exit(1)
 
 
