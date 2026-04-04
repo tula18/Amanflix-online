@@ -6,6 +6,7 @@ from models import Admin, db, User, BlacklistToken, BugReport, UploadRequest
 from utils.logger import log_info, log_success, log_warning, log_error
 from api.db_utils import safe_commit, safe_rollback
 from api.cache import invalidate_user, invalidate_admin, add_to_blacklist_cache
+from paths import CDN_FILES_DIR, CDN_POSTERS_DIR
 import os
 import json
 import csv
@@ -878,7 +879,7 @@ def import_cdn_data(current_admin):
         
         if image_files:
             # Get the path to the posters_combined directory
-            posters_dir = os.path.join('cdn', 'posters_combined')
+            posters_dir = CDN_POSTERS_DIR
             log_info(f"Posters directory: {posters_dir}")
             
             if not os.path.exists(posters_dir):
@@ -1030,7 +1031,7 @@ def update_cdn_content(content_type, new_data, existing_data, merge=True):
     """Update the CDN content files for movies or TV series."""
     try:
         # Get the path to the CDN file
-        cdn_file_path = os.path.join(current_app.root_path, f'cdn/files/{content_type}_little_clean.json')
+        cdn_file_path = os.path.join(CDN_FILES_DIR, f'{content_type}_little_clean.json')
         log_info(f"Updating {content_type} CDN file: {cdn_file_path}")
         log_info(f"New data items: {len(new_data)}, Existing data items: {len(existing_data)}")
         
@@ -1094,7 +1095,7 @@ def update_with_images_content(content_type, new_data, existing_with_images):
     """Update the with_images files for movies or TV shows."""
     try:
         # Path to the with_images file
-        with_images_file_path = os.path.join(current_app.root_path, f'cdn/files/{content_type}_with_images.json')
+        with_images_file_path = os.path.join(CDN_FILES_DIR, f'{content_type}_with_images.json')
         log_info(f"Updating {content_type}_with_images file: {with_images_file_path}")
         
         # Clean up existing_with_images to remove malformed entries
@@ -1243,8 +1244,8 @@ def update_with_images_for_new_files(filenames):
         log_info(f"Updated with_images data: {movies_updated} movies, {tv_updated} TV shows")
         
         # Save the updated with_images files
-        movies_file_path = os.path.join(current_app.root_path, 'cdn/files/movies_with_images.json')
-        tv_file_path = os.path.join(current_app.root_path, 'cdn/files/tv_with_images.json')
+        movies_file_path = os.path.join(CDN_FILES_DIR, 'movies_with_images.json')
+        tv_file_path = os.path.join(CDN_FILES_DIR, 'tv_with_images.json')
         
         with open(movies_file_path, 'w') as f:
             json.dump(temp_movies_with_images, f, indent=2)

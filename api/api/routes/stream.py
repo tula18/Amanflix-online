@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file, make_response
 from werkzeug.utils import secure_filename
 from api.utils import ensure_upload_folder_exists, parse_watch_id, get_episode_video_id_cached, token_required
 from models import Episode, Season 
+from paths import UPLOADS_DIR, LOGS_DIR
 import os
 import subprocess
 import threading
@@ -20,7 +21,7 @@ _file_locks = {}  # video_id -> threading.Event (set = unlocked, clear = locked)
 
 # Setup dedicated re-encode logger
 def _setup_reencode_logger():
-    logs_dir = os.path.join(os.getcwd(), 'logs')
+    logs_dir = LOGS_DIR
     os.makedirs(logs_dir, exist_ok=True)
     
     reencode_logger = logging.getLogger('amanflix.reencode')
@@ -145,7 +146,7 @@ def can_watch_video(current_user, watch_id):
         video_id = str(content_id)
     
     # Check if file exists
-    file_path = os.path.join('uploads', f"{video_id}.mp4")
+    file_path = os.path.join(UPLOADS_DIR, f"{video_id}.mp4")
     if not os.path.exists(file_path):
         return jsonify(available=False, reason="not_found"), 404
     
@@ -186,7 +187,7 @@ def stream_video(watch_id):
         video_id = str(content_id)
     
     # Check if the file exists
-    mp4_path = os.path.join('uploads', f"{video_id}.mp4")
+    mp4_path = os.path.join(UPLOADS_DIR, f"{video_id}.mp4")
     if os.path.exists(mp4_path):
         file_path = mp4_path
         mimetype = 'video/mp4'
@@ -246,7 +247,7 @@ def report_video_error(current_user):
     else:
         video_id = str(content_id)
 
-    file_path = os.path.join('uploads', f"{video_id}.mp4")
+    file_path = os.path.join(UPLOADS_DIR, f"{video_id}.mp4")
     if not os.path.exists(file_path):
         return jsonify(message="Video file not found"), 404
 

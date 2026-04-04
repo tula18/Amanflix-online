@@ -26,13 +26,14 @@ from utils.logger import (
     log_info, log_success, log_warning, log_error, log_section, log_section_end,
     log_step, log_substep, log_data, Colors, log_fancy, log_banner
 )
+from paths import BACKUPS_DIR, INSTANCE_DIR
 
 # Configuration constants
 CONFIG = {
     'MIN_PASSWORD_LENGTH': 8,
     'MAX_LOGIN_ATTEMPTS': 3,
     'PASSWORD_EXPIRY_DAYS': 90,
-    'BACKUP_DIR': 'backups',
+    'BACKUP_DIR': BACKUPS_DIR,
     'EXPORT_DIR': 'exports',
     'ALLOWED_EMAIL_DOMAINS': [],  # Empty list means all domains allowed
     'FORBIDDEN_USERNAMES': ['admin', 'root', 'superuser', 'administrator', 'system']
@@ -431,7 +432,7 @@ def create_backup():
         backup_path = os.path.join(backup_dir, backup_filename)
         
         # Copy database file
-        db_path = 'instance/amanflix_db.db'
+        db_path = os.path.join(INSTANCE_DIR, 'amanflix_db.db')
         if os.path.exists(db_path):
             shutil.copy2(db_path, backup_path)
             log_success(f"Database backup created: {backup_path}")

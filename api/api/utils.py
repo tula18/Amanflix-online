@@ -22,6 +22,8 @@ from api.cache import (
     add_to_blacklist_cache
 )
 
+from paths import UPLOADS_DIR
+
 role_hierarchy = {'superadmin': 3, 'admin': 2, 'moderator': 1}
 
 # Episode cache for stream endpoint - prevents DB queries during streaming
@@ -47,9 +49,8 @@ def check_ffmpeg_available():
 check_ffmpeg_available()
 
 def ensure_upload_folder_exists():
-    upload_folder = 'uploads'
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
+    if not os.path.exists(UPLOADS_DIR):
+        os.makedirs(UPLOADS_DIR)
 
 def save_with_progress(src_file, dst_path, convert_to_mp4=True):
     """

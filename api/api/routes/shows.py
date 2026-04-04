@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, abort
 from models import TVShow
 from api.utils import admin_token_required, token_required, serialize_watch_history
+from paths import UPLOADS_DIR
 import os
 
 shows_bp = Blueprint('shows_bp', __name__, url_prefix='/api')
@@ -131,7 +132,7 @@ def check_show_exists(show_id):
         
         for episode in season.episodes:
             episode_num = episode.episode_number
-            video_path = os.path.join('uploads', f"{episode.video_id}.mp4")
+            video_path = os.path.join(UPLOADS_DIR, f"{episode.video_id}.mp4")
             
             result["episodes"][season_num][episode_num] = {
                 "exists": os.path.exists(video_path),

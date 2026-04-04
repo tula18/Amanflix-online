@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 from api.utils import admin_token_required
 from utils.data_helpers import clean_data_list
+from paths import CDN_FILES_DIR, CDN_POSTERS_DIR
 import json
 import os
 import traceback
@@ -24,8 +25,8 @@ def update_cdn_content(current_admin, content_type, content_id):
             
         # Get the correct file path based on content type
         cdn_file_path = os.path.join(
-            current_app.root_path, 
-            f'cdn/files/{"movies" if content_type == "movie" else "tv"}_little_clean.json'
+            CDN_FILES_DIR, 
+            f'{"movies" if content_type == "movie" else "tv"}_little_clean.json'
         )
         
         # Read the existing content
@@ -75,8 +76,8 @@ def update_cdn_content(current_admin, content_type, content_id):
             from cdn.utils import check_images_existence
             if check_images_existence(data):
                 with_images_file_path = os.path.join(
-                    current_app.root_path, 
-                    f'cdn/files/{"movies" if content_type == "movie" else "tv"}_with_images.json'
+                    CDN_FILES_DIR,
+                    f'{"movies" if content_type == "movie" else "tv"}_with_images.json'
                 )
                 
                 # Read with_images content
@@ -134,8 +135,8 @@ def delete_cdn_content(current_admin, content_type, content_id):
     try:
         # First get the content item to find associated images
         cdn_file_path = os.path.join(
-            current_app.root_path, 
-            f'cdn/files/{"movies" if content_type == "movie" else "tv"}_little_clean.json'
+            CDN_FILES_DIR,
+            f'{"movies" if content_type == "movie" else "tv"}_little_clean.json'
         )
         
         # Read the existing content
@@ -193,8 +194,8 @@ def delete_cdn_content(current_admin, content_type, content_id):
         # Also update the "with_images" version
         try:
             with_images_file_path = os.path.join(
-                current_app.root_path, 
-                f'cdn/files/{"movies" if content_type == "movie" else "tv"}_with_images.json'
+                CDN_FILES_DIR,
+                f'{"movies" if content_type == "movie" else "tv"}_with_images.json'
             )
             
             # Read with_images content
@@ -222,7 +223,7 @@ def delete_cdn_content(current_admin, content_type, content_id):
         images_deleted = 0
         for path in image_paths:
             try:
-                file_path = os.path.join(current_app.root_path, 'cdn/posters_combined', path)
+                file_path = os.path.join(CDN_POSTERS_DIR, path)
                 if os.path.exists(file_path):
                     os.remove(file_path)
                     images_deleted += 1
@@ -259,22 +260,22 @@ def clean_cdn_files(current_admin):
         # Define file paths
         files_to_clean = [
             {
-                'path': 'cdn/files/movies_little_clean.json',
+                'path': os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'),
                 'type': 'movies',
                 'global_var': 'movies'
             },
             {
-                'path': 'cdn/files/tv_little_clean.json', 
+                'path': os.path.join(CDN_FILES_DIR, 'tv_little_clean.json'),
                 'type': 'tv_series',
                 'global_var': 'tv_series'
             },
             {
-                'path': 'cdn/files/movies_with_images.json',
+                'path': os.path.join(CDN_FILES_DIR, 'movies_with_images.json'),
                 'type': 'movies_with_images', 
                 'global_var': 'movies_with_images'
             },
             {
-                'path': 'cdn/files/tv_with_images.json',
+                'path': os.path.join(CDN_FILES_DIR, 'tv_with_images.json'),
                 'type': 'tv_series_with_images',
                 'global_var': 'tv_series_with_images'
             }
@@ -286,7 +287,7 @@ def clean_cdn_files(current_admin):
         
         for file_info in files_to_clean:
             try:
-                file_path = os.path.join(current_app.root_path, file_info['path'])
+                file_path = file_info['path']
                 
                 # Check if file exists
                 if not os.path.exists(file_path):

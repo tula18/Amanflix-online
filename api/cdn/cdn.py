@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, send_from_directory, request
 from utils.data_helpers import get_movies, get_tv_shows
+from paths import CDN_POSTERS_DIR
 import os
 from utils.logger import log_error
 from api.utils import admin_token_required
@@ -10,7 +11,7 @@ cdn_bp = Blueprint('cdn_bp', __name__, url_prefix='/cdn')
 @cdn_bp.route('/images/<path:filename>', methods=['GET'])
 def get_image(filename):
     try:
-        return send_from_directory('cdn/posters_combined', filename)
+        return send_from_directory(CDN_POSTERS_DIR, filename)
     except FileNotFoundError:
         log_error("File not found")
         return jsonify({"message":"File not found.", "error_reason": "image_not_found"}), 404
@@ -20,7 +21,7 @@ def get_image(filename):
 
 @cdn_bp.route('/images/<path:filename>/check', methods=['GET'])
 def check_image(filename):
-    filepath = os.path.join('cdn','posters_combined', filename)
+    filepath = os.path.join(CDN_POSTERS_DIR, filename)
     if os.path.exists(filepath) and os.path.isfile(filepath):
         return jsonify(exist=True, return_reason="check_image_found", url=filename)
     else:

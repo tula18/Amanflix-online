@@ -11,6 +11,7 @@ import json
 from tqdm import tqdm
 from pprint import pprint
 from utils.logger import log_success, log_error, log_warning, log_info
+from paths import UPLOADS_DIR, CDN_POSTERS_DIR
 
 upload_bp = Blueprint('upload_bp', __name__, url_prefix='/api/upload')
 
@@ -308,7 +309,7 @@ def upload_movie(current_admin):
     if existing_movie and not movie_data['force']:
         return jsonify(message=f"A movie with id {movie_data['id']} already exists in the database."), 400
 
-    filepath = os.path.join('uploads', str(movie_data['id']) + '.mp4')
+    filepath = os.path.join(UPLOADS_DIR, str(movie_data['id']) + '.mp4')
     if os.path.exists(filepath) and not movie_data['force']:
         return jsonify(message=f"A video with movie id {movie_data['id']} already exists."), 400
 
@@ -331,7 +332,7 @@ def upload_movie(current_admin):
     video_extension = os.path.splitext(video_filename)[1]
     full_video_name = str(movie_data['id']) + str(video_extension)
     video_filename = secure_filename(full_video_name)
-    video_path = os.path.join('uploads', video_filename)
+    video_path = os.path.join(UPLOADS_DIR, video_filename)
 
     # Check if file exists
     if os.path.exists(video_path) and not movie_data['force']:
@@ -451,7 +452,7 @@ def update_movie(current_admin, movie_id):
                 
             video_filename = secure_filename(
                 str(movie_id) + os.path.splitext(video.filename)[1])
-            video_path = os.path.join('uploads', video_filename)
+            video_path = os.path.join(UPLOADS_DIR, video_filename)
 
             # Check if file exists and handle if user wants to force the update
             if os.path.exists(video_path) and not movie_data['force']:
@@ -525,7 +526,7 @@ def delete_movie(current_admin, movie_id):
     if not movie:
         return jsonify(message=f"Movie with id {movie_id} not found in the database."), 404
 
-    filepath = os.path.join('uploads', str(movie.video_id) + '.mp4')
+    filepath = os.path.join(UPLOADS_DIR, str(movie.video_id) + '.mp4')
     if os.path.exists(filepath):
         try:
             os.remove(filepath)
@@ -658,10 +659,10 @@ def upload_tvshow(current_admin):
 
                 file_ext = os.path.splitext(secure_filename(video_file.filename))[1]
                 video_filename = f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}{file_ext}'
-                video_path = os.path.join('uploads', video_filename)
+                video_path = os.path.join(UPLOADS_DIR, video_filename)
 
                 # After your initial episode error validation
-                video_path = os.path.join('uploads', f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}.mp4')
+                video_path = os.path.join(UPLOADS_DIR, f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}.mp4')
                 if os.path.exists(video_path) and not episode_data.get('force', False):
                     # Clean up all files and database records
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
@@ -785,7 +786,7 @@ def delete_tvshow(current_admin, show_id):
     for season in show.seasons:
         for episode in season.episodes:
             # Delete video file associated with the episode
-            filepath = os.path.join('uploads', f"{episode.video_id}.mp4")
+            filepath = os.path.join(UPLOADS_DIR, f"{episode.video_id}.mp4")
             if os.path.exists(filepath):
                 try:
                     os.remove(filepath)
@@ -834,7 +835,7 @@ def check_show_episodes(current_admin, show_id):
         for episode in season.episodes:
             episode_num = episode.episode_number
             print(episode.video_id)
-            video_path = os.path.join('uploads', f"{episode.video_id}.mp4")
+            video_path = os.path.join(UPLOADS_DIR, f"{episode.video_id}.mp4")
             
             result["episodes"][season_num][episode_num] = {
                 "exists": os.path.exists(video_path),
@@ -966,7 +967,7 @@ def update_tvshow(current_admin, show_id):
                 if video_key in request.files:
                     video_file = request.files[video_key]
                     if video_file and video_file.filename:
-                        video_path = os.path.join('uploads', f'{episode_id}.mp4')
+                        video_path = os.path.join(UPLOADS_DIR, f'{episode_id}.mp4')
                         
                         # Check if we should overwrite
                         force = episode_data.get('force', False)
@@ -1003,7 +1004,7 @@ def update_tvshow(current_admin, show_id):
                 episode = Episode.query.filter_by(id=episode_id).first()
                 if episode:
                     # Delete video file
-                    video_path = os.path.join('uploads', f'{episode.video_id}.mp4')
+                    video_path = os.path.join(UPLOADS_DIR, f'{episode.video_id}.mp4')
                     if os.path.exists(video_path):
                         os.remove(video_path)
                     
@@ -1017,7 +1018,7 @@ def update_tvshow(current_admin, show_id):
                 # Delete all episodes in this season
                 for episode in season.episodes:
                     # Delete video file
-                    video_path = os.path.join('uploads', f'{episode.id}.mp4')
+                    video_path = os.path.join(UPLOADS_DIR, f'{episode.id}.mp4')
                     if os.path.exists(video_path):
                         os.remove(video_path)
                     
@@ -1128,7 +1129,7 @@ def validate_upload(current_admin):
         try:
             log_info("💾 Checking disk space...")
             # Check disk space
-            free_space = get_free_disk_space('uploads')
+            free_space = get_free_disk_space(UPLOADS_DIR)
             if free_space:
                 free_gb = free_space / (1024**3)
                 validation_result['system_checks']['disk_space'] = f"{free_gb:.1f} GB available"
@@ -1177,7 +1178,7 @@ def validate_upload(current_admin):
                 log_info(f"🎬 Movie ID {content_id} not found in database - OK to upload")
             
             # Check if video file already exists
-            video_filepath = os.path.join('uploads', str(content_id) + '.mp4')
+            video_filepath = os.path.join(UPLOADS_DIR, str(content_id) + '.mp4')
             log_info(f"📁 Checking for existing video file: {video_filepath}")
             if os.path.exists(video_filepath):
                 log_warning(f"📁 Video file already exists: {video_filepath}")
@@ -1342,7 +1343,7 @@ def validate_upload(current_admin):
                     log_info(f"💾 No movie size provided, using default: 2GB")
                 
                 # Check if estimated upload size fits available disk space
-                free_space = get_free_disk_space('uploads')
+                free_space = get_free_disk_space(UPLOADS_DIR)
                 if free_space and estimated_size > free_space * 0.9:  # Leave 10% buffer
                     validation_result['errors'].append({
                         'type': 'insufficient_space_for_upload',
@@ -1400,7 +1401,7 @@ def validate_upload(current_admin):
                     if season_num and episode_num:
                         # Check if episode file exists
                         episode_filename = f"{content_id}S{season_num:02d}E{episode_num:02d}.mp4"
-                        episode_filepath = os.path.join('uploads', episode_filename)
+                        episode_filepath = os.path.join(UPLOADS_DIR, episode_filename)
                         
                         log_info(f"📁 Checking episode file: {episode_filepath}")
                         
@@ -1542,7 +1543,7 @@ def validate_upload(current_admin):
                         episode_num = episode_data.get('episode_number')
                         if season_num and episode_num:
                             episode_filename = f"{content_id}S{season_num:02d}E{episode_num:02d}.mp4"
-                            episode_filepath = os.path.join('uploads', episode_filename)
+                            episode_filepath = os.path.join(UPLOADS_DIR, episode_filename)
                             
                             if os.path.exists(episode_filepath):
                                 scan_warnings, scan_errors = validate_content_scanning(episode_filepath)
@@ -1585,7 +1586,7 @@ def validate_upload(current_admin):
                 # Check if estimated upload size fits available disk space
                 if total_estimated_size > 0:
                     log_info(f"💾 Estimated upload size: {total_estimated_size / (1024*1024):.1f}MB")
-                    free_space = get_free_disk_space('uploads')
+                    free_space = get_free_disk_space(UPLOADS_DIR)
                     if free_space and total_estimated_size > free_space * 0.9:  # Leave 10% buffer
                         validation_result['errors'].append({
                             'type': 'insufficient_space_for_upload',
@@ -1987,8 +1988,8 @@ def validate_thumbnail_poster_local(poster_path, backdrop_path, content_type, co
                 return local_warnings, local_errors
               # Check for common image folders - use both relative and absolute paths
             possible_folders = [
-                'cdn/posters_combined', 
-                os.path.join(os.getcwd(), 'cdn/posters_combined'),
+                CDN_POSTERS_DIR, 
+                os.path.join(os.getcwd(), CDN_POSTERS_DIR),
             ]
             
             image_found = False

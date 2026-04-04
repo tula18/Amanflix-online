@@ -1,4 +1,5 @@
 from cdn.utils import check_images_existence
+from paths import CDN_FILES_DIR
 import json
 import os
 from tqdm import tqdm
@@ -20,13 +21,13 @@ def save_movies_db(db, data):
     with open(db_path, 'w') as f:
         json.dump(data, f)
 
-movies_with_images = load_only_images_data('cdn/files/movies_little_clean.json', 'movie')
+movies_with_images = load_only_images_data(os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'), 'movie')
 print(f"Movies_with_images loaded with: {len(movies_with_images)}")
 
-tv_series_with_images = load_only_images_data('cdn/files/tv_little_clean.json', 'tv')
+tv_series_with_images = load_only_images_data(os.path.join(CDN_FILES_DIR, 'tv_little_clean.json'), 'tv')
 print(f"TV_with_images loaded with: {len(tv_series_with_images)}")
 
-save_movies_db("cdn/files/movies_with_images.json", movies_with_images)
-save_movies_db("cdn/files/tv_with_images.json", tv_series_with_images)
+save_movies_db(os.path.join(CDN_FILES_DIR, "movies_with_images.json"), movies_with_images)
+save_movies_db(os.path.join(CDN_FILES_DIR, "tv_with_images.json"), tv_series_with_images)
 
 print("Done.")

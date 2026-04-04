@@ -4,6 +4,7 @@ import os
 from logging.handlers import RotatingFileHandler
 import re
 import inspect
+from paths import LOGS_DIR
 
 # Enhanced ANSI color codes
 class Colors:
@@ -28,7 +29,7 @@ class Colors:
 # Initialize the rotating file logger
 def _setup_file_logger():
     # Create logs directory if it doesn't exist
-    logs_dir = os.path.join(os.getcwd(), 'logs')
+    logs_dir = LOGS_DIR
     os.makedirs(logs_dir, exist_ok=True)
     
     # Configure the main logger

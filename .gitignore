@@ -8,6 +8,8 @@ api/logs/
 api/logs/*
 api/instance/amanflix_db.db
 api/config/service_config.json
+api/config/data_config.json
+update_config.json
 api/logs/amanflix.log
 api/logs/api_requests.log
 repo/node_modules/
@@ -20,7 +22,7 @@ api/migrations/*
 *.DS_Store
 qr_encder2.5.py
 update_tool.py
-
+Data/
 
 # Python cache files and directories
 __pycache__/

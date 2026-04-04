@@ -1,4 +1,5 @@
 import os
+from paths import CDN_POSTERS_DIR
 
 def paginate(data, page, per_page):
     start = (page - 1) * per_page
@@ -46,8 +47,8 @@ def check_images_existence(item):
         backdrop_path = backdrop_path.replace("/", "")
 
     if all(path is not None for path in [poster_path, backdrop_path]):
-        # if os.path.exists(os.path.join('cdn/posters_combined', poster_path)) and os.path.exists(os.path.join('cdn/posters_combined', backdrop_path)):
-        if os.path.exists(os.path.join('cdn/posters_combined', backdrop_path)):
+        # if os.path.exists(os.path.join(CDN_POSTERS_DIR, poster_path)) and os.path.exists(os.path.join(CDN_POSTERS_DIR, backdrop_path)):
+        if os.path.exists(os.path.join(CDN_POSTERS_DIR, backdrop_path)):
             return True
     return False
 

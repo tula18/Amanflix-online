@@ -470,6 +470,7 @@ def clean_and_save_global_data(fields_to_remove=None):
     """
     import json
     import os
+    from paths import CDN_FILES_DIR
     # Note: Flask import will be handled in the try block to avoid import errors
     
     if fields_to_remove is None:
@@ -498,22 +499,22 @@ def clean_and_save_global_data(fields_to_remove=None):
         data_to_clean = [
             {
                 'getter_func': lambda: get_movies(force_clean=True, fields_to_remove=fields_to_remove),
-                'file_path': 'cdn/files/movies_little_clean.json',
+                'file_path': os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'),
                 'name': 'movies'
             },
             {
                 'getter_func': lambda: get_tv_shows(force_clean=True, fields_to_remove=fields_to_remove),
-                'file_path': 'cdn/files/tv_little_clean.json',
+                'file_path': os.path.join(CDN_FILES_DIR, 'tv_little_clean.json'),
                 'name': 'tv_series'
             },
             {
                 'getter_func': lambda: get_movies_with_images(force_clean=True, fields_to_remove=fields_to_remove),
-                'file_path': 'cdn/files/movies_with_images.json',
+                'file_path': os.path.join(CDN_FILES_DIR, 'movies_with_images.json'),
                 'name': 'movies_with_images'
             },
             {
                 'getter_func': lambda: get_tv_shows_with_images(force_clean=True, fields_to_remove=fields_to_remove),
-                'file_path': 'cdn/files/tv_with_images.json',
+                'file_path': os.path.join(CDN_FILES_DIR, 'tv_with_images.json'),
                 'name': 'tv_series_with_images'
             }
         ]
@@ -537,10 +538,7 @@ def clean_and_save_global_data(fields_to_remove=None):
                 setattr(app, data_info['name'], cleaned_data)
                 
                 # Save to file
-                if current_app:
-                    file_path = os.path.join(current_app.root_path, data_info['file_path'])
-                else:
-                    file_path = data_info['file_path']
+                file_path = data_info['file_path']
                     
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
@@ -714,19 +712,19 @@ def count_unwanted_fields(fields_to_check=None, include_files=False):
         if include_files:
             import json
             import os
-            from flask import current_app
+            from paths import CDN_FILES_DIR
             
             # Define file paths for direct JSON reading
             file_paths = {
-                'movies_file': 'cdn/files/movies_little_clean.json',
-                'tv_series_file': 'cdn/files/tv_little_clean.json',
-                'movies_with_images_file': 'cdn/files/movies_with_images.json',
-                'tv_series_with_images_file': 'cdn/files/tv_with_images.json'
+                'movies_file': os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'),
+                'tv_series_file': os.path.join(CDN_FILES_DIR, 'tv_little_clean.json'),
+                'movies_with_images_file': os.path.join(CDN_FILES_DIR, 'movies_with_images.json'),
+                'tv_series_with_images_file': os.path.join(CDN_FILES_DIR, 'tv_with_images.json')
             }
             
             for source_name, file_path in file_paths.items():
                 try:
-                    full_path = os.path.join(current_app.root_path, file_path)
+                    full_path = file_path
                     if os.path.exists(full_path):
                         with open(full_path, 'r', encoding='utf-8') as f:
                             file_data = json.load(f)

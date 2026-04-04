@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, abort
 from models import Movie
 from api.utils import admin_token_required, sort, token_required, serialize_watch_history
 from cdn.utils import filter_valid_genres
+from paths import UPLOADS_DIR
 import os
 import random
 
@@ -159,11 +160,11 @@ def get_movie(current_user, movie_id):
 def check_movie(movie_id):
     movie = Movie.query.filter_by(movie_id=movie_id).first()
     if movie is None:
-        mp4_filepath = os.path.join('uploads', str(movie_id) + '.mp4')
+        mp4_filepath = os.path.join(UPLOADS_DIR, str(movie_id) + '.mp4')
         if os.path.exists(mp4_filepath):
             return jsonify(message="Video exist but Movie's not. Enable Force overwrite to upload a new Video.", exist=True, return_reason="check_video_found")
     else:
-        mp4_filepath = os.path.join('uploads', str(movie.video_id) + '.mp4')
+        mp4_filepath = os.path.join(UPLOADS_DIR, str(movie.video_id) + '.mp4')
         if os.path.exists(mp4_filepath):
             return jsonify(message="Video and Movie exist. Enable Force overwrite to upload a new Video.", exist=True, return_reason="check_video_movie_found")
     return jsonify(message="Video's not exist. Please upload a video", exist=False, return_reason="check_video_not_found")

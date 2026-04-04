@@ -16,6 +16,27 @@ from api.utils import check_ffmpeg_available, setup_request_logging
 # Import the logger functions instead of redefining them
 from utils.logger import log_info, log_success, log_warning, log_error, log_section, log_section_end
 from utils.logger import log_step, log_substep, log_data, Colors, log_fancy, log_banner, log_status
+from paths import CDN_FILES_DIR, CDN_POSTERS_DIR, DB_URI, DATA_ROOT
+
+# Show where data is being loaded from
+def _path_status(path):
+    if os.path.exists(path):
+        return "\033[1;32m[OK]  \033[0m", "\033[1;32m"
+    return "\033[1;31m[MISS]\033[0m", "\033[1;31m"
+
+if DATA_ROOT:
+    _paths_to_check = [
+        ("External Data folder", DATA_ROOT),
+        ("CDN Files          ", CDN_FILES_DIR),
+        ("CDN Posters        ", CDN_POSTERS_DIR),
+    ]
+    print("\033[1;36m[PATHS] Data location check:\033[0m")
+    for label, path in _paths_to_check:
+        tag, col = _path_status(path)
+        print(f"  {tag} {col}{label}: {path}\033[0m")
+    print(f"  \033[1;36m[----] Database:           {DB_URI}\033[0m")
+else:
+    print(f"\033[1;33m[PATHS] [WARN] No data_config.json found — using default relative paths (dev mode)\033[0m")
 
 # CDN ENDPOINTS imports
 from cdn.movies_cdn import movie_cdn_bp
@@ -110,7 +131,7 @@ CORS(app)
 app = setup_request_logging(app)
 
 log_step("Configuring database")
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///amanflix_db.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = DB_URI
 db.init_app(app)
 migrate = Migrate(app, db)
 
@@ -222,12 +243,12 @@ log_section("CONTENT CATALOG")
 
 def check_cdn_structure():
     """Check if all required CDN directories and files exist."""
-    required_dirs = ['cdn/files', 'cdn/posters_combined']
+    required_dirs = [CDN_FILES_DIR, CDN_POSTERS_DIR]
     required_files = [
-        'cdn/files/movies_little_clean.json',
-        'cdn/files/tv_little_clean.json', 
-        'cdn/files/movies_with_images.json',
-        'cdn/files/tv_with_images.json'
+        os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'),
+        os.path.join(CDN_FILES_DIR, 'tv_little_clean.json'),
+        os.path.join(CDN_FILES_DIR, 'movies_with_images.json'),
+        os.path.join(CDN_FILES_DIR, 'tv_with_images.json')
     ]
     
     missing_dirs = []
@@ -354,7 +375,7 @@ def load_only_images_data(file_path, media_type):
             # Check if images exist
             poster_path = item.get('poster_path', '').replace("/", "")
             backdrop_path = item.get('backdrop_path', '').replace("/", "")
-            if poster_path and os.path.exists(os.path.join('cdn/posters_combined', poster_path)) and backdrop_path and os.path.exists(os.path.join('cdn/posters_combined', backdrop_path)):
+            if poster_path and os.path.exists(os.path.join(CDN_POSTERS_DIR, poster_path)) and backdrop_path and os.path.exists(os.path.join(CDN_POSTERS_DIR, backdrop_path)):
                 all_items.append(item)
         
         if cleaned_count > 0:
@@ -372,16 +393,16 @@ def load_only_images_data(file_path, media_type):
         return []
 
 # Loading content with better progress display
-movies = load_data('cdn/files/movies_little_clean.json', 'movie')
+movies = load_data(os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'), 'movie')
 log_success(f"Movies catalog loaded: {Colors.BOLD}{len(movies):,}{Colors.RESET} titles")
 
-tv_series = load_data('cdn/files/tv_little_clean.json', 'tv')
+tv_series = load_data(os.path.join(CDN_FILES_DIR, 'tv_little_clean.json'), 'tv')
 log_success(f"TV catalog loaded: {Colors.BOLD}{len(tv_series):,}{Colors.RESET} titles")
 
-movies_with_images = load_data('cdn/files/movies_with_images.json', 'movie')
+movies_with_images = load_data(os.path.join(CDN_FILES_DIR, 'movies_with_images.json'), 'movie')
 log_success(f"Movies with images loaded: {Colors.BOLD}{len(movies_with_images)}{Colors.RESET} titles")
 
-tv_series_with_images = load_data('cdn/files/tv_with_images.json', 'tv')
+tv_series_with_images = load_data(os.path.join(CDN_FILES_DIR, 'tv_with_images.json'), 'tv')
 log_success(f"TV shows with images loaded: {Colors.BOLD}{len(tv_series_with_images)}{Colors.RESET} titles")
 
 all_items = movies + tv_series
