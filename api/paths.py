@@ -28,6 +28,8 @@ LOGS_DIR = os.path.join(DATA_ROOT, 'logs') if DATA_ROOT else 'logs'
 
 # Database URI - SQLite requires an absolute path
 if DATA_ROOT:
-    DB_URI = f'sqlite:///{os.path.abspath(os.path.join(INSTANCE_DIR, "amanflix_db.db"))}'
+    _instance_abs = os.path.abspath(INSTANCE_DIR)
+    os.makedirs(_instance_abs, exist_ok=True)
+    DB_URI = f'sqlite:///{os.path.join(_instance_abs, "amanflix_db.db")}'
 else:
     DB_URI = 'sqlite:///amanflix_db.db'
