@@ -74,7 +74,7 @@ if %errorlevel% neq 0 (
 
 REM Create superadmin (optional)
 echo To create a superadmin user, run:
-echo python create_superadmin.py
+echo python admin_manager.py
 
 echo Setup complete! Run 'python app.py' to start the server.
 pause

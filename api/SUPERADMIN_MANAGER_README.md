@@ -1,6 +1,6 @@
 # Amanflix Superadmin Management Tool - Enhanced Features
 
-This document outlines all the enhanced features added to the `create_superadmin.py` script.
+This document outlines all the enhanced features added to the `admin_manager.py` script.
 
 ## 🚀 What's New
 
@@ -148,7 +148,7 @@ The script now includes comprehensive Flask-Migrate integration for database sch
 
 #### Initial Setup
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 15 (Database Migration Management)
 # Choose option 1 (Initialize Migration Repository)
 ```
@@ -156,7 +156,7 @@ python create_superadmin.py
 #### Adding New Database Changes
 ```bash
 # After modifying your models.py:
-python create_superadmin.py
+python admin_manager.py
 # Choose option 15 → option 2 (Generate New Migration)
 # Provide descriptive migration message
 # Choose option 15 → option 3 (Apply Migrations)
@@ -164,7 +164,7 @@ python create_superadmin.py
 
 #### Checking Migration Status
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 15 → option 4 (Show Current Migration Status)
 # Choose option 15 → option 5 (Show Migration History)
 ```
@@ -173,31 +173,31 @@ python create_superadmin.py
 
 ### 1. Create a Single Admin
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 1 or 2 depending on role needed
 ```
 
 ### 2. Bulk Create from CSV
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 7, provide CSV file path
 ```
 
 ### 3. Generate Analytics Report
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 9 for comprehensive analytics
 ```
 
 ### 4. System Health Check
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 11 for full system diagnostics
 ```
 
 ### 5. Database Migration Management
 ```bash
-python create_superadmin.py
+python admin_manager.py
 # Choose option 15 for migration menu
 # Initialize: option 1 → Generate: option 2 → Apply: option 3
 ```
@@ -205,7 +205,7 @@ python create_superadmin.py
 ### 6. Fix Database Schema Issues
 ```bash
 # If you encounter missing column errors:
-python create_superadmin.py
+python admin_manager.py
 # Choose option 15 → option 2 (Generate New Migration)
 # Describe the schema change (e.g., "Add disabled column to admin table")
 # Choose option 15 → option 3 (Apply Migrations)

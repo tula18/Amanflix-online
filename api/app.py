@@ -635,7 +635,7 @@ if __name__ == '__main__':
             print(f"{Colors.CYAN}{Colors.BOLD}{suggested_message}{Colors.RESET}\n")
             
             print(f"\n{Colors.CYAN}To fix this issue:{Colors.RESET}")
-            print(f"1. Run: {Colors.YELLOW}python create_superadmin.py{Colors.RESET}")
+            print(f"1. Run: {Colors.YELLOW}python admin_manager.py{Colors.RESET}")
             print(f"2. Select option: {Colors.YELLOW}15{Colors.RESET} (Database Migration Management)")
             
             # Check if migrations directory exists
@@ -674,7 +674,7 @@ if __name__ == '__main__':
             print(f"└{'─' * 70}┘{Colors.RESET}")
             print(f"\n{Colors.RED}The application requires at least one superadmin account to function properly.{Colors.RESET}")
             print(f"\n{Colors.CYAN}To create a superadmin account:{Colors.RESET}")
-            print(f"1. Run: {Colors.YELLOW}python create_superadmin.py{Colors.RESET}")
+            print(f"1. Run: {Colors.YELLOW}python admin_manager.py{Colors.RESET}")
             print(f"2. Follow the prompts to create your superadmin account")
             print(f"3. Restart the application")
             print(f"\n{Colors.RED}Application terminated.{Colors.RESET}\n")

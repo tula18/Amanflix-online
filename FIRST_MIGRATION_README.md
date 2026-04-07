@@ -174,7 +174,7 @@ api/cdn/cdn_admin.py              ← MODIFIED
 api/cdn/utils.py                  ← MODIFIED
 api/utils/data_helpers.py         ← MODIFIED
 api/utils/logger.py               ← MODIFIED
-api/create_superadmin.py          ← MODIFIED
+api/admin_manager.py              ← MODIFIED
 api/make_images_db.py             ← MODIFIED
 ```
 

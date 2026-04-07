@@ -6,7 +6,7 @@ Amanflix Superadmin Management Tool
 This script allows you to create and manage superadmin accounts for the Amanflix application.
 It provides a secure and user-friendly interface for admin management.
 
-Usage: python create_superadmin.py
+Usage: python admin_manager.py
 """
 
 import sys

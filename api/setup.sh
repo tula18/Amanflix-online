@@ -76,6 +76,6 @@ fi
 
 # Create superadmin (optional)
 echo "To create a superadmin user, run:"
-echo "python3 create_superadmin.py"
+echo "python3 admin_manager.py"
 
 echo "Setup complete! Run 'python3 app.py' to start the server."
