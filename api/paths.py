@@ -25,6 +25,7 @@ CDN_POSTERS_DIR = os.path.join(DATA_ROOT, 'posters_combined') if DATA_ROOT else 
 INSTANCE_DIR = os.path.join(DATA_ROOT, 'instance') if DATA_ROOT else 'instance'
 BACKUPS_DIR = os.path.join(DATA_ROOT, 'backups') if DATA_ROOT else 'backups'
 LOGS_DIR = os.path.join(DATA_ROOT, 'logs') if DATA_ROOT else 'logs'
+TEMP_UPLOAD_DIR = os.path.join(DATA_ROOT, 'uploads', 'temp') if DATA_ROOT else 'uploads/temp'
 
 # Database URI - SQLite requires an absolute path
 if DATA_ROOT:

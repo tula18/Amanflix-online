@@ -48,6 +48,7 @@ from cdn.discovery_cdn import discovery_cdn_bp
 
 # API ENDPOINTS
 from api.routes.upload import upload_bp
+from api.routes.chunked_upload import chunked_upload_bp
 from api.routes.stream import stream_bp
 from api.routes.movies import movies_bp
 from api.routes.shows import shows_bp
@@ -220,6 +221,7 @@ app.register_blueprint(discovery_cdn_bp)
 log_substep("API endpoints: upload, stream, movies, shows, auth, admin, search, bug reports, mylist, upload requests, watch history, notifications, analytics, file parser, discovery")
 # API ENDPOINTS register
 app.register_blueprint(upload_bp)
+app.register_blueprint(chunked_upload_bp)
 app.register_blueprint(stream_bp)
 app.register_blueprint(movies_bp)
 app.register_blueprint(shows_bp)
