@@ -13,23 +13,20 @@ Upload flow
 5. Optional cleanup:  DELETE /api/upload/chunk/<upload_id>
 """
 
-import json
 import os
 import re
 import shutil
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify
-from werkzeug.utils import secure_filename
 
 from api.utils import (
     ensure_upload_folder_exists,
     validate_title_data,
-    validate_episode_data,
     admin_token_required,
 )
 from paths import UPLOADS_DIR, TEMP_UPLOAD_DIR
-from utils.logger import log_error, log_info, log_success, log_warning
+from utils.logger import log_error, log_info, log_success
 
 chunked_upload_bp = Blueprint('chunked_upload_bp', __name__, url_prefix='/api/upload')
 
@@ -41,26 +38,36 @@ chunked_upload_bp = Blueprint('chunked_upload_bp', __name__, url_prefix='/api/up
 def _safe_upload_id(upload_id: str) -> str:
     """
     Return a filesystem-safe version of an upload_id.
-    Only keep alphanumerics, dashes and underscores so that
-    secure_filename cannot turn it into an empty string.
+    Only alphanumerics, dashes and underscores are allowed, capped at 128 chars.
     """
     cleaned = re.sub(r'[^A-Za-z0-9_\-]', '_', upload_id)
-    return cleaned[:128]  # cap length
+    return cleaned[:128]
 
 
-def _temp_dir(upload_id: str) -> str:
-    return os.path.join(TEMP_UPLOAD_DIR, _safe_upload_id(upload_id))
+def _resolve_temp_dir(upload_id: str) -> str:
+    """
+    Return the absolute, realpath-resolved temp directory for *upload_id*.
+    Verifies the path remains within TEMP_UPLOAD_DIR to prevent traversal.
+    """
+    base = os.path.realpath(os.path.abspath(TEMP_UPLOAD_DIR))
+    target = os.path.realpath(os.path.join(base, _safe_upload_id(upload_id)))
+    if not target.startswith(base + os.sep) and target != base:
+        raise ValueError("Invalid upload_id: path traversal detected")
+    return target
 
 
 def _ensure_temp_dir(upload_id: str) -> str:
-    path = _temp_dir(upload_id)
+    path = _resolve_temp_dir(upload_id)
     os.makedirs(path, exist_ok=True)
     return path
 
 
 def _received_chunks(upload_id: str):
     """Return sorted list of already-received chunk indices."""
-    d = _temp_dir(upload_id)
+    try:
+        d = _resolve_temp_dir(upload_id)
+    except ValueError:
+        return []
     if not os.path.isdir(d):
         return []
     received = []
@@ -77,15 +84,24 @@ def _assemble_chunks(upload_id: str, dest_path: str, total_chunks: int):
     """
     Concatenate chunk_0 … chunk_(total_chunks-1) into *dest_path*.
     Raises ValueError if any chunk is missing, OSError on I/O problems.
+    dest_path must be an absolute path within UPLOADS_DIR.
     """
-    d = _temp_dir(upload_id)
+    # Verify dest_path stays within UPLOADS_DIR
+    uploads_base = os.path.realpath(os.path.abspath(UPLOADS_DIR))
+    real_dest = os.path.realpath(os.path.abspath(dest_path))
+    if not (real_dest.startswith(uploads_base + os.sep) or real_dest == uploads_base):
+        raise ValueError("Destination path is outside the uploads directory")
+
+    d = _resolve_temp_dir(upload_id)
     missing = [i for i in range(total_chunks) if not os.path.isfile(os.path.join(d, f'chunk_{i}'))]
     if missing:
         raise ValueError(f"Missing chunks: {missing}")
 
-    os.makedirs(os.path.dirname(dest_path) if os.path.dirname(dest_path) else '.', exist_ok=True)
+    dest_dir = os.path.dirname(real_dest)
+    if dest_dir:
+        os.makedirs(dest_dir, exist_ok=True)
 
-    with open(dest_path, 'wb') as out:
+    with open(real_dest, 'wb') as out:
         for i in range(total_chunks):
             chunk_path = os.path.join(d, f'chunk_{i}')
             with open(chunk_path, 'rb') as cf:
@@ -113,7 +129,11 @@ def upload_chunk(current_admin):
         return jsonify(message='No chunk file provided'), 400
 
     chunk_file = request.files['chunk']
-    d = _ensure_temp_dir(upload_id)
+    try:
+        d = _ensure_temp_dir(upload_id)
+    except ValueError:
+        return jsonify(message='Invalid upload_id'), 400
+
     chunk_path = os.path.join(d, f'chunk_{chunk_index}')
     chunk_file.save(chunk_path)
 
@@ -142,7 +162,10 @@ def get_chunk_status(current_admin, upload_id):
 @admin_token_required('moderator')
 def abort_chunk_upload(current_admin, upload_id):
     """Delete all temp chunks for *upload_id*."""
-    d = _temp_dir(upload_id)
+    try:
+        d = _resolve_temp_dir(upload_id)
+    except ValueError:
+        return jsonify(success=True, message='Upload aborted'), 200
     if os.path.isdir(d):
         shutil.rmtree(d, ignore_errors=True)
     return jsonify(success=True, message='Upload aborted and temp files removed'), 200
@@ -161,10 +184,7 @@ def finalize_movie(current_admin):
     total_chunks.
     """
     from models import db, Movie, UploadRequest
-    from api.routes.upload import (
-        get_video_duration_in_minutes,
-        validate_video_file as _unused,  # noqa – kept for reference
-    )
+    from api.routes.upload import get_video_duration_in_minutes
 
     upload_id = request.form.get('upload_id', '').strip()
     total_chunks = request.form.get('total_chunks', type=int)
@@ -216,7 +236,7 @@ def finalize_movie(current_admin):
         return jsonify(message=str(e)), 400
     except Exception as e:
         log_error(f"Chunk assembly failed for movie {movie_data['id']}: {e}")
-        return jsonify(message=f"File assembly failed: {str(e)}"), 500
+        return jsonify(message='File assembly failed. Please try again.'), 500
 
     # Detect runtime
     detected_runtime = get_video_duration_in_minutes(video_path)
@@ -265,7 +285,7 @@ def finalize_movie(current_admin):
     except Exception as e:
         db.session.rollback()
         log_error(f"DB write failed for movie {movie_data['id']}: {e}")
-        return jsonify(message=f"Database error: {str(e)}"), 500
+        return jsonify(message='A database error occurred while saving the movie.'), 500
 
     log_success(
         f"Movie '{movie_data['title']}' (ID: {movie_data['id']}) "
@@ -306,7 +326,7 @@ def finalize_episode(current_admin):
     if not all([upload_id, total_chunks, show_id, season_number is not None, episode_number is not None]):
         return jsonify(message='upload_id, total_chunks, show_id, season_number and episode_number are required'), 400
 
-    video_id = int(f'{show_id}{season_number}{episode_number}')
+    video_id = show_id * 10000 + season_number * 100 + episode_number
     video_path = os.path.join(UPLOADS_DIR, f'{video_id}.mp4')
 
     if os.path.exists(video_path) and not force:
@@ -322,7 +342,7 @@ def finalize_episode(current_admin):
         return jsonify(message=str(e)), 400
     except Exception as e:
         log_error(f"Chunk assembly failed for S{season_number}E{episode_number}: {e}")
-        return jsonify(message=f"File assembly failed: {str(e)}"), 500
+        return jsonify(message='File assembly failed. Please try again.'), 500
 
     detected_runtime = get_video_duration_in_minutes(video_path)
 
@@ -389,15 +409,16 @@ def finalize_show(current_admin):
     if existing_show:
         return jsonify(message=f"A TV show with id {show_id} already exists."), 400
 
-    # Parse dates
+    # Parse dates safely
     def _parse_date(val):
         if not val:
             return None
         for fmt in ('%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f'):
             try:
-                return datetime.strptime(val[:len(fmt) - 2], fmt[:len(fmt) - 2])
+                return datetime.strptime(val[:len(fmt)], fmt)
             except ValueError:
                 pass
+        # Fallback: try just the date portion
         try:
             return datetime.strptime(val[:10], '%Y-%m-%d')
         except ValueError:
@@ -433,7 +454,7 @@ def finalize_show(current_admin):
                 db.session.rollback()
                 return jsonify(message='season_number is required in each season'), 400
 
-            season_id = int(f'{show_id}{season_number}')
+            season_id = int(show_id) * 100 + int(season_number)
             season = Season(
                 id=season_id,
                 season_number=season_number,
@@ -449,7 +470,9 @@ def finalize_show(current_admin):
                     db.session.rollback()
                     return jsonify(message='episode_number is required in each episode'), 400
 
-                video_id = ep_data.get('video_id', int(f'{show_id}{season_number}{episode_number}'))
+                video_id = ep_data.get('video_id') or (
+                    int(show_id) * 10000 + int(season_number) * 100 + int(episode_number)
+                )
 
                 has_subtitles_val = ep_data.get('has_subtitles', False)
                 if isinstance(has_subtitles_val, str):
@@ -462,7 +485,7 @@ def finalize_show(current_admin):
                     overview=ep_data.get('overview', ''),
                     has_subtitles=has_subtitles_val,
                     video_id=video_id,
-                    runtime=ep_data.get('runtime', 0),
+                    runtime=ep_data.get('runtime') or 0,
                 )
                 episode.season_id = season_id
                 db.session.add(episode)
@@ -471,7 +494,7 @@ def finalize_show(current_admin):
     except Exception as e:
         db.session.rollback()
         log_error(f"DB write failed for show {show_id}: {e}")
-        return jsonify(message=f"Database error: {str(e)}"), 500
+        return jsonify(message='A database error occurred while saving the TV show.'), 500
 
     log_success(
         f"TV show '{new_show.title}' (ID: {show_id}) finalized by {current_admin.username}"

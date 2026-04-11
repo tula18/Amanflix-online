@@ -998,8 +998,8 @@ const UnifiedUploadModal = ({
                 } catch (err) {
                     lastError = err.message;
                 }
-                // Brief back-off before retry
-                await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                // Brief back-off before retry (exponential)
+                await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
             }
 
             if (!success) {
@@ -1089,6 +1089,15 @@ const UnifiedUploadModal = ({
 
                 // ── NEW chunked upload path for NEW movies ──────────────────
                 if (!isEdit && movieData.vid_movie) {
+                    if (!movieData.id) {
+                        notification.error({
+                            message: 'Validation Error',
+                            description: 'Movie ID is required before uploading.',
+                        });
+                        setSaveLoading(false);
+                        return;
+                    }
+
                     const file = movieData.vid_movie;
                     const uploadId = generateUploadId('movie', movieData.id, file.size, file.name);
 
@@ -1304,7 +1313,7 @@ const UnifiedUploadModal = ({
                             title: episode.title,
                             overview: episode.overview,
                             has_subtitles: episode.has_subtitles,
-                            runtime: epJson.runtime || 0,
+                            runtime: epJson.runtime ?? 0,
                             video_id: epJson.video_id,
                         });
                     }
