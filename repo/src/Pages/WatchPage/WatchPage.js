@@ -22,7 +22,8 @@ const WatchPage = () => {
     const [episodeNumber, setEpisodeNumber] = useState(null);
     const [totalDuration, setTotalDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
-    const [lastSavedTime, setLastSavedTime] = useState(0);
+    const lastSavedTimeRef = useRef(0);
+    const isSavingRef = useRef(false);
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
     const [disablePreview, setDisablePreview] = useState(true);
@@ -242,17 +243,27 @@ const WatchPage = () => {
         }
     };
 
-    // Enhance saveWatchHistory to be more robust
-    const saveWatchHistory = async () => {
+    // Save watch history with deduplication guards
+    const saveWatchHistory = async (force = false) => {
         if (!videoRef.current || !totalDuration || !contentType || !contentId) return;
+        
+        const currentTime = videoRef.current.currentTime;
+        
+        // Don't save if we're at the beginning (avoid saving abandoned views)
+        if (currentTime < 10) return;
+        
+        // Skip if not enough time has passed since last save (unless forced)
+        if (!force && Math.abs(currentTime - lastSavedTimeRef.current) < 10) return;
+        
+        // Prevent concurrent saves
+        if (isSavingRef.current) return;
+        isSavingRef.current = true;
         
         try {
             const token = localStorage.getItem('token');
-            if (!token) return;
+            if (!token) { isSavingRef.current = false; return; }
             
-            const currentTime = videoRef.current.currentTime;
-            // Don't save if we're at the beginning (avoid saving abandoned views)
-            if (currentTime < 10) return;
+            console.debug("save time:", currentTime);
             
             const payload = {
                 content_type: contentType,
@@ -276,10 +287,12 @@ const WatchPage = () => {
             });
             
             if (response.ok) {
-                setLastSavedTime(currentTime);
+                lastSavedTimeRef.current = currentTime;
             }
         } catch (error) {
             console.error('Failed to save watch history:', error);
+        } finally {
+            isSavingRef.current = false;
         }
     };    // Handle video progress and time updates with throttling
     const lastProgressUpdate = useRef(0);
@@ -293,28 +306,27 @@ const WatchPage = () => {
                 lastProgressUpdate.current = now;
                 setCurrentTime(newTime);
                 setProgress((newTime / videoRef.current.duration) * 100);
-            }
-            
-            // Save progress if we've moved at least 10 seconds since last save
-            if (Math.abs(newTime - lastSavedTime) > 10) {
+                
+                // Check save inside the throttle so it runs at most once per second;
+                // the 10-second threshold is enforced inside saveWatchHistory itself
                 saveWatchHistory();
             }
         }
     };
 
-    // Auto-save interval
+    // Auto-save interval as a fallback (e.g. when video is paused and no timeUpdate fires)
     useEffect(() => {
         const saveInterval = setInterval(() => {
             if (videoRef.current && videoRef.current.currentTime > 0) {
                 saveWatchHistory();
             }
-        }, 10000); // Save every 30 seconds
+        }, 30000); // Save every 30 seconds as a fallback
         
         return () => {
             clearInterval(saveInterval);
             // Final save when component unmounts
             if (videoRef.current && videoRef.current.currentTime > 0) {
-                saveWatchHistory();
+                saveWatchHistory(true);
             }
         };
     }, [contentId, contentType, seasonNumber, episodeNumber, totalDuration]);
