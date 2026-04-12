@@ -232,8 +232,8 @@ def finalize_movie(current_admin):
     # Assemble chunks
     try:
         _assemble_chunks(upload_id, video_path, total_chunks)
-    except ValueError as e:
-        return jsonify(message=str(e)), 400
+    except ValueError:
+        return jsonify(message='Some chunks are missing. Please retry the upload.'), 400
     except Exception as e:
         log_error(f"Chunk assembly failed for movie {movie_data['id']}: {e}")
         return jsonify(message='File assembly failed. Please try again.'), 500
@@ -326,7 +326,7 @@ def finalize_episode(current_admin):
     if not all([upload_id, total_chunks, show_id, season_number is not None, episode_number is not None]):
         return jsonify(message='upload_id, total_chunks, show_id, season_number and episode_number are required'), 400
 
-    video_id = show_id * 10000 + season_number * 100 + episode_number
+    video_id = int(f'{show_id}{season_number}{episode_number}')
     video_path = os.path.join(UPLOADS_DIR, f'{video_id}.mp4')
 
     if os.path.exists(video_path) and not force:
@@ -338,8 +338,8 @@ def finalize_episode(current_admin):
 
     try:
         _assemble_chunks(upload_id, video_path, total_chunks)
-    except ValueError as e:
-        return jsonify(message=str(e)), 400
+    except ValueError:
+        return jsonify(message='Some chunks are missing. Please retry the upload.'), 400
     except Exception as e:
         log_error(f"Chunk assembly failed for S{season_number}E{episode_number}: {e}")
         return jsonify(message='File assembly failed. Please try again.'), 500
@@ -454,7 +454,7 @@ def finalize_show(current_admin):
                 db.session.rollback()
                 return jsonify(message='season_number is required in each season'), 400
 
-            season_id = int(show_id) * 100 + int(season_number)
+            season_id = int(f'{show_id}{season_number}')
             season = Season(
                 id=season_id,
                 season_number=season_number,
@@ -471,7 +471,7 @@ def finalize_show(current_admin):
                     return jsonify(message='episode_number is required in each episode'), 400
 
                 video_id = ep_data.get('video_id') or (
-                    int(show_id) * 10000 + int(season_number) * 100 + int(episode_number)
+                    int(f'{show_id}{season_number}{episode_number}')
                 )
 
                 has_subtitles_val = ep_data.get('has_subtitles', False)
