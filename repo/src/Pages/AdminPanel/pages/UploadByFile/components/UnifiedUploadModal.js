@@ -944,6 +944,7 @@ const UnifiedUploadModal = ({
                         formData.append(key, movieData[key]);
                     }
                 });
+                formData.append('resume', 'true');
 
                 // Pre-upload validation (only for new uploads)
                 if (!isEdit) {
@@ -1060,6 +1061,7 @@ const UnifiedUploadModal = ({
                         formData.append(key, showData[key]);
                     }
                 });
+                formData.append('resume', 'true');
     
                 // Add seasons data
                 const seasonsData = showData.seasons.map(season => ({

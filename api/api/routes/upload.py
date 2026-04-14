@@ -12,8 +12,17 @@ from tqdm import tqdm
 from pprint import pprint
 from utils.logger import log_success, log_error, log_warning, log_info
 from paths import UPLOADS_DIR, CDN_POSTERS_DIR
+from api.db_utils import safe_commit
 
 upload_bp = Blueprint('upload_bp', __name__, url_prefix='/api/upload')
+
+def _parse_bool(value, default=False):
+    """Parse truthy form values safely."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
 
 def get_video_metadata(video_path):
     """Extract metadata from video file using FFmpeg"""
@@ -305,41 +314,36 @@ def upload_movie(current_admin):
         "force": request.form.get('force', False, type=bool)
     }
 
+    resume_upload = _parse_bool(request.form.get('resume'), False)
     existing_movie = Movie.query.filter_by(movie_id=movie_data['id']).first()
-    if existing_movie and not movie_data['force']:
+    if existing_movie and not movie_data['force'] and not resume_upload:
         return jsonify(message=f"A movie with id {movie_data['id']} already exists in the database."), 400
 
-    filepath = os.path.join(UPLOADS_DIR, str(movie_data['id']) + '.mp4')
-    if os.path.exists(filepath) and not movie_data['force']:
+    video_path = os.path.join(UPLOADS_DIR, f"{movie_data['id']}.mp4")
+    if os.path.exists(video_path) and existing_movie and not movie_data['force'] and not resume_upload:
         return jsonify(message=f"A video with movie id {movie_data['id']} already exists."), 400
 
     error = validate_title_data(movie_data)
     if error:
         return error
 
-    if 'vid_movie' not in request.files:
-        return jsonify(message='No video Provided'), 400
-
     video = request.files.get('vid_movie')
-    
-    # Validate video file
-    is_valid, error_msg = validate_video_file(video)
-    if not is_valid:
-        return jsonify(message=error_msg), 400
+    if video and video.filename:
+        # Validate video file
+        is_valid, error_msg = validate_video_file(video)
+        if not is_valid:
+            return jsonify(message=error_msg), 400
+    elif not os.path.exists(video_path):
+        return jsonify(message='No video provided and no resumable video file found on server.'), 400
 
     ensure_upload_folder_exists()
-    video_filename = secure_filename(video.filename)
-    video_extension = os.path.splitext(video_filename)[1]
-    full_video_name = str(movie_data['id']) + str(video_extension)
-    video_filename = secure_filename(full_video_name)
-    video_path = os.path.join(UPLOADS_DIR, video_filename)
-
-    # Check if file exists
-    if os.path.exists(video_path) and not movie_data['force']:
+    # Check if file exists and this is not a resumable upload
+    if video and video.filename and os.path.exists(video_path) and not movie_data['force'] and not resume_upload:
         return jsonify(message='A video file with the same name already exists. Please choose a different name.'), 400
 
     try:
-        save_with_progress(video, video_path)
+        if video and video.filename:
+            save_with_progress(video, video_path)
         
         # Always try to get video runtime from FFmpeg first
         detected_runtime = get_video_duration_in_minutes(video_path)
@@ -382,20 +386,23 @@ def upload_movie(current_admin):
     )
     forced_text = ''
     try:
-        try:
-            if existing_movie and movie_data['force']:
-                # If force is set, delete the existing movie
-                db.session.delete(existing_movie)
-                db.session.commit()
-                forced_text = 'Forced'
-            db.session.add(new_movie)
-            existing_entries = UploadRequest.query.filter_by(content_id=movie_data['id'], content_type='movie').all()
-            for entry in existing_entries:
-                db.session.delete(entry)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            raise e
+        if existing_movie and movie_data['force']:
+            # If force is set, delete the existing movie
+            db.session.delete(existing_movie)
+            if not safe_commit():
+                return jsonify(message='Database is currently busy. File upload is preserved - retry with resume=true.'), 503
+            forced_text = 'Forced'
+        elif existing_movie and resume_upload:
+            db.session.delete(existing_movie)
+            if not safe_commit():
+                return jsonify(message='Database is currently busy. File upload is preserved - retry with resume=true.'), 503
+
+        db.session.add(new_movie)
+        existing_entries = UploadRequest.query.filter_by(content_id=movie_data['id'], content_type='movie').all()
+        for entry in existing_entries:
+            db.session.delete(entry)
+        if not safe_commit():
+            return jsonify(message='Database is currently busy. File upload is preserved - retry with resume=true.'), 503
     except Exception as e:
         log_error(f"Failed to upload movie: {str(e)}")
         return jsonify(message=f"An error occurred while saving the movie to the database. Error: {str(e)}"), 500
@@ -574,9 +581,10 @@ def upload_tvshow(current_admin):
         "status": tvshow_data.get('status', None, type=str)
     }
 
+    resume_upload = _parse_bool(request.form.get('resume'), False)
     existing_show = TVShow.query.filter_by(show_id=tvshow_data['show_id']).first()
-    if existing_show and tvshow_data['show_id']:
-        return jsonify(message=f"A TV show with id {tvshow_data['show_id']} already exists in the database."), 400
+    if existing_show and tvshow_data['show_id'] and not resume_upload:
+        return jsonify(message=f"A TV show with id {tvshow_data['show_id']} already exists in the database. Retry with resume=true to continue an interrupted upload."), 400
 
     error = validate_title_data(tvshow_data, ['title', 'show_id', 'genres', 'overview', 'first_air_date', 'last_air_date'])
     if error:
@@ -590,105 +598,109 @@ def upload_tvshow(current_admin):
         if 'season_number' not in season or 'episodes' not in season:
             return jsonify(message='Invalid seasons data format.'), 400
 
-    new_show = TVShow(
-        show_id=tvshow_data['show_id'],
-        title=tvshow_data['title'],
-        genres=tvshow_data['genres'],
-        created_by=tvshow_data['created_by'],
-        overview=tvshow_data['overview'],
-        poster_path=tvshow_data['poster_path'],
-        backdrop_path=tvshow_data['backdrop_path'],
-        vote_average=tvshow_data['vote_average'],
-        tagline=tvshow_data['tagline'],
-        spoken_languages=tvshow_data['spoken_languages'],
-        first_air_date=tvshow_data['first_air_date'],
-        last_air_date=tvshow_data['last_air_date'],
-        production_companies=tvshow_data['production_companies'],
-        production_countries=tvshow_data['production_countries'],
-        networks=tvshow_data['networks'],
-        status=tvshow_data['status'],
-        seasons=[]  # Add this empty list for seasons
-    )
+    new_show = existing_show
+    if not new_show:
+        new_show = TVShow(
+            show_id=tvshow_data['show_id'],
+            title=tvshow_data['title'],
+            genres=tvshow_data['genres'],
+            created_by=tvshow_data['created_by'],
+            overview=tvshow_data['overview'],
+            poster_path=tvshow_data['poster_path'],
+            backdrop_path=tvshow_data['backdrop_path'],
+            vote_average=tvshow_data['vote_average'],
+            tagline=tvshow_data['tagline'],
+            spoken_languages=tvshow_data['spoken_languages'],
+            first_air_date=tvshow_data['first_air_date'],
+            last_air_date=tvshow_data['last_air_date'],
+            production_companies=tvshow_data['production_companies'],
+            production_countries=tvshow_data['production_countries'],
+            networks=tvshow_data['networks'],
+            status=tvshow_data['status'],
+            seasons=[]
+        )
+        db.session.add(new_show)
+        if not safe_commit():
+            return jsonify(message='Database is currently busy. Any uploaded files were preserved, retry with resume=true.'), 503
+    elif resume_upload:
+        new_show.title = tvshow_data['title']
+        new_show.genres = tvshow_data['genres']
+        new_show.created_by = tvshow_data['created_by']
+        new_show.overview = tvshow_data['overview']
+        new_show.poster_path = tvshow_data['poster_path']
+        new_show.backdrop_path = tvshow_data['backdrop_path']
+        new_show.vote_average = tvshow_data['vote_average']
+        new_show.tagline = tvshow_data['tagline']
+        new_show.spoken_languages = tvshow_data['spoken_languages']
+        new_show.first_air_date = tvshow_data['first_air_date']
+        new_show.last_air_date = tvshow_data['last_air_date']
+        new_show.production_companies = tvshow_data['production_companies']
+        new_show.production_countries = tvshow_data['production_countries']
+        new_show.networks = tvshow_data['networks']
+        new_show.status = tvshow_data['status']
+        if not safe_commit():
+            return jsonify(message='Database is currently busy. Any uploaded files were preserved, retry with resume=true.'), 503
 
     try:
-        db.session.add(new_show)
-        db.session.commit()
-
         ensure_upload_folder_exists()
 
         for season_data in seasons_data:
             error = validate_title_data(season_data, ['season_number'])
             if error:
-                # Clean up all files and database records
-                cleanup_uploaded_files(uploaded_files, new_show.show_id)
                 return error
 
             # Generate a unique ID for the season
             season_id = int(f'{new_show.show_id}{season_data["season_number"]}')
-
-            season = Season(
-                id=season_id,
-                season_number=season_data['season_number'],
-                tvshow_id=new_show.show_id,
-                episode=[]  # Empty list for episodes, to be populated later
-            )
-            db.session.add(season)
-            db.session.commit()
+            season = Season.query.filter_by(id=season_id).first()
+            if not season:
+                season = Season(
+                    id=season_id,
+                    season_number=season_data['season_number'],
+                    tvshow_id=new_show.show_id,
+                    episode=[]
+                )
+                db.session.add(season)
+                if not safe_commit():
+                    return jsonify(message='Database is currently busy. Uploaded files were preserved, retry with resume=true.'), 503
 
             episodes_data = season_data.get('episodes')
             for episode_data in episodes_data:
                 error = validate_episode_data(episode_data, ['title', 'episode_number'], season_data['season_number'], episode_data['episode_number'])
                 if error:
-                    # Clean up all files and database records
-                    cleanup_uploaded_files(uploaded_files, new_show.show_id)
                     return error
 
                 video_file = request.files.get(f'video_season_{season_data["season_number"]}_episode_{episode_data["episode_number"]}')
-                video_file = request.files.get(f'video_season_{season_data["season_number"]}_episode_{episode_data["episode_number"]}')
-                if not video_file:
-                    # Clean up all files and database records
-                    cleanup_uploaded_files(uploaded_files, new_show.show_id)
-                    return jsonify({'message': f'Video file is required for season {season_data["season_number"]}, Episode {episode_data["episode_number"]}.'}), 400
 
-                # Validate video file
-                is_valid, error_msg = validate_video_file(video_file)
-                if not is_valid:
-                    # Clean up all files and database records
-                    cleanup_uploaded_files(uploaded_files, new_show.show_id)
-                    return jsonify(message=f"Season {season_data['season_number']}, Episode {episode_data['episode_number']}: {error_msg}"), 400
-
-                file_ext = os.path.splitext(secure_filename(video_file.filename))[1]
-                video_filename = f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}{file_ext}'
-                video_path = os.path.join(UPLOADS_DIR, video_filename)
-
-                # After your initial episode error validation
-                video_path = os.path.join(UPLOADS_DIR, f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}.mp4')
-                if os.path.exists(video_path) and not episode_data.get('force', False):
-                    # Clean up all files and database records
-                    cleanup_uploaded_files(uploaded_files, new_show.show_id)
-                    return jsonify({
-                        'message': f'Video for season {season_data["season_number"]}, Episode {episode_data["episode_number"]} already exists. Use force upload to overwrite.'
-                    }, 400)
-
-                try:
-                    save_with_progress(video_file, video_path)
-                    # Add to the list of uploaded files
-                    uploaded_files.append(video_path)
-                    
-                    # Always get episode runtime from FFmpeg
-                    detected_runtime = get_video_duration_in_minutes(video_path)
-                    if detected_runtime:
-                        # Add runtime to episode data
-                        episode_data['runtime'] = detected_runtime
-                    else:
-                        # Could set a default here if needed
-                        episode_data['runtime'] = episode_data.get('runtime', 0)
-                except Exception as e:
-                    # Clean up all files and database records
-                    cleanup_uploaded_files(uploaded_files, new_show.show_id)
-                    return jsonify(message=f"An error occurred during file upload for S{season_data['season_number']}E{episode_data['episode_number']}. Error: {str(e)}"), 500
+                # Validate video file only when a new file is supplied
+                if video_file and video_file.filename:
+                    is_valid, error_msg = validate_video_file(video_file)
+                    if not is_valid:
+                        return jsonify(message=f"Season {season_data['season_number']}, Episode {episode_data['episode_number']}: {error_msg}"), 400
 
                 file_id = int(f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}')
+                video_path = os.path.join(UPLOADS_DIR, f'{file_id}.mp4')
+                force_upload = _parse_bool(episode_data.get('force'), False)
+
+                if video_file and video_file.filename:
+                    if os.path.exists(video_path) and not force_upload and not resume_upload:
+                        return jsonify({
+                            'message': f'Video for season {season_data["season_number"]}, Episode {episode_data["episode_number"]} already exists. Use force upload to overwrite.'
+                        }), 400
+
+                    try:
+                        save_with_progress(video_file, video_path)
+                        uploaded_files.append(video_path)
+                    except Exception as e:
+                        return jsonify(message=f"An error occurred during file upload for S{season_data['season_number']}E{episode_data['episode_number']}. Error: {str(e)}"), 500
+                elif not os.path.exists(video_path):
+                    return jsonify({'message': f'Video file is required for season {season_data["season_number"]}, Episode {episode_data["episode_number"]}.'}), 400
+
+                # Always get episode runtime from FFmpeg when possible
+                detected_runtime = get_video_duration_in_minutes(video_path)
+                if detected_runtime:
+                    episode_data['runtime'] = detected_runtime
+                else:
+                    episode_data['runtime'] = episode_data.get('runtime', 0)
 
                 has_subtitles_value = episode_data.get('has_subtitles')
                 if isinstance(has_subtitles_value, bool):
@@ -698,29 +710,35 @@ def upload_tvshow(current_admin):
                 else:
                     has_subtitles = False
 
-                episode = Episode(
-                    id=file_id,
-                    episode_number=episode_data.get('episode_number'),
-                    title=episode_data.get('title'),
-                    overview=episode_data.get('overview'),
-                    has_subtitles=has_subtitles,
-                    video_id=file_id,
-                    # Add runtime to Episode if your model supports it
-                    runtime=episode_data.get('runtime', 0)
-                )
-                episode.season_id = season.id  # Set the season_id for the episode
-                db.session.add(episode)
-        db.session.commit()
+                episode = Episode.query.filter_by(id=file_id).first()
+                if not episode:
+                    episode = Episode(
+                        id=file_id,
+                        episode_number=episode_data.get('episode_number'),
+                        title=episode_data.get('title'),
+                        overview=episode_data.get('overview'),
+                        has_subtitles=has_subtitles,
+                        video_id=file_id,
+                        runtime=episode_data.get('runtime', 0)
+                    )
+                    episode.season_id = season.id
+                    db.session.add(episode)
+                else:
+                    episode.episode_number = episode_data.get('episode_number', episode.episode_number)
+                    episode.title = episode_data.get('title', episode.title)
+                    episode.overview = episode_data.get('overview', episode.overview)
+                    episode.has_subtitles = has_subtitles
+                    episode.runtime = episode_data.get('runtime', episode.runtime)
+                    episode.season_id = season.id
+
+                if not safe_commit():
+                    return jsonify(message='Database is currently busy. Uploaded files were preserved, retry with resume=true.'), 503
     except Exception as e:
-        # Enhanced cleanup with show_id
-        cleanup_uploaded_files(uploaded_files, tvshow_data['show_id'])
-        
-        # Rollback the database session (as a fallback)
         db.session.rollback()
-        
         return jsonify(message=f"An error occurred while saving the TV show and its seasons/episodes to the database. Error: {str(e)}"), 500
 
-    return jsonify({'message': f'TV Show {new_show.title} uploaded successfully with all seasons and episodes'}), 200
+    success_note = " (resumed)" if resume_upload and existing_show else ""
+    return jsonify({'message': f'TV Show {new_show.title} uploaded successfully with all seasons and episodes{success_note}'}), 200
 
 # Add this helper function to clean up files
 def cleanup_uploaded_files(file_paths, show_id=None):
