@@ -327,7 +327,8 @@ def upload_movie(current_admin):
     if existing_movie and not movie_data['force'] and not resume_upload:
         return jsonify(message=f"A movie with id {movie_id} already exists in the database."), 400
 
-    video_path = os.path.join(UPLOADS_DIR, f"{movie_id}.mp4")
+    movie_video_filename = f"{secure_filename(str(movie_id))}.mp4"
+    video_path = os.path.join(UPLOADS_DIR, movie_video_filename)
     if os.path.exists(video_path) and existing_movie and not movie_data['force'] and not resume_upload:
         return jsonify(message=f"A video with movie id {movie_id} already exists."), 400
 
@@ -688,7 +689,7 @@ def upload_tvshow(current_admin):
                 if video_file and video_file.filename:
                     if os.path.exists(video_path) and not force_upload and not resume_upload:
                         return jsonify({
-                            'message': f'Video for season {season_data["season_number"]}, Episode {episode_data["episode_number"]} already exists. Use force upload to overwrite.'
+                            'message': f'Video for season {season_data["season_number"]}, Episode {episode_data["episode_number"]} already exists. Use force upload to overwrite or resume=true to continue.'
                         }), 400
 
                     try:
