@@ -314,18 +314,22 @@ def upload_movie(current_admin):
         "force": request.form.get('force', False, type=bool)
     }
 
-    resume_upload = _parse_bool(request.form.get('resume'), False)
-    existing_movie = Movie.query.filter_by(movie_id=movie_data['id']).first()
-    if existing_movie and not movie_data['force'] and not resume_upload:
-        return jsonify(message=f"A movie with id {movie_data['id']} already exists in the database."), 400
-
-    video_path = os.path.join(UPLOADS_DIR, f"{movie_data['id']}.mp4")
-    if os.path.exists(video_path) and existing_movie and not movie_data['force'] and not resume_upload:
-        return jsonify(message=f"A video with movie id {movie_data['id']} already exists."), 400
-
     error = validate_title_data(movie_data)
     if error:
         return error
+
+    movie_id = movie_data.get('id')
+    if not isinstance(movie_id, int):
+        return jsonify(message='Invalid movie id provided.'), 400
+
+    resume_upload = _parse_bool(request.form.get('resume'), False)
+    existing_movie = Movie.query.filter_by(movie_id=movie_id).first()
+    if existing_movie and not movie_data['force'] and not resume_upload:
+        return jsonify(message=f"A movie with id {movie_id} already exists in the database."), 400
+
+    video_path = os.path.join(UPLOADS_DIR, f"{movie_id}.mp4")
+    if os.path.exists(video_path) and existing_movie and not movie_data['force'] and not resume_upload:
+        return jsonify(message=f"A video with movie id {movie_id} already exists."), 400
 
     video = request.files.get('vid_movie')
     if video and video.filename:
@@ -405,7 +409,7 @@ def upload_movie(current_admin):
             return jsonify(message='Database is currently busy. File upload is preserved - retry with resume=true.'), 503
     except Exception as e:
         log_error(f"Failed to upload movie: {str(e)}")
-        return jsonify(message=f"An error occurred while saving the movie to the database. Error: {str(e)}"), 500
+        return jsonify(message="An internal error occurred while saving the movie. The uploaded file was preserved - retry with resume=true."), 500
 
     log_success(f"Movie '{movie_data['title']}' (ID: {movie_data['id']}) uploaded successfully by {current_admin.username}")
     return jsonify(message=f"Movie '{movie_data['title']}' {forced_text} uploaded successfully."), 200
@@ -691,9 +695,10 @@ def upload_tvshow(current_admin):
                         save_with_progress(video_file, video_path)
                         uploaded_files.append(video_path)
                     except Exception as e:
-                        return jsonify(message=f"An error occurred during file upload for S{season_data['season_number']}E{episode_data['episode_number']}. Error: {str(e)}"), 500
+                        log_error(f"File upload failed for S{season_data['season_number']}E{episode_data['episode_number']}: {str(e)}")
+                        return jsonify(message=f"An error occurred during file upload for S{season_data['season_number']}E{episode_data['episode_number']}. Please retry with resume=true."), 500
                 elif not os.path.exists(video_path):
-                    return jsonify({'message': f'Video file is required for season {season_data["season_number"]}, Episode {episode_data["episode_number"]}.'}), 400
+                    return jsonify({'message': f'Video file is required for season {season_data["season_number"]}, Episode {episode_data["episode_number"]}. No existing file found to resume from.'}), 400
 
                 # Always get episode runtime from FFmpeg when possible
                 detected_runtime = get_video_duration_in_minutes(video_path)
@@ -734,8 +739,9 @@ def upload_tvshow(current_admin):
                 if not safe_commit():
                     return jsonify(message='Database is currently busy. Uploaded files were preserved, retry with resume=true.'), 503
     except Exception as e:
+        log_error(f"TV show upload failed for show_id {tvshow_data.get('show_id')}: {str(e)}")
         db.session.rollback()
-        return jsonify(message=f"An error occurred while saving the TV show and its seasons/episodes to the database. Error: {str(e)}"), 500
+        return jsonify(message="An internal error occurred while saving the TV show. Uploaded files were preserved - retry with resume=true."), 500
 
     success_note = " (resumed)" if resume_upload and existing_show else ""
     return jsonify({'message': f'TV Show {new_show.title} uploaded successfully with all seasons and episodes{success_note}'}), 200
