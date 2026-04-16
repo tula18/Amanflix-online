@@ -96,8 +96,91 @@ def should_use_hebrew_parsing(filename, guessit_result):
     return False
 
 def parse_hebrew_episode_pattern(filename):
-    """Parse Hebrew episode patterns with multiple format support."""
-    # Multiple Hebrew patterns for season and episode
+    """Parse Hebrew episode patterns with multiple format support, including combined episodes."""
+    # Multiple Hebrew patterns for season and episode (including multi-episode)
+    # Try multi-episode patterns first, then single-episode patterns
+    multi_episode_patterns = [
+        # S01E02+03, S01E02+E03
+        (r'S(\d+)E(\d+)\+E?(\d+)', 'S#E#+E#'),
+        # S01E02-E03, S01E02-03
+        (r'S(\d+)E(\d+)-E?(\d+)', 'S#E#-E#'),
+        # S01E02E03 (consecutive E patterns)
+        (r'S(\d+)E(\d+)E(\d+)', 'S#E#E#'),
+        # Hebrew: ע1 פ2+3, ע1 פ2-3
+        (r'ע(\d+)\s*פ(\d+)[+\-](\d+)', 'ע# פ#+#'),
+        # Hebrew full: עונה 1 פרק 2+3
+        (r'עונה\s*(\d+)\s*פרק\s*(\d+)[+\-](\d+)', 'עונה # פרק #+#'),
+    ]
+    
+    for pattern, pattern_desc in multi_episode_patterns:
+        match = re.search(pattern, filename, re.IGNORECASE)
+        if match:
+            season = int(match.group(1))
+            episode_start = int(match.group(2))
+            episode_end = int(match.group(3))
+            
+            # If episode_end is less than episode_start, it might be a shorthand (e.g., E26+27 not E26+3)
+            # We treat it as absolute episode numbers
+            if episode_end <= episode_start:
+                continue  # Skip invalid range
+            
+            # Remove the pattern and extract title
+            title_with_episode = re.sub(pattern, '', filename, flags=re.IGNORECASE)
+            title_with_episode = os.path.splitext(title_with_episode)[0]
+            
+            episode_title = None
+            show_title = title_with_episode
+            
+            separators = [' - ', ' – ', ' — ', ' : ']
+            for sep in separators:
+                if sep in title_with_episode:
+                    parts = title_with_episode.split(sep, 1)
+                    if len(parts) == 2 and len(parts[1].strip()) > 2:
+                        show_title = parts[0].strip()
+                        episode_title = parts[1].strip()
+                        break
+            
+            show_title = re.sub(r'[-_\.]+', ' ', show_title)
+            show_title = re.sub(r'\s+', ' ', show_title).strip()
+            
+            if episode_title:
+                episode_title = re.sub(r'[-_\.]+', ' ', episode_title)
+                episode_title = re.sub(r'\s+', ' ', episode_title).strip()
+            
+            quality_patterns = [
+                r'\b(1080p|720p|480p|4K|HD|HDRip|BluRay|WEBRip|HDTV)\b',
+                r'\b(x264|x265|H\.264|H\.265|AVC|HEVC)\b',
+                r'\b(AAC|MP3|AC3|DTS)\b',
+                r'\b(PROPER|REPACK|INTERNAL|LIMITED)\b',
+                r'\[[^\]]*\]',
+                r'\([^)]*\)',
+            ]
+            
+            for quality_pattern in quality_patterns:
+                show_title = re.sub(quality_pattern, '', show_title, flags=re.IGNORECASE)
+                if episode_title:
+                    episode_title = re.sub(quality_pattern, '', episode_title, flags=re.IGNORECASE)
+            
+            show_title = re.sub(r'\s+', ' ', show_title).strip()
+            if episode_title:
+                episode_title = re.sub(r'\s+', ' ', episode_title).strip()
+            
+            clean_title = show_title
+            
+            if not clean_title or len(clean_title) < 2:
+                continue
+            
+            return {
+                'title': clean_title,
+                'season': season,
+                'episode': episode_start,
+                'episode_end': episode_end,
+                'episode_title': episode_title or f"Episodes {episode_start}-{episode_end}",
+                'type': 'episode',
+                'pattern_used': pattern_desc
+            }
+    
+    # Single-episode patterns (original logic)
     patterns = [
         (r'ע(\d+)\s*פ(\d+)', 'ע\d+ פ\d+'),           # Standard: ע1 פ2
         (r'עונה\s*(\d+)\s*פרק\s*(\d+)', 'עונה \d+ פרק \d+'),  # Full: עונה 1 פרק 2
@@ -249,11 +332,13 @@ def parse_single_file(filename):
                 title = hebrew_parse['title']
                 season_number = hebrew_parse['season']
                 episode_number = hebrew_parse['episode']
+                episode_number_end = hebrew_parse.get('episode_end')
                 content_type = 'tv'
                 year = guess.get('year')  # Still try to get year from GuessIt if available
                 parsing_method = 'hebrew'
                 
-                log_info(f"Hebrew parsing successful for '{filename}': {hebrew_parse['pattern_used']} -> '{title}' S{season_number}E{episode_number}")
+                ep_label = f"S{season_number}E{episode_number}" + (f"-E{episode_number_end}" if episode_number_end else "")
+                log_info(f"Hebrew parsing successful for '{filename}': {hebrew_parse['pattern_used']} -> '{title}' {ep_label}")
             else:
                 # Hebrew detection triggered but no pattern found, fallback to GuessIt
                 title = guess.get('title')
@@ -270,6 +355,13 @@ def parse_single_file(filename):
                 year = guess.get('year')
                 season_number = guess.get('season')
                 episode_number = guess.get('episode')
+                episode_number_end = None
+                
+                # Handle GuessIt returning a list for multi-episode files
+                if isinstance(episode_number, list) and len(episode_number) >= 2:
+                    episode_number_end = episode_number[-1]
+                    episode_number = episode_number[0]
+                
                 parsing_method = 'guessit_fallback'
                 
                 log_info(f"Hebrew detection triggered but no pattern found for '{filename}', using GuessIt fallback")
@@ -290,6 +382,13 @@ def parse_single_file(filename):
             year = guess.get('year')
             season_number = guess.get('season')
             episode_number = guess.get('episode')
+            episode_number_end = None
+            
+            # Handle GuessIt returning a list for multi-episode files
+            if isinstance(episode_number, list) and len(episode_number) >= 2:
+                episode_number_end = episode_number[-1]
+                episode_number = episode_number[0]
+            
             parsing_method = 'guessit'
             
             log_info(f"GuessIt parsing for '{filename}': '{title}' ({content_type})")
@@ -360,6 +459,8 @@ def parse_single_file(filename):
         if content_type == 'tv' and season_number is not None and episode_number is not None:
             result['season_number'] = season_number
             result['episode_number'] = episode_number
+            if episode_number_end:
+                result['episode_number_end'] = episode_number_end
             
             # Try to get episode title from different sources in priority order:
             # 1. Hebrew parsing result (if Hebrew parsing was used)
@@ -449,6 +550,7 @@ def group_episodes(parsed_files):
                 'filename': parsed_file['filename'],
                 'season': season_num,
                 'episode': parsed_file.get('episode_number'),
+                'episode_end': parsed_file.get('episode_number_end'),
                 'title': parsed_file.get('episode_title', f"Episode {parsed_file.get('episode_number', '')}"),
                 'overview': '',  # Can be filled from CDN data if available
                 'has_subtitles': parsed_file.get('has_subtitles', False),  # Include subtitle detection

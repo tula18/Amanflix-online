@@ -366,11 +366,23 @@ def get_episode_video_id_cached(content_id, season_number, episode_number):
     
     # Cache miss - query database with error handling
     try:
+        # First try exact episode number match
         episode = Episode.query.join(Season).filter(
             Season.tvshow_id == content_id,
             Season.season_number == season_number,
             Episode.episode_number == episode_number
         ).first()
+        
+        # If not found, check if this episode falls within a combined episode range
+        if not episode:
+            from sqlalchemy import and_, or_
+            episode = Episode.query.join(Season).filter(
+                Season.tvshow_id == content_id,
+                Season.season_number == season_number,
+                Episode.episode_number_end.isnot(None),
+                Episode.episode_number <= episode_number,
+                Episode.episode_number_end >= episode_number
+            ).first()
         
         if episode:
             video_id = episode.video_id

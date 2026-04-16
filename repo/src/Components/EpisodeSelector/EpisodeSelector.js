@@ -141,6 +141,10 @@ const EpisodeSelector = ({ showId, onEpisodeSelect }) => {
                     episodes.map(episode => {
                         const episodeId = `${showId}${selectedSeason}${episode.episode_number}`;
                         const progress = watchProgress[episodeId] || 0;
+                        const isMultiEpisode = episode.episode_number_end && episode.episode_number_end > episode.episode_number;
+                        const episodeLabel = isMultiEpisode 
+                            ? `${episode.episode_number}-${episode.episode_number_end}` 
+                            : `${episode.episode_number}`;
                         
                         return (
                             <div 
@@ -151,7 +155,7 @@ const EpisodeSelector = ({ showId, onEpisodeSelect }) => {
                                 onMouseLeave={() => setHoveredEpisode(null)}
                             >
                                 <div className="netflix-episode-number">
-                                    {episode.episode_number}
+                                    {episodeLabel}
                                 </div>
                                 
                                 <div className="netflix-episode-thumbnail">

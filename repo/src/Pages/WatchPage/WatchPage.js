@@ -118,28 +118,41 @@ const WatchPage = () => {
                     
                     // Find the current season and episode
                     const currentSeason = data.seasons?.find(s => s.season_number === seasonNumber);
-                    const currentEpisode = currentSeason?.episodes?.find(ep => ep.episode_number === episodeNumber);
+                    const currentEpisode = currentSeason?.episodes?.find(ep => 
+                        ep.episode_number === episodeNumber || 
+                        (ep.episode_number_end && ep.episode_number <= episodeNumber && ep.episode_number_end >= episodeNumber)
+                    );
                     console.log('Current Season:', currentSeason); // DEBUGGING
                     console.log('Current Episode:', currentEpisode); // DEBUGGING
 
                     if (currentEpisode) {
-                        setMediaSubTitle(`S${seasonNumber} E${episodeNumber}: ${currentEpisode.title}`);
-                        setMediaTitleMedia(`${data.title} - S${seasonNumber} E${episodeNumber}: ${currentEpisode.title}`);
+                        const epLabel = currentEpisode.episode_number_end 
+                            ? `E${currentEpisode.episode_number}-${currentEpisode.episode_number_end}`
+                            : `E${episodeNumber}`;
+                        setMediaSubTitle(`S${seasonNumber} ${epLabel}: ${currentEpisode.title}`);
+                        setMediaTitleMedia(`${data.title} - S${seasonNumber} ${epLabel}: ${currentEpisode.title}`);
                     } else {
                         setMediaSubTitle(`Season ${seasonNumber} Episode ${episodeNumber}`);
                         setMediaTitleMedia(`${data.title} - Season ${seasonNumber} Episode ${episodeNumber}`);
                     }
                     // setMediaExtraInfoMedia(`First Aired: ${data.first_air_date}`);                    // Populate reproductionList (episodes of the current season)
                     if (currentSeason && currentSeason.episodes) {
-                        const episodeList = currentSeason.episodes.map(ep => ({
-                            id: `t-${contentId}-${currentSeason.season_number}-${ep.episode_number}`,
-                            name: `E${ep.episode_number}: ${ep.title}`,
-                            playing: ep.episode_number === episodeNumber,
-                            percent: 50,
-                            seasonNumber: currentSeason.season_number,
-                            episodeNumber: ep.episode_number
-                            // percent: calculate from watch history if available (future enhancement)
-                        }));
+                        const episodeList = currentSeason.episodes.map(ep => {
+                            const epLabel = ep.episode_number_end 
+                                ? `E${ep.episode_number}-${ep.episode_number_end}`
+                                : `E${ep.episode_number}`;
+                            const isPlaying = ep.episode_number === episodeNumber || 
+                                (ep.episode_number_end && ep.episode_number <= episodeNumber && ep.episode_number_end >= episodeNumber);
+                            return {
+                                id: `t-${contentId}-${currentSeason.season_number}-${ep.episode_number}`,
+                                name: `${epLabel}: ${ep.title}`,
+                                playing: isPlaying,
+                                percent: 50,
+                                seasonNumber: currentSeason.season_number,
+                                episodeNumber: ep.episode_number
+                                // percent: calculate from watch history if available (future enhancement)
+                            };
+                        });
                         setMediaReproductionList(episodeList);
                         console.log('Populated Reproduction List:', episodeList); // DEBUGGING
                     } else {
@@ -150,11 +163,17 @@ const WatchPage = () => {
                     // Populate dataNext (next episode)
                     let nextEpisode;
                     if (currentSeason && currentEpisode) {
-                        const currentEpisodeIndex = currentSeason.episodes.findIndex(ep => ep.episode_number === episodeNumber);
+                        const currentEpisodeIndex = currentSeason.episodes.findIndex(ep => 
+                            ep.episode_number === episodeNumber || 
+                            (ep.episode_number_end && ep.episode_number <= episodeNumber && ep.episode_number_end >= episodeNumber)
+                        );
                         if (currentEpisodeIndex !== -1 && currentEpisodeIndex < currentSeason.episodes.length - 1) {
                             nextEpisode = currentSeason.episodes[currentEpisodeIndex + 1];
+                            const nextEpLabel = nextEpisode.episode_number_end
+                                ? `E${nextEpisode.episode_number}-${nextEpisode.episode_number_end}`
+                                : `E${nextEpisode.episode_number}`;
                             setMediaDataNext({
-                                title: `Next: S${seasonNumber} E${nextEpisode.episode_number} - ${nextEpisode.title}`,
+                                title: `Next: S${seasonNumber} ${nextEpLabel} - ${nextEpisode.title}`,
                                 description: nextEpisode.overview,
                                 // Add identifiers for the next episode
                                 nextSeasonNumber: seasonNumber,

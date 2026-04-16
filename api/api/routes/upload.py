@@ -706,7 +706,8 @@ def upload_tvshow(current_admin):
                     has_subtitles=has_subtitles,
                     video_id=file_id,
                     # Add runtime to Episode if your model supports it
-                    runtime=episode_data.get('runtime', 0)
+                    runtime=episode_data.get('runtime', 0),
+                    episode_number_end=episode_data.get('episode_number_end')
                 )
                 episode.season_id = season.id  # Set the season_id for the episode
                 db.session.add(episode)
@@ -952,7 +953,9 @@ def update_tvshow(current_admin, show_id):
                         title=episode_data.get('title'),
                         overview=episode_data.get('overview'),
                         has_subtitles=episode_data.get('has_subtitles', False),
-                        video_id=episode_id
+                        video_id=episode_id,
+                        runtime=episode_data.get('runtime', 0),
+                        episode_number_end=episode_data.get('episode_number_end')
                     )
                     episode.season_id = season.id
                     db.session.add(episode)
@@ -961,6 +964,8 @@ def update_tvshow(current_admin, show_id):
                     episode.title = episode_data.get('title', episode.title)
                     episode.overview = episode_data.get('overview', episode.overview)
                     episode.has_subtitles = episode_data.get('has_subtitles', episode.has_subtitles)
+                    if 'episode_number_end' in episode_data:
+                        episode.episode_number_end = episode_data.get('episode_number_end')
                 
                 # Look for video file upload
                 video_key = f'video_season_{season_number}_episode_{episode_number}'

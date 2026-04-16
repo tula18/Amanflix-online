@@ -299,34 +299,48 @@ class Episode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     season_id = db.Column(db.Integer, db.ForeignKey('season.id'), nullable=False)
     episode_number = db.Column(db.Integer, nullable=True)
+    episode_number_end = db.Column(db.Integer, nullable=True)  # For combined episodes (e.g., S2E26+27 -> episode_number=26, episode_number_end=27)
     title = db.Column(db.String(255), nullable=True)
     overview = db.Column(db.Text, nullable=True)
     has_subtitles = db.Column(db.Boolean, nullable=True)
     video_id = db.Column(db.Integer, primary_key=True, unique=True)
     runtime = db.Column(db.Integer)  # Runtime in minutes
 
-    def __init__(self, id, episode_number, title, overview, has_subtitles, video_id, runtime):
+    def __init__(self, id, episode_number, title, overview, has_subtitles, video_id, runtime, episode_number_end=None):
         self.id = id
         self.episode_number = episode_number
+        self.episode_number_end = episode_number_end
         self.title = title
         self.overview = overview
         self.has_subtitles = has_subtitles
         self.video_id = video_id
         self.runtime = runtime
 
+    @property
+    def is_multi_episode(self):
+        return self.episode_number_end is not None and self.episode_number_end > self.episode_number
+
+    @property
+    def episode_range_label(self):
+        if self.is_multi_episode:
+            return f"Episodes {self.episode_number}-{self.episode_number_end}"
+        return f"Episode {self.episode_number}"
+
     def __repl__(self):
-        return f"<Season {self.title} {self.episode_number} {self.id}>"
+        return f"<Episode {self.title} {self.episode_number} {self.id}>"
 
     @property
     def serialize(self):
-        return {
+        data = {
             'episode_number': self.episode_number,
+            'episode_number_end': self.episode_number_end,
             'title': self.title,
             'overview': self.overview,
             'has_subtitles': self.has_subtitles,
             'video_id': self.video_id,
             'runtime': self.runtime
         }
+        return data
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -268,10 +268,31 @@ def get_next_episode_info(current_user, watch_history):
             
         if current_season:
             # Try to find next episode in current season
+            # First check if the current episode is part of a combined episode range
+            current_episode = Episode.query.filter_by(
+                season_id=current_season.id,
+                episode_number=watch_history.episode_number
+            ).first()
+            
+            # If not found by exact match, check combined episode ranges
+            if not current_episode:
+                current_episode = Episode.query.filter_by(
+                    season_id=current_season.id
+                ).filter(
+                    Episode.episode_number_end.isnot(None),
+                    Episode.episode_number <= watch_history.episode_number,
+                    Episode.episode_number_end >= watch_history.episode_number
+                ).first()
+            
+            # Determine the effective "last" episode number for finding next
+            effective_last_episode = watch_history.episode_number
+            if current_episode and current_episode.episode_number_end:
+                effective_last_episode = current_episode.episode_number_end
+            
             next_episode = Episode.query.filter_by(
                 season_id=current_season.id
             ).filter(
-                Episode.episode_number > watch_history.episode_number
+                Episode.episode_number > effective_last_episode
             ).order_by(Episode.episode_number).first()
             
             if next_episode:
