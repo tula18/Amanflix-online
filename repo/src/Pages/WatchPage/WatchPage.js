@@ -475,7 +475,7 @@ const WatchPage = () => {
                     onTimeUpdate={handleProgress}
                     onLoadedMetadata={handleMetadataLoaded}
                     autoPlay
-                    backButton={() => navigate(-1)}
+                    backButton={() => navigate(`/${contentId}`)}
                     disablePreview={disablePreview}
                     disableBufferPreview={disableBuffer}
                     primaryColor='#e50914'
