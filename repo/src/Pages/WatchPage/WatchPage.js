@@ -186,9 +186,31 @@ const WatchPage = () => {
                                 nextEpisodeNumber: nextEpisode.episode_number
                             }); // DEBUGGING
                         } else {
-                            // Potentially look for next season or mark as end of series
-                            setMediaDataNext(null); 
-                            console.log('No next episode in current season.'); // DEBUGGING
+                            // Check if there's a next season
+                            const nextSeason = data.seasons
+                                ?.filter(s => s.season_number > seasonNumber)
+                                ?.sort((a, b) => a.season_number - b.season_number)[0];
+                            if (nextSeason && nextSeason.episodes && nextSeason.episodes.length > 0) {
+                                const firstEpisode = nextSeason.episodes[0];
+                                const nextEpLabel = firstEpisode.episode_number_end
+                                    ? `E${firstEpisode.episode_number}-${firstEpisode.episode_number_end}`
+                                    : `E${firstEpisode.episode_number}`;
+                                setMediaDataNext({
+                                    title: `Next: S${nextSeason.season_number} ${nextEpLabel} - ${firstEpisode.title}`,
+                                    description: firstEpisode.overview,
+                                    nextSeasonNumber: nextSeason.season_number,
+                                    nextEpisodeNumber: firstEpisode.episode_number,
+                                    nextContentId: contentId
+                                });
+                                console.log('Next Season Episode Data:', {
+                                    title: `Next: S${nextSeason.season_number} E${firstEpisode.episode_number} - ${firstEpisode.title}`,
+                                    nextSeasonNumber: nextSeason.season_number,
+                                    nextEpisodeNumber: firstEpisode.episode_number
+                                }); // DEBUGGING
+                            } else {
+                                setMediaDataNext(null);
+                                console.log('No next episode in current season and no next season found.'); // DEBUGGING
+                            }
                         }
                     } else {
                         setMediaDataNext(null);
