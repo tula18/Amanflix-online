@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, abort
 from models import Movie
 from api.utils import admin_token_required, sort, token_required, serialize_watch_history
+from api.cache import get_all_movies_cached, get_movie_by_id_cached
 from cdn.utils import filter_valid_genres
 from paths import UPLOADS_DIR
 import os
@@ -19,30 +20,24 @@ def get_movies(current_user):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     reverse = request.args.get('reverse', False, type=bool)
     
-    # Get all Movies first
-    query = Movie.query
+    # Get all Movies from cache
+    all_movies_data = get_all_movies_cached()
     
     # Apply sorting if sort_by_field is provided
     if sort_by_field:
-        sort_by = getattr(Movie, sort_by_field, None)
-        if sort_by:
-            if order.lower() == 'desc':
-                query = query.order_by(sort_by.desc())
-            else:
-                query = query.order_by(sort_by.asc())
+        reverse_sort = order.lower() == 'desc'
+        all_movies_data.sort(key=lambda m: m.get(sort_by_field) or '', reverse=reverse_sort)
                 
-    # Get all movies and reverse the list
-    all_movies = query.all()
     if reverse:
-        all_movies.reverse()
+        all_movies_data.reverse()
     
     # Manual pagination on the reversed list
-    total = len(all_movies)
+    total = len(all_movies_data)
     start = (page - 1) * per_page
     end = start + per_page
-    movies_page = all_movies[start:end]
+    movies_page = all_movies_data[start:end]
     
-    movie_list = [movie.serialize for movie in movies_page]
+    movie_list = movies_page
     
     # Add watch history if requested
     if include_watch_history:
@@ -67,12 +62,11 @@ def get__random_movie(current_user):
     per_page = request.args.get('per_page', 20, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
 
-    movies = Movie.query.all()
+    movies = get_all_movies_cached()
 
     def apply_filters(items, item_type):
         results = []
-        for title in items:
-            item = title.serialize
+        for item in items:
             title_or_name = item.get('title')
             vote_average = item.get('vote_average', 0)
             if isinstance(vote_average, str):
@@ -113,8 +107,8 @@ def search_movies(current_user):
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    movies = Movie.query.filter(Movie.title.ilike(f'%{query}%')).all()
-    result = [movie.serialize for movie in movies]
+    all_movies = get_all_movies_cached()
+    result = [m for m in all_movies if query.lower() in (m.get('title') or '').lower()]
     limited_result = result[:max_results]
     
     # Add watch history if requested
@@ -136,11 +130,9 @@ def search_movies(current_user):
 def get_movie(current_user, movie_id):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    movie = Movie.query.filter_by(movie_id=movie_id).first()
-    if movie is None:
+    movie_data = get_movie_by_id_cached(movie_id)
+    if movie_data is None:
         return jsonify(message="The selected Movie not found!"), 404
-    
-    movie_data = movie.serialize
     
     # Add watch history if requested
     if include_watch_history:

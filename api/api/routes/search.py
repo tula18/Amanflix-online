@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, abort
 from models import Movie, TVShow
+from api.cache import get_all_movies_cached, get_all_shows_cached
 from cdn.utils import filter_valid_genres, check_images_existence
 import random
 
@@ -10,14 +11,14 @@ def autocomplete():
     query = request.args.get('q', '', type=str).lower()
     max_results = request.args.get('max_results', 10, type=int)
 
-    movies = Movie.query.all()
-    tv_series = TVShow.query.all()
+    movies = get_all_movies_cached()
+    tv_series = get_all_shows_cached()
 
     movie_suggestions = [
-        {"id": item.id, "title": item.title} for item in movies if query in str(item.title.lower())
+        {"id": item.get('id'), "title": item.get('title')} for item in movies if query in (item.get('title') or '').lower()
     ]
     tv_suggestions = [
-        {"id": item.id, "name": item.title} for item in tv_series if isinstance(item.title, str) and query in item.title.lower()
+        {"id": item.get('show_id'), "name": item.get('title')} for item in tv_series if query in (item.get('title') or '').lower()
     ]
 
     suggestions = list(movie_suggestions + tv_suggestions)
@@ -37,14 +38,13 @@ def advanced_search():
     is_random = request.args.get('random', False, type=bool)
     with_images = request.args.get('with_images', False, type=bool)
 
-    movies = Movie.query.all()
-    tv_series = TVShow.query.all()
+    movies = get_all_movies_cached()
+    tv_series = get_all_shows_cached()
 
 
     def apply_filters(items, item_type):
         results = []
-        for title in items:
-            item = title.serialize
+        for item in items:
             title_or_name = item.get('title')
             vote_average = item.get('vote_average', 0)
             if isinstance(vote_average, str):

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, abort
 from models import TVShow
 from api.utils import admin_token_required, token_required, serialize_watch_history
+from api.cache import get_all_shows_cached, get_show_by_id_cached
 from paths import UPLOADS_DIR
 import os
 
@@ -16,30 +17,24 @@ def get_shows(current_user):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     reverse = request.args.get('reverse', False, type=bool)
     
-    # Get all Shows first
-    query = TVShow.query
+    # Get all Shows from cache
+    all_shows_data = get_all_shows_cached()
     
     # Apply sorting if sort_by_field is provided
     if sort_by_field:
-        sort_by = getattr(TVShow, sort_by_field, None)
-        if sort_by:
-            if order.lower() == 'desc':
-                query = query.order_by(sort_by.desc())
-            else:
-                query = query.order_by(sort_by.asc())
+        reverse_sort = order.lower() == 'desc'
+        all_shows_data.sort(key=lambda s: s.get(sort_by_field) or '', reverse=reverse_sort)
                 
-    # Get all shows and reverse the list
-    all_shows = query.all()
     if reverse:
-        all_shows.reverse()
+        all_shows_data.reverse()
     
     # Manual pagination on the reversed list
-    total = len(all_shows)
+    total = len(all_shows_data)
     start = (page - 1) * per_page
     end = start + per_page
-    shows_page = all_shows[start:end]
+    shows_page = all_shows_data[start:end]
     
-    show_list = [movie.serialize for movie in shows_page]
+    show_list = shows_page
     
     # Add watch history if requested
     if include_watch_history:
@@ -62,8 +57,8 @@ def search_show(current_user):
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    shows = TVShow.query.filter(TVShow.title.ilike(f'%{query}%')).all()
-    result = [show.serialize for show in shows]
+    all_shows = get_all_shows_cached()
+    result = [s for s in all_shows if query.lower() in (s.get('title') or '').lower()]
     limited_result = result[:max_results]
     
     # Add watch history if requested
@@ -85,11 +80,9 @@ def search_show(current_user):
 def get_show(current_user, show_id):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    show = TVShow.query.filter_by(show_id=show_id).first()
-    if show is None:
+    show_data = get_show_by_id_cached(show_id)
+    if show_data is None:
         return jsonify(message="The selected Show not found!"), 404
-    
-    show_data = show.serialize
     
     # Add watch history if requested
     if include_watch_history:

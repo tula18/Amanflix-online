@@ -11,6 +11,7 @@ import json
 from tqdm import tqdm
 from pprint import pprint
 from utils.logger import log_success, log_error, log_warning, log_info
+from api.cache import invalidate_movie_cache, invalidate_show_cache
 from paths import UPLOADS_DIR, CDN_POSTERS_DIR
 
 upload_bp = Blueprint('upload_bp', __name__, url_prefix='/api/upload')
@@ -401,6 +402,7 @@ def upload_movie(current_admin):
         return jsonify(message=f"An error occurred while saving the movie to the database. Error: {str(e)}"), 500
 
     log_success(f"Movie '{movie_data['title']}' (ID: {movie_data['id']}) uploaded successfully by {current_admin.username}")
+    invalidate_movie_cache()
     return jsonify(message=f"Movie '{movie_data['title']}' {forced_text} uploaded successfully."), 200
 
 @upload_bp.route('/movie/<int:movie_id>', methods=['PUT'])
@@ -504,6 +506,7 @@ def update_movie(current_admin, movie_id):
     # except Exception as e:
     #     return jsonify(message=f"An error occurred while updating the movie. Error: {str(e)}"), 500
 
+    invalidate_movie_cache()
     return jsonify(message=f"Movie '{movie.title}' updated successfully."), 200
 
 @upload_bp.route('/movie/delete/<int:movie_id>', methods=['DELETE'])
@@ -536,6 +539,7 @@ def delete_movie(current_admin, movie_id):
     db.session.delete(movie)
     db.session.commit()
     
+    invalidate_movie_cache()
     return jsonify(message=f"Movie {movie.title} deleted successfully")
 
 @upload_bp.route('/show', methods=['POST'])
@@ -721,6 +725,7 @@ def upload_tvshow(current_admin):
         
         return jsonify(message=f"An error occurred while saving the TV show and its seasons/episodes to the database. Error: {str(e)}"), 500
 
+    invalidate_show_cache()
     return jsonify({'message': f'TV Show {new_show.title} uploaded successfully with all seasons and episodes'}), 200
 
 # Add this helper function to clean up files
@@ -804,6 +809,7 @@ def delete_tvshow(current_admin, show_id):
     db.session.delete(show)
     db.session.commit()
     
+    invalidate_show_cache()
     return jsonify(message=f"TV show {show.title} deleted successfully")
 
 # Add this new endpoint near the other TV show routes
@@ -1036,6 +1042,7 @@ def update_tvshow(current_admin, show_id):
         # Commit all changes
         db.session.commit()
         
+        invalidate_show_cache()
         return jsonify({'message': f'TV Show {show.title} updated successfully'}), 200
     
     except Exception as e:

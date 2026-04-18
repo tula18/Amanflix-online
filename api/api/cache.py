@@ -5,6 +5,9 @@ This module provides thread-safe TTL-based caches for:
 - User objects (reduces DB reads in token_required)
 - Admin objects (reduces DB reads in admin_token_required)
 - Blacklisted tokens (reduces DB reads for token validation)
+- Movies and TV shows (reduces DB reads for content endpoints)
+- MyList per user (reduces DB reads for watchlist checks)
+- Notifications per user and admin (reduces DB reads for notification endpoints)
 
 Cache hit rates of 95%+ are expected, reducing DB load by ~96%.
 """
@@ -183,6 +186,33 @@ blacklist_cache: TTLCache[bool] = TTLCache(ttl_seconds=600, max_size=10000, name
 # Key: token hash, Value: user_id
 valid_token_cache: TTLCache[int] = TTLCache(ttl_seconds=120, max_size=10000, name="ValidTokenCache")
 
+# =============================================================================
+# Content Caches (long TTL, invalidated on writes)
+# =============================================================================
+
+# Movies cache: stores full serialized movies list
+# TTL: 12 hours - content changes daily, immediate invalidation on writes
+movies_cache: TTLCache[list] = TTLCache(ttl_seconds=43200, max_size=1, name="MoviesCache")
+
+# Shows cache: stores full serialized TV shows list (includes nested seasons/episodes)
+# TTL: 12 hours - content changes daily, immediate invalidation on writes
+shows_cache: TTLCache[list] = TTLCache(ttl_seconds=43200, max_size=1, name="ShowsCache")
+
+# MyList cache: stores per-user watchlist entries
+# TTL: 12 hours - invalidated on add/delete
+# Key: "user_{id}", Value: list of {content_type, content_id} dicts
+mylist_cache: TTLCache[list] = TTLCache(ttl_seconds=43200, max_size=500, name="MyListCache")
+
+# User notifications cache: stores per-user serialized notifications
+# TTL: 12 hours - invalidated on create/delete/read
+# Key: "user_{id}", Value: list of serialized notification dicts
+user_notifications_cache: TTLCache[list] = TTLCache(ttl_seconds=43200, max_size=500, name="UserNotificationsCache")
+
+# Admin notifications cache: stores admin notification data
+# TTL: 12 hours - invalidated on any notification write
+# Key: "all" or "stats", Value: serialized data
+admin_notifications_cache: TTLCache = TTLCache(ttl_seconds=43200, max_size=10, name="AdminNotificationsCache")
+
 
 # =============================================================================
 # Cache Helper Functions
@@ -304,8 +334,225 @@ def get_all_cache_stats() -> dict:
         "user_cache": user_cache.stats(),
         "admin_cache": admin_cache.stats(),
         "blacklist_cache": blacklist_cache.stats(),
-        "valid_token_cache": valid_token_cache.stats()
+        "valid_token_cache": valid_token_cache.stats(),
+        "movies_cache": movies_cache.stats(),
+        "shows_cache": shows_cache.stats(),
+        "mylist_cache": mylist_cache.stats(),
+        "user_notifications_cache": user_notifications_cache.stats(),
+        "admin_notifications_cache": admin_notifications_cache.stats(),
     }
+
+
+# =============================================================================
+# Content Cache Helper Functions
+# =============================================================================
+
+def get_all_movies_cached() -> list:
+    """
+    Get all movies from cache or database.
+    Returns a list of shallow-copied serialized movie dicts.
+    """
+    from models import Movie
+
+    cached = movies_cache.get("all")
+    if cached is not None:
+        return [dict(m) for m in cached]
+
+    movies = Movie.query.all()
+    serialized = [movie.serialize for movie in movies]
+    movies_cache.set("all", serialized)
+    log_info(f"MoviesCache: Loaded {len(serialized)} movies from DB")
+    return [dict(m) for m in serialized]
+
+
+def get_all_shows_cached() -> list:
+    """
+    Get all TV shows from cache or database.
+    Returns a list of shallow-copied serialized show dicts.
+    """
+    from models import TVShow
+
+    cached = shows_cache.get("all")
+    if cached is not None:
+        return [dict(s) for s in cached]
+
+    shows = TVShow.query.all()
+    serialized = [show.serialize for show in shows]
+    shows_cache.set("all", serialized)
+    log_info(f"ShowsCache: Loaded {len(serialized)} shows from DB")
+    return [dict(s) for s in serialized]
+
+
+def get_movie_by_id_cached(movie_id: int) -> dict:
+    """
+    Get a single movie by ID from the cached list.
+    Returns a shallow-copied dict or None if not found.
+    """
+    all_movies = get_all_movies_cached()
+    for movie in all_movies:
+        if movie.get('id') == movie_id:
+            return movie
+    return None
+
+
+def get_show_by_id_cached(show_id: int) -> dict:
+    """
+    Get a single TV show by ID from the cached list.
+    Returns a shallow-copied dict or None if not found.
+    """
+    all_shows = get_all_shows_cached()
+    for show in all_shows:
+        if show.get('show_id') == show_id:
+            return show
+    return None
+
+
+def invalidate_movie_cache() -> None:
+    """Invalidate the movies cache. Call after movie create/update/delete."""
+    movies_cache.clear()
+    log_info("MoviesCache: Invalidated")
+
+
+def invalidate_show_cache() -> None:
+    """Invalidate the shows cache. Call after show create/update/delete."""
+    shows_cache.clear()
+    log_info("ShowsCache: Invalidated")
+
+
+def invalidate_all_content_caches() -> None:
+    """Invalidate both movie and show caches."""
+    invalidate_movie_cache()
+    invalidate_show_cache()
+
+
+def warm_content_caches() -> None:
+    """Pre-populate content caches at startup to avoid first-request latency."""
+    try:
+        movies = get_all_movies_cached()
+        shows = get_all_shows_cached()
+        log_info(f"Content caches warmed: {len(movies)} movies, {len(shows)} shows")
+    except Exception as e:
+        log_info(f"Content cache warming failed (non-fatal): {e}")
+
+
+# =============================================================================
+# MyList Cache Helper Functions
+# =============================================================================
+
+def get_user_mylist_cached(user_id: int) -> list:
+    """
+    Get user's mylist entries from cache or database.
+    Returns a list of dicts: [{content_type, content_id}, ...]
+    """
+    from models import MyList
+
+    key = f"user_{user_id}"
+    cached = mylist_cache.get(key)
+    if cached is not None:
+        return cached
+
+    items = MyList.query.filter_by(user_id=user_id).all()
+    entries = [{"content_type": item.content_type, "content_id": item.content_id} for item in items]
+    mylist_cache.set(key, entries)
+    return entries
+
+
+def invalidate_user_mylist(user_id: int) -> None:
+    """Invalidate a user's mylist cache. Call after add/delete."""
+    mylist_cache.delete(f"user_{user_id}")
+
+
+# =============================================================================
+# Notifications Cache Helper Functions
+# =============================================================================
+
+def get_user_notifications_cached(user_id: int) -> list:
+    """
+    Get user's notifications from cache or database.
+    Returns serialized notifications (user-specific + global).
+    """
+    from models import Notification
+
+    key = f"user_{user_id}"
+    cached = user_notifications_cache.get(key)
+    if cached is not None:
+        return cached
+
+    notifications = Notification.query.filter(
+        (Notification.user_id == user_id) | (Notification.user_id.is_(None))
+    ).order_by(Notification.created_at.desc()).all()
+    serialized = [n.serialize() for n in notifications]
+    user_notifications_cache.set(key, serialized)
+    return serialized
+
+
+def get_user_unread_count_cached(user_id: int) -> int:
+    """
+    Get unread notification count for a user, derived from cached notifications.
+    """
+    notifications = get_user_notifications_cached(user_id)
+    return sum(1 for n in notifications if not n.get('is_read', True))
+
+
+def get_admin_all_notifications_cached() -> list:
+    """
+    Get all notifications for admin view from cache or database.
+    """
+    from models import Notification
+
+    cached = admin_notifications_cache.get("all")
+    if cached is not None:
+        return cached
+
+    notifications = Notification.query.order_by(Notification.created_at.desc()).all()
+    serialized = [n.serialize() for n in notifications]
+    admin_notifications_cache.set("all", serialized)
+    return serialized
+
+
+def get_admin_notification_stats_cached() -> dict:
+    """
+    Get notification stats for admin dashboard from cache or database.
+    """
+    from models import Notification, db
+    from sqlalchemy import func
+    import datetime
+
+    cached = admin_notifications_cache.get("stats")
+    if cached is not None:
+        return cached
+
+    total_count = Notification.query.count()
+    type_counts = db.session.query(
+        Notification.notification_type,
+        func.count(Notification.id)
+    ).group_by(Notification.notification_type).all()
+    read_count = Notification.query.filter_by(is_read=True).count()
+    unread_count = Notification.query.filter_by(is_read=False).count()
+    one_week_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    recent_count = Notification.query.filter(Notification.created_at >= one_week_ago).count()
+
+    stats = {
+        'total': total_count,
+        'by_type': {t[0]: t[1] for t in type_counts},
+        'read': read_count,
+        'unread': unread_count,
+        'recent': recent_count
+    }
+    admin_notifications_cache.set("stats", stats)
+    return stats
+
+
+def invalidate_user_notifications(user_id: int) -> None:
+    """Invalidate a specific user's notifications cache."""
+    user_notifications_cache.delete(f"user_{user_id}")
+
+
+def invalidate_all_notifications_caches() -> None:
+    """Invalidate all notification caches (user + admin). Call on global writes."""
+    user_notifications_cache.clear()
+    admin_notifications_cache.clear()
+    log_info("NotificationsCaches: All invalidated")
 
 
 def clear_all_caches() -> None:

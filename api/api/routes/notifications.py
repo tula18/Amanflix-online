@@ -1,6 +1,9 @@
 from flask import Blueprint, request, jsonify
 from models import db, Notification, User
 from api.utils import token_required, admin_token_required
+from api.cache import (get_user_notifications_cached, get_user_unread_count_cached,
+                       get_admin_all_notifications_cached, get_admin_notification_stats_cached,
+                       invalidate_user_notifications, invalidate_all_notifications_caches)
 from sqlalchemy import func, desc
 import datetime
 
@@ -82,6 +85,17 @@ def create_notification(current_admin):
     
     db.session.commit()
     
+    # Invalidate notification caches for affected users
+    if user_id:
+        invalidate_user_notifications(user_id)
+    elif user_ids:
+        for uid in user_ids:
+            invalidate_user_notifications(uid)
+    else:
+        # Global notification - invalidate all user caches
+        invalidate_all_notifications_caches()
+    invalidate_all_notifications_caches()  # Always invalidate admin cache
+    
     return jsonify({
         'message': f'Successfully created {len(created_notifications)} notification(s)',
         'notifications': [n.serialize() for n in created_notifications]
@@ -90,8 +104,7 @@ def create_notification(current_admin):
 @notifications_bp.route('/api/admin/notifications', methods=['GET'])
 @admin_token_required('admin')
 def get_all_notifications(current_admin):
-    notifications = Notification.query.order_by(Notification.created_at.desc()).all()
-    return jsonify([n.serialize() for n in notifications]), 200
+    return jsonify(get_admin_all_notifications_cached()), 200
 
 @notifications_bp.route('/api/admin/notifications/<int:notification_id>', methods=['DELETE'])
 @admin_token_required('admin')
@@ -103,6 +116,7 @@ def delete_notification(current_admin, notification_id):
     db.session.delete(notification)
     db.session.commit()
     
+    invalidate_all_notifications_caches()
     return jsonify({'message': 'Notification deleted successfully'}), 200
 
 @notifications_bp.route('/api/admin/notifications/<int:notification_id>', methods=['PUT'])
@@ -124,6 +138,7 @@ def update_notification(current_admin, notification_id):
     
     db.session.commit()
     
+    invalidate_all_notifications_caches()
     return jsonify({
         'message': 'Notification updated successfully',
         'notification': notification.serialize()
@@ -133,30 +148,7 @@ def update_notification(current_admin, notification_id):
 @notifications_bp.route('/api/admin/notifications/stats', methods=['GET'])
 @admin_token_required('moderator')
 def get_notification_stats(current_admin):
-    # Total count
-    total_count = Notification.query.count()
-    
-    # Count by type
-    type_counts = db.session.query(
-        Notification.notification_type, 
-        func.count(Notification.id)
-    ).group_by(Notification.notification_type).all()
-    
-    # Count read/unread
-    read_count = Notification.query.filter_by(is_read=True).count()
-    unread_count = Notification.query.filter_by(is_read=False).count()
-    
-    # Recent activity (last 7 days)
-    one_week_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-    recent_count = Notification.query.filter(Notification.created_at >= one_week_ago).count()
-    
-    return jsonify({
-        'total': total_count,
-        'by_type': {t[0]: t[1] for t in type_counts},
-        'read': read_count,
-        'unread': unread_count,
-        'recent': recent_count
-    }), 200
+    return jsonify(get_admin_notification_stats_cached()), 200
 
 # Filter notifications
 @notifications_bp.route('/api/admin/notifications/filter', methods=['GET'])
@@ -202,6 +194,7 @@ def bulk_delete_notifications(current_admin):
     
     db.session.commit()
     
+    invalidate_all_notifications_caches()
     return jsonify({
         'message': f'{deleted_count} notifications deleted successfully',
         'deleted_count': deleted_count
@@ -235,6 +228,7 @@ def broadcast_notification(current_admin):
     db.session.add(notification)
     db.session.commit()
     
+    invalidate_all_notifications_caches()
     return jsonify({
         'message': 'Broadcast notification sent successfully',
         'notification': notification.serialize()
@@ -244,23 +238,12 @@ def broadcast_notification(current_admin):
 @notifications_bp.route('/api/notifications', methods=['GET'])
 @token_required
 def get_user_notifications(current_user):
-    # Get user-specific and global notifications
-    notifications = Notification.query.filter(
-        (Notification.user_id == current_user.id) | (Notification.user_id.is_(None))
-    ).order_by(Notification.created_at.desc()).all()
-    
-    return jsonify([n.serialize() for n in notifications]), 200
+    return jsonify(get_user_notifications_cached(current_user.id)), 200
 
 @notifications_bp.route('/api/notifications/unread/count', methods=['GET'])
 @token_required
 def get_unread_count(current_user):
-    # Count unread notifications for the current user
-    count = Notification.query.filter(
-        ((Notification.user_id == current_user.id) | (Notification.user_id.is_(None))) &
-        (Notification.is_read == False)
-    ).count()
-    
-    return jsonify({'unread_count': count}), 200
+    return jsonify({'unread_count': get_user_unread_count_cached(current_user.id)}), 200
 
 @notifications_bp.route('/api/notifications/<int:notification_id>/read', methods=['PUT'])
 @token_required
@@ -276,6 +259,8 @@ def mark_notification_read(current_user, notification_id):
     notification.is_read = True
     db.session.commit()
     
+    invalidate_user_notifications(current_user.id)
+    invalidate_all_notifications_caches()
     return jsonify({'message': 'Notification marked as read'}), 200
 
 @notifications_bp.route('/api/notifications/read-all', methods=['PUT'])
@@ -289,4 +274,6 @@ def mark_all_notifications_read(current_user):
     
     db.session.commit()
     
+    invalidate_user_notifications(current_user.id)
+    invalidate_all_notifications_caches()
     return jsonify({'message': 'All notifications marked as read'}), 200
