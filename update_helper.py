@@ -243,6 +243,14 @@ def cmd_configure():
         venv_path = 'api/venv'
     config['venv_path'] = venv_path
 
+    # Migrations path (relative to prod folder)
+    print()
+    print("Enter the migrations path relative to the production folder (default: api/migrations).")
+    migrations_path = input("Migrations path [api/migrations]: ").strip()
+    if not migrations_path:
+        migrations_path = 'api/migrations'
+    config['migrations_path'] = migrations_path
+
     # Compute data_root relative path for data_config.json
     # From prod_folder/api/ to data_folder
     prod_api_full = os.path.join(resolve_path(prod_path), 'api')
@@ -258,6 +266,7 @@ def cmd_configure():
     print(f"  New version:       {resolve_path(config['new_version_folder'])}")
     print(f"  Backup folder:     {resolve_path(config['backup_folder'])}")
     print(f"  Venv path:         {config['venv_path']}")
+    print(f"  Migrations path:   {config['migrations_path']}")
     print(f"  data_root (app):   {data_root_rel}")
     print("─" * 60)
     print()
@@ -293,6 +302,7 @@ def cmd_update(dry_run=False):
     new_version_path = resolve_path(config['new_version_folder'])
     backup_folder = resolve_path(config['backup_folder'])
     venv_rel = config.get('venv_path', 'api/venv')
+    migrations_rel = config.get('migrations_path', 'api/migrations')
 
     print("=" * 60)
     if dry_run:
@@ -331,6 +341,22 @@ def cmd_update(dry_run=False):
                 print("  [INFO] Will keep the new version's venv. Skipping venv transfer.")
                 restore_venv = False
 
+    # Check if new version already has a migrations folder
+    new_migrations_path = os.path.join(new_version_path, migrations_rel)
+    restore_migrations = True
+    if os.path.exists(new_migrations_path):
+        print(f"[WARN] New version already contains a migrations folder at: {new_migrations_path}")
+        if dry_run:
+            print("  [DRY RUN] Would ask whether to delete or keep new migrations folder.")
+        else:
+            choice = input("Delete it and restore the current migrations? (y = delete & restore, n = keep new migrations): ").strip().lower()
+            if choice == 'y':
+                shutil.rmtree(new_migrations_path)
+                print("  [OK] migrations folder in new version deleted.")
+            else:
+                print("  [INFO] Will keep the new version's migrations. Skipping migrations transfer.")
+                restore_migrations = False
+
     # ── Confirm ───────────────────────────────────────────────
     print(f"  Current prod:    {prod_path}")
     print(f"  New version:     {new_version_path}")
@@ -340,10 +366,10 @@ def cmd_update(dry_run=False):
     if dry_run:
         print("[DRY RUN] The following steps would be performed:")
         print("  1. Stop app.py")
-        print("  2. Extract venv and data_config.json from current prod")
+        print("  2. Extract venv, migrations, and data_config.json from current prod")
         print("  3. Archive current prod to backups")
         print("  4. Rename new version folder to prod")
-        print("  5. Restore venv and data_config.json into new prod")
+        print("  5. Restore venv, migrations, and data_config.json into new prod")
         print()
         print("[DRY RUN] No changes were made.")
         return
@@ -360,12 +386,14 @@ def cmd_update(dry_run=False):
     print("[Step 1/5] Stopping app.py...")
     stop_app(config)
 
-    # ── Step 2: Extract venv + data_config from old prod ──────
+    # ── Step 2: Extract venv + migrations + data_config from old prod ──────
     venv_temp_path = os.path.join(SCRIPT_DIR, '_venv_temp')
+    migrations_temp_path = os.path.join(SCRIPT_DIR, '_migrations_temp')
     data_config_content = None
 
-    print("[Step 2/5] Extracting venv and data_config.json from current prod...")
+    print("[Step 2/5] Extracting venv, migrations, and data_config.json from current prod...")
     venv_src = os.path.join(prod_path, venv_rel)
+    migrations_src = os.path.join(prod_path, migrations_rel)
     data_config_src = os.path.join(prod_path, 'api', 'config', 'data_config.json')
 
     # Extract venv (only if we need to restore it later)
@@ -380,6 +408,19 @@ def cmd_update(dry_run=False):
             print(f"  [WARN] venv not found at {venv_src}")
     else:
         print("  [SKIP] venv transfer skipped (keeping new version's venv).")
+
+    # Extract migrations (only if we need to restore it later)
+    if restore_migrations:
+        if os.path.exists(migrations_src):
+            if os.path.exists(migrations_temp_path):
+                shutil.rmtree(migrations_temp_path)
+            print(f"  Moving migrations to temp: {migrations_temp_path}")
+            shutil.move(migrations_src, migrations_temp_path)
+            print("  [OK] migrations extracted.")
+        else:
+            print(f"  [WARN] migrations not found at {migrations_src}")
+    else:
+        print("  [SKIP] migrations transfer skipped (keeping new version's migrations).")
 
     # Extract data_config.json content
     if os.path.exists(data_config_src):
@@ -405,8 +446,8 @@ def cmd_update(dry_run=False):
     shutil.move(new_version_path, prod_path)
     print("  [OK] New version is now production.")
 
-    # ── Step 5: Restore venv + data_config ────────────────────
-    print("[Step 5/5] Restoring venv and data_config.json...")
+    # ── Step 5: Restore venv + migrations + data_config ────────────────────
+    print("[Step 5/5] Restoring venv, migrations, and data_config.json...")
 
     # Restore venv
     venv_dest = os.path.join(prod_path, venv_rel)
@@ -425,6 +466,24 @@ def cmd_update(dry_run=False):
             print("  [WARN] No venv to restore. You may need to create one manually.")
     else:
         print("  [SKIP] venv restore skipped (using new version's venv).")
+
+    # Restore migrations
+    migrations_dest = os.path.join(prod_path, migrations_rel)
+    if restore_migrations:
+        if os.path.exists(migrations_temp_path):
+            # Remove any migrations that came with the new version to avoid nesting
+            if os.path.exists(migrations_dest):
+                shutil.rmtree(migrations_dest)
+            # Ensure parent directory exists
+            migrations_parent = os.path.dirname(migrations_dest)
+            os.makedirs(migrations_parent, exist_ok=True)
+            print(f"  Moving migrations back: {migrations_dest}")
+            shutil.move(migrations_temp_path, migrations_dest)
+            print("  [OK] migrations restored.")
+        else:
+            print("  [WARN] No migrations to restore.")
+    else:
+        print("  [SKIP] migrations restore skipped (using new version's migrations).")
 
     # Write data_config.json
     data_config_dest = os.path.join(prod_path, 'api', 'config', 'data_config.json')
@@ -459,6 +518,7 @@ def cmd_status():
     print(f"  New version:       {resolve_path(config['new_version_folder'])}")
     print(f"  Backup folder:     {resolve_path(config['backup_folder'])}")
     print(f"  Venv path:         {config.get('venv_path', 'api/venv')}")
+    print(f"  Migrations path:   {config.get('migrations_path', 'api/migrations')}")
     print(f"  data_root (app):   {config.get('data_root_relative', 'N/A')}")
     print()
     print()
@@ -475,10 +535,12 @@ def cmd_status():
     for sub in data_subdirs:
         paths_to_check[f'  Data/{sub}'] = os.path.join(resolve_path(config['data_folder']), sub)
 
-    # Check venv
+    # Check venv and migrations
     prod = resolve_path(config['prod_folder'])
     venv_rel = config.get('venv_path', 'api/venv')
+    migrations_rel = config.get('migrations_path', 'api/migrations')
     paths_to_check['  Venv'] = os.path.join(prod, venv_rel)
+    paths_to_check['  Migrations'] = os.path.join(prod, migrations_rel)
     paths_to_check['  app.py'] = os.path.join(prod, 'api', 'app.py')
     paths_to_check['  data_config.json'] = os.path.join(prod, 'api', 'config', 'data_config.json')
 
@@ -560,6 +622,7 @@ def cmd_rollback():
     backup_folder = resolve_path(config['backup_folder'])
     prod_path = resolve_path(config['prod_folder'])
     venv_rel = config.get('venv_path', 'api/venv')
+    migrations_rel = config.get('migrations_path', 'api/migrations')
 
     if not os.path.exists(backup_folder):
         print("[ERROR] Backup folder not found.")
@@ -614,13 +677,15 @@ def cmd_rollback():
     print("[Step 1/5] Stopping app.py...")
     stop_app(config)
 
-    # Extract venv from current prod
+    # Extract venv and migrations from current prod
     venv_temp_path = os.path.join(SCRIPT_DIR, '_venv_temp')
+    migrations_temp_path = os.path.join(SCRIPT_DIR, '_migrations_temp')
     data_config_content = None
 
     if os.path.exists(prod_path):
-        print("[Step 2/5] Extracting venv from current prod...")
+        print("[Step 2/5] Extracting venv and migrations from current prod...")
         venv_src = os.path.join(prod_path, venv_rel)
+        migrations_src = os.path.join(prod_path, migrations_rel)
         data_config_src = os.path.join(prod_path, 'api', 'config', 'data_config.json')
 
         if os.path.exists(venv_src):
@@ -628,6 +693,12 @@ def cmd_rollback():
                 shutil.rmtree(venv_temp_path)
             shutil.move(venv_src, venv_temp_path)
             print("  [OK] venv extracted.")
+
+        if os.path.exists(migrations_src):
+            if os.path.exists(migrations_temp_path):
+                shutil.rmtree(migrations_temp_path)
+            shutil.move(migrations_src, migrations_temp_path)
+            print("  [OK] migrations extracted.")
 
         if os.path.exists(data_config_src):
             with open(data_config_src, 'r') as f:
@@ -652,8 +723,8 @@ def cmd_rollback():
     shutil.copytree(backup_path, prod_path)
     print(f"  [OK] {selected_backup} restored as production.")
 
-    # Restore venv + data_config
-    print("[Step 5/5] Restoring venv and data_config.json...")
+    # Restore venv + migrations + data_config
+    print("[Step 5/5] Restoring venv, migrations, and data_config.json...")
     venv_dest = os.path.join(prod_path, venv_rel)
     if os.path.exists(venv_temp_path):
         # Remove any venv that came from the backup
@@ -663,6 +734,16 @@ def cmd_rollback():
         os.makedirs(venv_parent, exist_ok=True)
         shutil.move(venv_temp_path, venv_dest)
         print("  [OK] venv restored.")
+
+    migrations_dest = os.path.join(prod_path, migrations_rel)
+    if os.path.exists(migrations_temp_path):
+        # Remove any migrations that came from the backup
+        if os.path.exists(migrations_dest):
+            shutil.rmtree(migrations_dest)
+        migrations_parent = os.path.dirname(migrations_dest)
+        os.makedirs(migrations_parent, exist_ok=True)
+        shutil.move(migrations_temp_path, migrations_dest)
+        print("  [OK] migrations restored.")
 
     data_config_dest = os.path.join(prod_path, 'api', 'config', 'data_config.json')
     if data_config_content:
