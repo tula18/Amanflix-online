@@ -156,6 +156,7 @@ function Navbar() {
   const [showBugModal, setShowBugModal] = useState(false);
   const [alertShowMore, setAlertShowMore] = useState(false);
   const searchInputRef = useRef(null);
+  const searchDebounceRef = useRef(null);
   const [isMenuVisible, setIsMenuVisible] = React.useState( );
   const token = localStorage.getItem('token')
   const admin_token = localStorage.getItem('admin_token')
@@ -163,7 +164,7 @@ function Navbar() {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    if (location.pathname === '/search' && query && query !== searchQuery) {
+    if (location.pathname === '/search' && query && query !== searchQuery && !searchDebounceRef.current) {
       setSearchQuery(query)
     } 
   }, [setSearchQuery, location, query, searchQuery])
@@ -300,7 +301,11 @@ function Navbar() {
       newSearchQuery = event.target.value.replace(/ /g, '%20'); 
     }
     setSearchQuery(newSearchQuery);
-    navigate(`/search?q=${encodeURIComponent(newSearchQuery.trim())}`);
+    clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      searchDebounceRef.current = null;
+      navigate(`/search?q=${encodeURIComponent(newSearchQuery.trim())}`);
+    }, 400);
   };
 
   const toggleSearchBar = () => {

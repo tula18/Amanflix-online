@@ -8,6 +8,7 @@ import { API_URL } from '../../config';
 const SearchPage = () => {
     const [results, setResults] = useState([]);
     const [explore, setExplore] = useState([]);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     let query = new URLSearchParams(useLocation().search).get('q') || '';
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -124,22 +125,21 @@ const SearchPage = () => {
                 };
             }
 
-            fetch(`${API_URL}/cdn/${searchEndpoint}?q=${encodeURIComponent(newQuery)}&with_images=true&include_watch_history=true`, options)
-                .then((response) => response.json())
-                .then((data) => {
-                    console.log("results", data);
-                    setResults(data);
+            setLoading(true);
+            Promise.all([
+                fetch(`${API_URL}/cdn/${searchEndpoint}?q=${encodeURIComponent(newQuery)}&with_images=true&include_watch_history=true`, options)
+                    .then((response) => response.json()),
+                fetch(`${API_URL}/cdn/autocomplete?q=${encodeURIComponent(newQuery)}`)
+                    .then((response) => response.json())
+            ])
+                .then(([searchData, autocompleteData]) => {
+                    console.log("results", searchData);
+                    setResults(searchData);
+                    console.log("explore", autocompleteData);
+                    setExplore(removeDuplicates(autocompleteData));
                 })
-                .catch((error) => console.error('Error fetching search results:', error));
-        
-            fetch(`${API_URL}/cdn/autocomplete?q=${encodeURIComponent(newQuery)}`)
-                .then((response) => response.json())
-                .then((data) => {
-                    console.log("explore", data);
-                    console.log("explore-unique", removeDuplicates(data));
-                    setExplore(removeDuplicates(data));
-                })
-                .catch((error) => console.error('Error fetching search results:', error));
+                .catch((error) => console.error('Error fetching search results:', error))
+                .finally(() => setLoading(false));
         }
     }, [query, isLoggedIn]);
 
@@ -200,7 +200,11 @@ const SearchPage = () => {
             ) : ""}
             
             <div className='search-grid'>
-                {results.length ? (
+                {loading ? (
+                    <div className='search-loading'>
+                        <div className='search-spinner'></div>
+                    </div>
+                ) : results.length ? (
                     results.map((result, idx) => (
                         <span key={idx}>
                             <button className="button3" onClick={(event) => handleMovieClick(result, event)}>
