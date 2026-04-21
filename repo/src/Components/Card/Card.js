@@ -48,8 +48,13 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
         }
     };
 
+    const contentType = movie.media_type
     const displayTitle = movie.name || movie.title || 'Title not available';
-
+    const isWatched = movie.watch_history?.is_completed || false;
+    const isShowCompleted = contentType !== 'movie' && isWatched && movie.watch_history?.finished_show;
+    const shouldShowEpisodeBadge = episodeInfo && !movie.watch_history?.finished_show;
+    const shouldShowWatchedBadge = (contentType === 'movie' && isWatched) || isShowCompleted;
+    
     return (
         <div className='card'>
             {/* {isLoading ? <LoadingCard /> : null} */}
@@ -57,7 +62,7 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
             <h2>{displayTitle}</h2>
             
             {/* Add progress bar */}
-            {watchProgress > 0 && (
+            {watchProgress > 0 && isWatched === false && (
                 <div className="card__progress-container">
                     <div 
                         className="card__progress-bar" 
@@ -65,9 +70,18 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
                     ></div>
                 </div>
             )}
+
+            {/* Watched badge */}
+            {shouldShowWatchedBadge && (
+                <div className={`card-episode-badge`}>
+                    <span>
+                        Watched
+                    </span>
+                </div>
+            )}
             
             {/* Add episode badge for TV shows */}
-            {episodeInfo && (
+            {shouldShowEpisodeBadge && (
                 <div className={`card-episode-badge ${episodeInfo.isNext ? 'next-episode' : ''}`}>
                     <span>
                         {episodeInfo.isNext ? 'Next: ' : ''}
