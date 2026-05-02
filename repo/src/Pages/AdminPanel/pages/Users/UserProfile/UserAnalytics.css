@@ -1,0 +1,374 @@
+/* ── Per-User Analytics Section ─────────────────────────────────────────── */
+
+.ua-page {
+  width: 50%;
+  min-width: 620px;
+  margin: 0 auto;
+  padding: 0 0 56px;
+}
+
+/* ── Section Header ─────────────────────────────────────────────────────── */
+
+.ua-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 32px 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 8px;
+}
+
+.ua-title {
+  font-size: 32px !important;
+  font-weight: 400 !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ua-title .anticon {
+  color: #e50914;
+  font-size: 28px;
+}
+
+/* ── Sub-section Labels ─────────────────────────────────────────────────── */
+
+.ua-sub-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 26px 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #8c8c8c;
+}
+
+.ua-sub-label .anticon {
+  font-size: 13px;
+  color: #e50914;
+}
+
+/* ── Stat Cards ─────────────────────────────────────────────────────────── */
+
+.ua-stat-card {
+  background: linear-gradient(145deg, #1f2a40 0%, #1a2332 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+  height: 100%;
+}
+
+.ua-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-color: rgba(229, 9, 20, 0.28) !important;
+}
+
+.ua-stat-card .ant-card-body {
+  padding: 16px 18px !important;
+}
+
+.ua-stat-inner {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.ua-stat-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(229, 9, 20, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  color: #e50914;
+}
+
+.ua-stat-icon.green  { background: rgba(82, 196, 26, 0.12);  color: #52c41a; }
+.ua-stat-icon.blue   { background: rgba(24, 144, 255, 0.12); color: #1890ff; }
+.ua-stat-icon.orange { background: rgba(250, 173, 20, 0.12); color: #faad14; }
+.ua-stat-icon.purple { background: rgba(114, 46, 209, 0.12); color: #722ed1; }
+
+.ua-stat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ua-stat-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #8c8c8c;
+  margin-bottom: 3px;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.ua-stat-value {
+  font-size: 21px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+  word-break: break-all;
+}
+
+.ua-stat-value.red    { color: #e50914; }
+.ua-stat-value.green  { color: #52c41a; }
+.ua-stat-value.orange { color: #faad14; }
+
+/* ── Chart Cards ─────────────────────────────────────────────────────────── */
+
+.ua-chart-card {
+  background: #1f2a40 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  height: 100%;
+}
+
+.ua-chart-card .ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding: 0 20px !important;
+  min-height: 46px !important;
+}
+
+.ua-chart-card .ant-card-head-title {
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  padding: 12px 0 !important;
+}
+
+.ua-chart-card .ant-card-extra {
+  color: #8c8c8c !important;
+}
+
+.ua-chart-card .ant-card-body {
+  padding: 18px 20px !important;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+.ua-table .ant-table {
+  background: transparent !important;
+}
+
+.ua-table .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: #8c8c8c !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 9px 12px !important;
+}
+
+.ua-table .ant-table-tbody > tr > td {
+  color: #cccccc !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  padding: 9px 12px !important;
+}
+
+.ua-table .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.ua-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+.ua-table .ant-pagination-item a,
+.ua-table .ant-pagination-item-link {
+  color: #8c8c8c !important;
+}
+
+.ua-table .ant-pagination-item-active a {
+  color: #e50914 !important;
+}
+
+.ua-table .ant-pagination-item-active {
+  border-color: #e50914 !important;
+}
+
+/* ── Heatmap ─────────────────────────────────────────────────────────────── */
+
+.ua-heatmap-wrap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.ua-heatmap-table {
+  border-collapse: separate;
+  border-spacing: 2px;
+  width: 100%;
+}
+
+.ua-heatmap-table th {
+  color: #555;
+  font-weight: 400;
+  font-size: 10px;
+  text-align: center;
+  padding: 1px 0;
+  min-width: 20px;
+}
+
+.ua-heatmap-table th.row-label {
+  text-align: left;
+  width: 36px;
+  min-width: 36px;
+  color: #777;
+  font-size: 11px;
+}
+
+.ua-heatmap-table td.row-label {
+  color: #888;
+  font-size: 11px;
+  font-weight: 500;
+  padding-right: 6px;
+  white-space: nowrap;
+}
+
+.ua-heatmap-cell {
+  width: 100%;
+  height: 14px;
+  border-radius: 2px;
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.ua-heatmap-cell:hover {
+  opacity: 0.8;
+}
+
+/* ── Bug Stats ───────────────────────────────────────────────────────────── */
+
+.ua-bug-row {
+  display: flex;
+  margin-top: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ua-bug-item {
+  flex: 1;
+  text-align: center;
+  padding: 14px 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ua-bug-item:last-child {
+  border-right: none;
+}
+
+.ua-bug-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.ua-bug-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #8c8c8c;
+}
+
+/* ── Diversity Progress ──────────────────────────────────────────────────── */
+
+.ua-diversity-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.ua-diversity-row .ant-progress {
+  flex: 1;
+  margin-bottom: 0 !important;
+}
+
+/* ── Collapse dark override ──────────────────────────────────────────────── */
+
+.ua-collapse.ant-collapse {
+  background: transparent !important;
+  border: none !important;
+}
+
+.ua-collapse .ant-collapse-item {
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.ua-collapse .ant-collapse-header {
+  color: #aaa !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.ua-collapse .ant-collapse-content {
+  background: transparent !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.ua-collapse .ant-collapse-content-box {
+  padding: 12px !important;
+}
+
+/* ── Segmented dark override ─────────────────────────────────────────────── */
+
+.ua-segmented.ant-segmented {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+}
+
+.ua-segmented .ant-segmented-item {
+  color: #8c8c8c !important;
+  border-radius: 6px !important;
+}
+
+.ua-segmented .ant-segmented-item-selected {
+  background: #e50914 !important;
+  color: #fff !important;
+}
+
+.ua-segmented .ant-segmented-thumb {
+  background: #e50914 !important;
+  border-radius: 6px !important;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .ua-page {
+    width: 90%;
+    min-width: unset;
+  }
+}
+
+@media (max-width: 600px) {
+  .ua-page {
+    width: 100%;
+    padding: 0 12px 48px;
+  }
+
+  .ua-title {
+    font-size: 24px !important;
+  }
+}

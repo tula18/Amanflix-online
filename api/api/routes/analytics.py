@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g
-from models import db, UserSession, UserActivity, User, Admin, WatchHistory, Movie, TVShow
+from models import db, UserSession, UserActivity, User, Admin, WatchHistory, Movie, TVShow, BugReport, UploadRequest
 from api.utils import admin_token_required, token_required
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, and_, case  # Add case here
@@ -595,3 +595,220 @@ def get_data_integrity_metrics(current_admin):
             'contamination_percentage': 0,
             'health_status': 'error'
         }), 500
+
+
+@analytics_bp.route('/users/<int:user_id>', methods=['GET'])
+@admin_token_required('admin')
+def get_user_analytics(current_admin, user_id):
+    """Get detailed per-user analytics for the admin user profile page."""
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    days = request.args.get('days', 30, type=int)
+    now = datetime.utcnow()
+    start_time = now - timedelta(days=days) if days > 0 else None
+
+    def time_filter(query, col):
+        if start_time:
+            return query.filter(col >= start_time)
+        return query
+
+    try:
+        # ── 1. Watch Stats ────────────────────────────────────────────────────
+        wh_base = WatchHistory.query.filter_by(user_id=user_id)
+        if start_time:
+            wh_base = wh_base.filter(WatchHistory.last_watched >= start_time)
+
+        total_items = wh_base.count()
+        completed_items = wh_base.filter(WatchHistory.is_completed == True).count()
+        total_watch_time = db.session.query(func.sum(WatchHistory.watch_timestamp))\
+            .filter(WatchHistory.user_id == user_id)
+        if start_time:
+            total_watch_time = total_watch_time.filter(WatchHistory.last_watched >= start_time)
+        total_watch_time = total_watch_time.scalar() or 0
+
+        completion_rate = round((completed_items / total_items) * 100, 1) if total_items > 0 else 0
+
+        # ── 2. Favorite Genres ────────────────────────────────────────────────
+        movie_genres_q = db.session.query(Movie.genres)\
+            .join(WatchHistory, (WatchHistory.content_id == Movie.movie_id) &
+                               (WatchHistory.content_type == 'movie') &
+                               (WatchHistory.user_id == user_id))
+        tv_genres_q = db.session.query(TVShow.genres)\
+            .join(WatchHistory, (WatchHistory.content_id == TVShow.show_id) &
+                               (WatchHistory.content_type == 'tv') &
+                               (WatchHistory.user_id == user_id))
+        if start_time:
+            movie_genres_q = movie_genres_q.filter(WatchHistory.last_watched >= start_time)
+            tv_genres_q = tv_genres_q.filter(WatchHistory.last_watched >= start_time)
+
+        genre_counts = {}
+        for (genres,) in movie_genres_q.all() + tv_genres_q.all():
+            if genres:
+                for g in [x.strip() for x in genres.split(',') if x.strip()]:
+                    genre_counts[g] = genre_counts.get(g, 0) + 1
+
+        favorite_genres = [{'genre': k, 'count': v}
+                           for k, v in sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)[:8]]
+
+        # ── 3. Most Watched Content ───────────────────────────────────────────
+        most_watched_movies = db.session.query(
+            WatchHistory.content_id,
+            Movie.title,
+            func.count(WatchHistory.id).label('view_count')
+        ).filter(WatchHistory.user_id == user_id, WatchHistory.content_type == 'movie')\
+         .outerjoin(Movie, Movie.movie_id == WatchHistory.content_id)
+        if start_time:
+            most_watched_movies = most_watched_movies.filter(WatchHistory.last_watched >= start_time)
+        most_watched_movies = most_watched_movies.group_by(WatchHistory.content_id, Movie.title)\
+            .order_by(desc('view_count')).limit(5).all()
+
+        most_watched_tv = db.session.query(
+            WatchHistory.content_id,
+            TVShow.title,
+            func.count(WatchHistory.id).label('view_count')
+        ).filter(WatchHistory.user_id == user_id, WatchHistory.content_type == 'tv')\
+         .outerjoin(TVShow, TVShow.show_id == WatchHistory.content_id)
+        if start_time:
+            most_watched_tv = most_watched_tv.filter(WatchHistory.last_watched >= start_time)
+        most_watched_tv = most_watched_tv.group_by(WatchHistory.content_id, TVShow.title)\
+            .order_by(desc('view_count')).limit(5).all()
+
+        most_watched = sorted(
+            [{'content_id': r.content_id, 'title': r.title or f'Movie #{r.content_id}',
+              'type': 'movie', 'view_count': r.view_count} for r in most_watched_movies] +
+            [{'content_id': r.content_id, 'title': r.title or f'Show #{r.content_id}',
+              'type': 'tv', 'view_count': r.view_count} for r in most_watched_tv],
+            key=lambda x: x['view_count'], reverse=True
+        )[:5]
+
+        # ── 4. Drop-off Points ────────────────────────────────────────────────
+        drop_off_q = db.session.query(
+            WatchHistory.content_type,
+            func.avg(WatchHistory.progress_percentage).label('avg_progress')
+        ).filter(WatchHistory.user_id == user_id, WatchHistory.is_completed == False)
+        if start_time:
+            drop_off_q = drop_off_q.filter(WatchHistory.last_watched >= start_time)
+        drop_off_rows = drop_off_q.group_by(WatchHistory.content_type).all()
+        drop_off_points = {r.content_type: round(r.avg_progress, 1) for r in drop_off_rows}
+
+        # ── 5. Binge Score (days with ≥3 TV episodes watched) ─────────────────
+        binge_q = db.session.query(
+            func.date(WatchHistory.last_watched).label('day'),
+            func.count(WatchHistory.id).label('ep_count')
+        ).filter(WatchHistory.user_id == user_id, WatchHistory.content_type == 'tv')
+        if start_time:
+            binge_q = binge_q.filter(WatchHistory.last_watched >= start_time)
+        binge_rows = binge_q.group_by('day').all()
+        binge_days = sum(1 for r in binge_rows if r.ep_count >= 3)
+
+        # ── 6. Rewatch Rate (best-effort approximation) ───────────────────────
+        rewatch_q = WatchHistory.query.filter(
+            WatchHistory.user_id == user_id,
+            WatchHistory.watch_timestamp < WatchHistory.total_duration * 0.1,
+            WatchHistory.total_duration > 60
+        )
+        if start_time:
+            rewatch_q = rewatch_q.filter(WatchHistory.last_watched >= start_time)
+        rewatch_count = rewatch_q.count()
+        rewatch_rate = round((rewatch_count / total_items) * 100, 1) if total_items > 0 else 0
+
+        # ── 7. Viewing Heatmap (day-of-week × hour) ───────────────────────────
+        heatmap_q = db.session.query(
+            func.strftime('%w', WatchHistory.last_watched).label('dow'),
+            func.strftime('%H', WatchHistory.last_watched).label('hour'),
+            func.count(WatchHistory.id).label('count')
+        ).filter(WatchHistory.user_id == user_id)
+        if start_time:
+            heatmap_q = heatmap_q.filter(WatchHistory.last_watched >= start_time)
+        heatmap_rows = heatmap_q.group_by('dow', 'hour').all()
+        viewing_heatmap = [{'day': int(r.dow), 'hour': int(r.hour), 'count': r.count}
+                           for r in heatmap_rows if r.dow and r.hour]
+
+        # ── 8. Content Diversity Score ────────────────────────────────────────
+        all_movie_genres = db.session.query(Movie.genres).filter(Movie.genres != None).all()
+        all_tv_genres = db.session.query(TVShow.genres).filter(TVShow.genres != None).all()
+        all_possible_genres = set()
+        for (genres,) in all_movie_genres + all_tv_genres:
+            if genres:
+                for g in [x.strip() for x in genres.split(',') if x.strip()]:
+                    all_possible_genres.add(g)
+
+        user_genres = set(genre_counts.keys())
+        diversity_score = round((len(user_genres) / len(all_possible_genres)) * 100, 1) \
+            if all_possible_genres else 0
+
+        # ── 9. Session Stats ──────────────────────────────────────────────────
+        sess_q = UserSession.query.filter_by(user_id=user_id)
+        if start_time:
+            sess_q = sess_q.filter(UserSession.started_at >= start_time)
+
+        total_sessions = sess_q.count()
+        last_seen_row = UserSession.query.filter_by(user_id=user_id)\
+            .order_by(desc(UserSession.last_active_at)).first()
+        last_seen = last_seen_row.last_active_at.isoformat() if last_seen_row else None
+
+        avg_duration_q = db.session.query(
+            func.avg(
+                func.strftime('%s', UserSession.ended_at) - func.strftime('%s', UserSession.started_at)
+            )
+        ).filter(UserSession.user_id == user_id, UserSession.ended_at != None)
+        if start_time:
+            avg_duration_q = avg_duration_q.filter(UserSession.started_at >= start_time)
+        avg_session_duration = round(avg_duration_q.scalar() or 0, 1)
+
+        # ── 10. Upload Request History ────────────────────────────────────────
+        upload_q = UploadRequest.query.filter_by(user_id=user_id)
+        if start_time:
+            upload_q = upload_q.filter(UploadRequest.added_at >= start_time)
+        upload_requests_rows = upload_q.order_by(desc(UploadRequest.added_at)).all()
+        upload_requests = {
+            'total': len(upload_requests_rows),
+            'items': [
+                {
+                    'content_type': r.content_type,
+                    'content_id': r.content_id,
+                    'added_at': r.added_at.isoformat() if r.added_at else None
+                } for r in upload_requests_rows
+            ]
+        }
+
+        # ── 11. Bug Reports Summary ───────────────────────────────────────────
+        bug_q = BugReport.query.filter_by(reporter_id=user_id)
+        total_bugs = bug_q.count()
+        resolved_bugs = bug_q.filter(BugReport.resolved == True).count()
+        bug_reports = {
+            'total': total_bugs,
+            'resolved': resolved_bugs,
+            'unresolved': total_bugs - resolved_bugs
+        }
+
+        return jsonify({
+            'user_id': user_id,
+            'days': days,
+            'watch_stats': {
+                'total_items_watched': total_items,
+                'total_watch_time_seconds': total_watch_time,
+                'completed_items': completed_items,
+                'completion_rate': completion_rate
+            },
+            'favorite_genres': favorite_genres,
+            'most_watched': most_watched,
+            'drop_off_points': drop_off_points,
+            'binge_score': binge_days,
+            'rewatch_rate': rewatch_rate,
+            'viewing_heatmap': viewing_heatmap,
+            'diversity_score': diversity_score,
+            'session_stats': {
+                'total_sessions': total_sessions,
+                'avg_session_duration_seconds': avg_session_duration,
+                'last_seen': last_seen
+            },
+            'upload_requests': upload_requests,
+            'bug_reports': bug_reports
+        }), 200
+
+    except Exception as e:
+        log_error(f"Error retrieving user analytics for user {user_id}: {str(e)}")
+        return jsonify({'error': 'Failed to retrieve user analytics'}), 500
