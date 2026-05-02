@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, abort
 from cdn.utils import paginate, calculate_similarity, check_images_existence
 from api.utils import token_required, serialize_watch_history
 from utils.data_helpers import get_tv_shows, get_tv_shows_with_images
+from utils.fuzzy import fuzzy_filter_and_rank
 import random
 
 tv_cdn_bp = Blueprint('tv_cdn_bp', __name__, url_prefix='/cdn')
@@ -40,10 +41,7 @@ def search_tv_series(current_user):
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    result = [
-        item for item in temp_tv_series
-        if query.lower() in str(item.get('name', '')).lower()
-    ]
+    result = fuzzy_filter_and_rank(query, temp_tv_series, lambda item: item.get('name', '')) if query else list(temp_tv_series)
     limited_result = result[:max_results]
     
     # Add watch history if requested

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, send_from_directory, request
 from utils.data_helpers import get_movies, get_tv_shows
+from utils.fuzzy import fuzzy_filter_and_rank
 from paths import CDN_POSTERS_DIR
 import os
 from utils.logger import log_error
@@ -72,12 +73,11 @@ def get_combined_content(current_admin):
     
     # Apply search filter if provided
     if search_query:
-        filtered_items = []
-        for item in items:
-            title = item.get('title') or item.get('name') or ''
-            if search_query.lower() in title.lower():
-                filtered_items.append(item)
-        items = filtered_items
+        items = fuzzy_filter_and_rank(
+            search_query,
+            items,
+            lambda item: item.get('title') or item.get('name') or '',
+        )
     
     # Calculate total for pagination
     total = len(items)

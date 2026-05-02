@@ -2,31 +2,50 @@ from flask import Blueprint, jsonify, request
 from cdn.utils import filter_valid_genres, check_images_existence, paginate
 from api.utils import token_required, serialize_watch_history
 from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
+from utils.fuzzy import fuzzy_filter_and_rank
 import random
 
 search_cdn_bp = Blueprint('search_cdn_bp', __name__, url_prefix='/cdn')
 
 @search_cdn_bp.route('/autocomplete', methods=['GET'])
 def autocomplete():
-    temp_movies = get_movies()
-    temp_tv_series = get_tv_shows()
-    query = request.args.get('q', '', type=str).lower()
+    temp_movies = get_movies_with_images()
+    temp_tv_series = get_tv_shows_with_images()
+    query = request.args.get('q', '', type=str)
     max_results = request.args.get('max_results', 10, type=int)
 
-    movie_suggestions = [
-        {"id": item['id'], "title": item['title']} for item in temp_movies if query in str(item.get('title', '')).lower()
-    ]
-    tv_suggestions = [
-        {"id": item['id'], "name": item['name']} for item in temp_tv_series if isinstance(item.get('name'), str) and query in item.get('name').lower()
+    all_items = [
+        {"id": item['id'], "title": item['title']} for item in temp_movies
+    ] + [
+        {"id": item['id'], "name": item['name']} for item in temp_tv_series if isinstance(item.get('name'), str)
     ]
 
-    suggestions = movie_suggestions + tv_suggestions
-    suggestions = suggestions[:max_results]
+    suggestions = fuzzy_filter_and_rank(
+        query,
+        all_items,
+        lambda item: item.get('title') or item.get('name') or '',
+    )[:max_results]
 
     return jsonify(suggestions)
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _extract_year(item, item_type):
+    """Return the release year as an int, or None if unavailable."""
+    date_field = 'release_date' if item_type == 'movie' else 'first_air_date'
+    date_str = item.get(date_field, '') or ''
+    try:
+        return int(str(date_str)[:4])
+    except (ValueError, TypeError):
+        return None
+
+
 # Common search functionality extracted to a helper function
-def _perform_search(query, genre, min_rating, max_rating, media_type, is_random, with_images, page, per_page):
+def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
+                    with_images, page, per_page, year=None, fuzzy=False,
+                    fuzzy_threshold=0.25):
     temp_movies = get_movies()
     temp_tv_series = get_tv_shows()
 
@@ -40,94 +59,116 @@ def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
                     vote_average = float(vote_average)
                 except ValueError:
                     continue
-            if query.lower() in str(title_or_name).lower() and \
-                    (filter_valid_genres(item, genre) if genre else True) and \
-                    (min_rating <= vote_average <= max_rating):
-                item['type'] = item_type
-                results.append(item)
+            # Year facet
+            if year is not None:
+                item_year = _extract_year(item, item_type)
+                if item_year != year:
+                    continue
+            # Rating facet
+            if not (min_rating <= vote_average <= max_rating):
+                continue
+            # Genre facet
+            if genre and not filter_valid_genres(item, genre):
+                continue
+            item['type'] = item_type
+            results.append(item)
         return results
 
     temp_movies_search = temp_movies
     temp_tv_series_search = temp_tv_series
 
     if with_images:
-        temp_movies_with_images = get_movies_with_images()
-        temp_tv_series_with_images = get_tv_shows_with_images()
-        temp_movies_search = temp_movies_with_images
-        temp_tv_series_search = temp_tv_series_with_images
+        temp_movies_search = get_movies_with_images()
+        temp_tv_series_search = get_tv_shows_with_images()
 
     if media_type == 'movies':
-        movie_results = apply_filters(temp_movies_search, 'movie')
-        final_results = movie_results
+        final_results = apply_filters(temp_movies_search, 'movie')
     elif media_type == 'tv':
-        tv_results = apply_filters(temp_tv_series_search, 'tv_series')
-        final_results = tv_results
+        final_results = apply_filters(temp_tv_series_search, 'tv_series')
     else:
-        movie_results = apply_filters(temp_movies_search, 'movie')
-        tv_results = apply_filters(temp_tv_series_search, 'tv_series')
-        final_results = movie_results + tv_results
+        final_results = (
+            apply_filters(temp_movies_search, 'movie') +
+            apply_filters(temp_tv_series_search, 'tv_series')
+        )
+
+    # Text matching — fuzzy or exact substring
+    if query:
+        if fuzzy:
+            final_results = fuzzy_filter_and_rank(
+                query,
+                final_results,
+                text_getter=lambda item: item.get('title') or item.get('name') or '',
+                threshold=fuzzy_threshold,
+            )
+        else:
+            q_lower = query.lower()
+            final_results = [
+                item for item in final_results
+                if q_lower in (item.get('title') or item.get('name') or '').lower()
+            ]
 
     if is_random:
         random.shuffle(final_results)
 
     return paginate(final_results, page, per_page)
 
-def _perform_search_with_images(query, genre, min_rating, max_rating, media_type, is_random, with_images, page, per_page):
-    temp_movies = get_movies()
-    temp_tv_series = get_tv_shows()
+# _perform_search_with_images is now handled by passing with_images=True to _perform_search
+# Kept as a thin alias for backwards compatibility.
+def _perform_search_with_images(query, genre, min_rating, max_rating, media_type, is_random,
+                                with_images, page, per_page, year=None, fuzzy=False,
+                                fuzzy_threshold=0.25):
+    return _perform_search(
+        query=query, genre=genre, min_rating=min_rating, max_rating=max_rating,
+        media_type=media_type, is_random=is_random, with_images=with_images,
+        page=page, per_page=per_page, year=year, fuzzy=fuzzy,
+        fuzzy_threshold=fuzzy_threshold,
+    )
 
-    def apply_filters(items, item_type):
-        results = []
-        for item in items:
-            title_or_name = item.get('title' if item_type == 'movie' else 'name', '')
-            vote_average = item.get('vote_average', 0)
-            if isinstance(vote_average, str):
-                try:
-                    vote_average = float(vote_average)
-                except ValueError:
-                    continue
-            if query.lower() in str(title_or_name).lower() and \
-                    (filter_valid_genres(item, genre) if genre else True) and \
-                    (min_rating <= vote_average <= max_rating):
-                item['type'] = item_type
-                results.append(item)
-        return results
+# ---------------------------------------------------------------------------
+# Facets endpoint — returns distinct genres and year range for the catalogue
+# ---------------------------------------------------------------------------
 
-    # Check if with_images is True
-    if with_images:
-        temp_movies_with_images = get_movies_with_images()
-        temp_tv_series_with_images = get_tv_shows_with_images()
+@search_cdn_bp.route('/facets', methods=['GET'])
+def get_facets():
+    """Return available filter facets: distinct genres and min/max release year."""
+    movies = get_movies()
+    tv_series = get_tv_shows()
 
-        # Get IDs from movies_with_images
-        temp_movies_with_images_ids = [item['id'] for item in temp_movies_with_images if query.lower() in item.get('title', '').lower()]
+    genres: set = set()
+    years: list = []
 
-        # Filter movies based on IDs
-        filtered_movies = [item for item in temp_movies if item['id'] in temp_movies_with_images_ids]
+    for item in movies:
+        _collect_genres(item, genres)
+        y = _extract_year(item, 'movie')
+        if y:
+            years.append(y)
 
-        # Do the same for TV series
-        temp_tv_series_with_images_ids = [item['id'] for item in temp_tv_series_with_images if query.lower() in item.get('name', '').lower()]
-        filtered_tv_series = [item for item in temp_tv_series if item['id'] in temp_tv_series_with_images_ids]
+    for item in tv_series:
+        _collect_genres(item, genres)
+        y = _extract_year(item, 'tv_series')
+        if y:
+            years.append(y)
 
-    else:
-        # If with_images is False, use the original lists
-        filtered_movies = temp_movies
-        filtered_tv_series = temp_tv_series
+    return jsonify({
+        'genres': sorted(genres),
+        'year_min': min(years) if years else None,
+        'year_max': max(years) if years else None,
+    })
 
-    if media_type == 'movies':
-        movie_results = apply_filters(filtered_movies, 'movie')
-        final_results = movie_results
-    elif media_type == 'tv':
-        tv_results = apply_filters(filtered_tv_series, 'tv_series')
-        final_results = tv_results
-    else:
-        movie_results = apply_filters(filtered_movies, 'movie')
-        tv_results = apply_filters(filtered_tv_series, 'tv_series')
-        final_results = movie_results + tv_results
 
-    if is_random:
-        random.shuffle(final_results)
+def _collect_genres(item, genre_set: set):
+    """Extract genre names from an item and add them to genre_set."""
+    raw = item.get('genres', '')
+    if isinstance(raw, list):
+        for g in raw:
+            if isinstance(g, dict) and g.get('name'):
+                genre_set.add(g['name'].strip())
+    elif isinstance(raw, str) and raw:
+        for g in raw.split(','):
+            g = g.strip()
+            if g:
+                genre_set.add(g)
 
-    return paginate(final_results, page, per_page)
 
 # Public search endpoint that doesn't require authentication
 @search_cdn_bp.route('/search', methods=['GET'])
@@ -141,7 +182,10 @@ def public_search():
     media_type = request.args.get('media_type', 'all', type=str)
     is_random = request.args.get('random', False, type=bool)
     with_images = request.args.get('with_images', False, type=bool)
-    
+    year = request.args.get('year', None, type=int)
+    fuzzy = request.args.get('fuzzy', False, type=bool)
+    fuzzy_threshold = request.args.get('fuzzy_threshold', 0.25, type=float)
+
     limited_results = _perform_search(
         query=query,
         genre=genre,
@@ -151,9 +195,12 @@ def public_search():
         is_random=is_random,
         with_images=with_images,
         page=page,
-        per_page=per_page
+        per_page=per_page,
+        year=year,
+        fuzzy=fuzzy,
+        fuzzy_threshold=fuzzy_threshold,
     )
-    
+
     return jsonify(limited_results)
 
 # Authenticated search endpoint that can include watch history
@@ -170,7 +217,10 @@ def authenticated_search(current_user):
     is_random = request.args.get('random', False, type=bool)
     with_images = request.args.get('with_images', False, type=bool)
     include_watch_history = request.args.get('include_watch_history', True, type=bool)
-    
+    year = request.args.get('year', None, type=int)
+    fuzzy = request.args.get('fuzzy', False, type=bool)
+    fuzzy_threshold = request.args.get('fuzzy_threshold', 0.25, type=float)
+
     limited_results = _perform_search(
         query=query,
         genre=genre,
@@ -180,7 +230,10 @@ def authenticated_search(current_user):
         is_random=is_random,
         with_images=with_images,
         page=page,
-        per_page=per_page
+        per_page=per_page,
+        year=year,
+        fuzzy=fuzzy,
+        fuzzy_threshold=fuzzy_threshold,
     )
     
     # Add watch history if requested (only available in authenticated search)

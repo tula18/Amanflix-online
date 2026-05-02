@@ -3,6 +3,7 @@ from models import Movie
 from api.utils import admin_token_required, sort, token_required, serialize_watch_history
 from api.cache import get_all_movies_cached, get_movie_by_id_cached
 from cdn.utils import filter_valid_genres
+from utils.fuzzy import fuzzy_filter_and_rank
 from paths import UPLOADS_DIR
 import os
 import random
@@ -108,7 +109,7 @@ def search_movies(current_user):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
     all_movies = get_all_movies_cached()
-    result = [m for m in all_movies if query.lower() in (m.get('title') or '').lower()]
+    result = fuzzy_filter_and_rank(query, all_movies, lambda m: m.get('title') or '') if query else list(all_movies)
     limited_result = result[:max_results]
     
     # Add watch history if requested

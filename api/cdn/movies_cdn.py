@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, abort
 from cdn.utils import paginate, calculate_similarity, check_images_existence
 from api.utils import token_required, serialize_watch_history
 from utils.data_helpers import get_movies, get_movies_with_images
+from utils.fuzzy import fuzzy_filter_and_rank
 import random
 import os
 import time
@@ -42,7 +43,7 @@ def search_movies(current_user):
     max_results = request.args.get('max_results', 3, type=int)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
-    result = [item for item in temp_movies if query.lower() in str(item.get('title', '')).lower()]
+    result = fuzzy_filter_and_rank(query, temp_movies, lambda item: item.get('title', '')) if query else list(temp_movies)
     limited_result = result[:max_results]
     
     # Add watch history if requested

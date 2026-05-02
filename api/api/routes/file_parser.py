@@ -6,6 +6,7 @@ import re
 import concurrent.futures
 from utils.logger import log_info, log_error, log_success
 from cdn.search_cdn import _perform_search, _perform_search_with_images
+from utils.fuzzy import fuzzy_score
 
 file_parser_bp = Blueprint('file_parser_bp', __name__, url_prefix='/api/uploads')
 
@@ -268,7 +269,7 @@ def search_cdn_metadata(title, content_type, year=None):
         # Use existing CDN search functionality
         media_type = 'movies' if content_type == 'movie' else 'tv'
         
-        # Perform search with high max results to get best match
+        # Perform search — pass year to narrow at query time, use fuzzy to rank by title similarity
         results = _perform_search_with_images(
             query=title,
             genre='',
@@ -278,30 +279,17 @@ def search_cdn_metadata(title, content_type, year=None):
             is_random=False,
             with_images=True,
             page=1,
-            per_page=10
+            per_page=20,
+            year=year,
+            fuzzy=True,
         )
         
         if not results:
             return None
-            
-        # Try to find best match by year if provided
-        if year and results:
-            year_matches = []
-            for result in results:
-                result_year = None
-                if content_type == 'movie' and result.get('release_date'):
-                    result_year = int(result['release_date'][:4])
-                elif content_type == 'tv' and result.get('first_air_date'):
-                    result_year = int(result['first_air_date'][:4])
-                
-                if result_year == year:
-                    year_matches.append(result)
-            
-            if year_matches:
-                results = year_matches
-        
-        # Return the best match (first result)
-        return results[0] if results else None
+
+        # Pick the candidate whose title best matches the parsed filename title
+        best = max(results, key=lambda r: fuzzy_score(title, r.get('title') or r.get('name') or ''))
+        return best
         
     except Exception as e:
         log_error(f"Error searching CDN metadata for '{title}': {str(e)}")

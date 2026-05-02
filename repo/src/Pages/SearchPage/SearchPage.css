@@ -115,3 +115,128 @@
 @keyframes search-spin {
     to { transform: rotate(360deg); }
 }
+
+/* ── Filter panel ────────────────────────────────────────────────── */
+
+.search-filters {
+    max-width: 960px;
+    margin: 0 auto 24px;
+    padding: 0 16px;
+}
+
+.search-filters-toggle {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.search-filters-toggle:hover {
+    border-color: #e50914;
+    color: #fff;
+}
+
+.search-filters-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: flex-end;
+    margin-top: 14px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    border-radius: 6px;
+}
+
+.search-filter-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #bbb;
+    font-size: 13px;
+    min-width: 130px;
+}
+
+.search-filter-select,
+.search-filter-input {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    font-size: 14px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-filter-select:hover,
+.search-filter-input:hover,
+.search-filter-select:focus,
+.search-filter-input:focus {
+    border-color: #e50914;
+}
+
+.search-filter-input {
+    width: 100px;
+}
+
+/* Rating dual-range row */
+.search-filter-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: 13px;
+}
+
+.search-filter-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 90px;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.search-filter-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: #e50914;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.search-filter-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: #e50914;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+}
+
+/* Reset button */
+.search-filter-reset {
+    background: transparent;
+    border: 1px solid #555;
+    color: #aaa;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    align-self: flex-end;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.search-filter-reset:hover {
+    border-color: #e50914;
+    color: #fff;
+}

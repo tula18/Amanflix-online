@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, abort
 from models import TVShow
 from api.utils import admin_token_required, token_required, serialize_watch_history
 from api.cache import get_all_shows_cached, get_show_by_id_cached
+from utils.fuzzy import fuzzy_filter_and_rank
 from paths import UPLOADS_DIR
 import os
 
@@ -58,7 +59,7 @@ def search_show(current_user):
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     
     all_shows = get_all_shows_cached()
-    result = [s for s in all_shows if query.lower() in (s.get('title') or '').lower()]
+    result = fuzzy_filter_and_rank(query, all_shows, lambda s: s.get('title') or '') if query else list(all_shows)
     limited_result = result[:max_results]
     
     # Add watch history if requested
