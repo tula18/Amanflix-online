@@ -84,8 +84,9 @@ function HoverCard({ movie, anchorRect, onClose, onInfoClick, onPopupEnter, clos
 
   const handleInfoClick = (e) => {
     e.stopPropagation();
+    const sourceRect = ref.current?.getBoundingClientRect();
     onClose();
-    onInfoClick(movie, e);
+    onInfoClick(movie, e, sourceRect);
   };
 
   const handlePlay = async (e) => {

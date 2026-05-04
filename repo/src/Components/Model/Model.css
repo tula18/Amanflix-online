@@ -26,6 +26,7 @@
     border-radius: 10px;
     overflow-Y: auto;
     overflow-x: hidden;
+    transform-origin: center center;
   }
 
   .video-container video::-webkit-media-controls-fullscreen-button {
@@ -248,8 +249,13 @@
   z-index: 50;
 }
 
+.modal-content.modal-measuring {
+  opacity: 0;
+  transform: none;
+}
+
 .modal-content.modal-open {
-  animation: openModal 0.2s ease-in-out forwards;
+  animation: openModal 0.28s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
 .modal-close {
@@ -399,19 +405,34 @@ hr.separator {
 
 @keyframes openModal {
   0% {
-    transform: scale(0);
+    opacity: 0.45;
+    transform:
+      translate(var(--modal-start-x, 0), var(--modal-start-y, 0))
+      scale(var(--modal-start-scale-x, 0), var(--modal-start-scale-y, 0));
   }
   100% {
-    transform: scale(1);
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
   }
 }
 
 @keyframes closeModal {
   0% {
-    transform: scale(1);
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
   }
   100% {
-    transform: scale(0);
+    opacity: 0;
+    transform:
+      translate(var(--modal-start-x, 0), var(--modal-start-y, 0))
+      scale(var(--modal-start-scale-x, 0), var(--modal-start-scale-y, 0));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content.modal-open,
+  .modal-close {
+    animation-duration: 1ms;
   }
 }
 @media screen and (max-width:1350px) {

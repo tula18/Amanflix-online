@@ -14,6 +14,7 @@ const ContinueWatchingSlider = () => {
     // Modal state
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [modalOriginRect, setModalOriginRect] = useState(null);
 
     // Hover card state
     const [hoveredMovie, setHoveredMovie]       = useState(null);
@@ -217,8 +218,19 @@ const ContinueWatchingSlider = () => {
         fetchContinueWatching(); 
     }, []);
 
-    const handleMovieClick = (movie, event) => {
+    const getRectSnapshot = (rect) => {
+        if (!rect) return null;
+        return {
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+        };
+    };
+
+    const handleMovieClick = (movie, event, sourceRect = null) => {
         event.stopPropagation();
+        const clickedRect = sourceRect || event.currentTarget?.getBoundingClientRect();
         clearTimeout(hoverShowTimerRef.current);
         clearTimeout(hoverHideTimerRef.current);
         hoveredMovieRef.current = null;
@@ -226,6 +238,7 @@ const ContinueWatchingSlider = () => {
         setHoverAnchorRect(null);
         setHoverCardClosing(false);
         setModalClosing(false);
+        setModalOriginRect(getRectSnapshot(clickedRect));
         setSelectedMovie(movie);
         setShowModal(true);
         const navbar = document.getElementsByClassName('navbar');
@@ -242,6 +255,7 @@ const ContinueWatchingSlider = () => {
         setModalClosing(false);
         setShowModal(false);
         setSelectedMovie(null);
+        setModalOriginRect(null);
         const navbar = document.getElementsByClassName('navbar');
         if (navbar[0]) {
             navbar[0].classList.remove('navbar_hide');
@@ -359,6 +373,7 @@ const ContinueWatchingSlider = () => {
                     onClose={handleModalClose}
                     onClosed={handleModalClosed}
                     closing={modalClosing}
+                    originRect={modalOriginRect}
                     handleMovieClick={handleMovieClick}
                 />
             )}

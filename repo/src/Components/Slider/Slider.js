@@ -27,6 +27,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [modalOriginRect, setModalOriginRect] = useState(null);
   const [movies_fetch, setMovies] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,8 +90,19 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
   }, [apiUrl]);
 
   // ── Modal helpers ───────────────────────────────────────────
-  const handleMovieClick = (movie, event) => {
+  const getRectSnapshot = (rect) => {
+    if (!rect) return null;
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
+  const handleMovieClick = (movie, event, sourceRect = null) => {
     event.stopPropagation();
+    const clickedRect = sourceRect || event.currentTarget?.getBoundingClientRect();
     clearTimeout(hoverShowTimerRef.current);
     clearTimeout(hoverHideTimerRef.current);
     hoveredMovieRef.current = null;
@@ -99,6 +111,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
     setHoverCardClosing(false);
     isSliderDraggingRef.current = false;
     setModalClosing(false);
+    setModalOriginRect(getRectSnapshot(clickedRect));
     setSelectedMovie(movie);
     setShowModal(true);
     const navbar = document.getElementsByClassName('navbar');
@@ -122,6 +135,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
     setModalClosing(false);
     setShowModal(false);
     setSelectedMovie(null);
+    setModalOriginRect(null);
     const navbar = document.getElementsByClassName('navbar');
     if (navbar[0]) navbar[0].classList.remove('navbar_hide');
   };
@@ -334,6 +348,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
           onClose={handleModalClose}
           onClosed={handleModalClosed}
           closing={modalClosing}
+          originRect={modalOriginRect}
           handleMovieClick={handleMovieClick}
         />
       )}

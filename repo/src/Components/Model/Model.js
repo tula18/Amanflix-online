@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { MdClose, MdClosedCaption, MdReplay } from 'react-icons/md';
 import './Model.css';
@@ -11,10 +11,11 @@ import { Flex, Tooltip, message } from 'antd';
 import EpisodeSelector from '../EpisodeSelector/EpisodeSelector';
 import { createMyListFormData } from '../../Utils/myListPayload';
 
-const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = false }) => {
+const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = false, originRect = null }) => {
   const navigate = useNavigate();
 
-  const [modalClass, setModalClass] = React.useState('');
+  const modalContentRef = useRef(null);
+  const [modalClass, setModalClass] = React.useState('modal-measuring');
   const [imgSrc, setImgSrc] = useState(`${API_URL}/cdn/images/${movie.backdrop_path}`);
   const [imageFailed, setImageFailed] = useState(false);
   const [inList, setInList] = useState(false)
@@ -244,13 +245,34 @@ const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = fals
     // eslint-disable-next-line
   }, [imgSrc]);
 
-  // Open animation: fire exactly once when MovieModal first mounts.
-  // The modal-content div is reconciled in-place (not remounted) during loading state
-  // changes, so the animation class stays and does not replay.
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const modalContent = modalContentRef.current;
+    if (!modalContent) return undefined;
+
+    const targetRect = modalContent.getBoundingClientRect();
+
+    if (originRect && targetRect.width && targetRect.height) {
+      const originCenterX = originRect.left + originRect.width / 2;
+      const originCenterY = originRect.top + originRect.height / 2;
+      const targetCenterX = targetRect.left + targetRect.width / 2;
+      const targetCenterY = targetRect.top + targetRect.height / 2;
+      const scaleX = Math.max(0.02, originRect.width / targetRect.width);
+      const scaleY = Math.max(0.02, originRect.height / targetRect.height);
+
+      modalContent.style.setProperty('--modal-start-x', `${originCenterX - targetCenterX}px`);
+      modalContent.style.setProperty('--modal-start-y', `${originCenterY - targetCenterY}px`);
+      modalContent.style.setProperty('--modal-start-scale-x', scaleX);
+      modalContent.style.setProperty('--modal-start-scale-y', scaleY);
+    } else {
+      modalContent.style.setProperty('--modal-start-x', '0px');
+      modalContent.style.setProperty('--modal-start-y', '0px');
+      modalContent.style.setProperty('--modal-start-scale-x', '0');
+      modalContent.style.setProperty('--modal-start-scale-y', '0');
+    }
+
     const id = requestAnimationFrame(() => setModalClass('modal-open'));
     return () => cancelAnimationFrame(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [originRect]);
 
   // Animate out when closing prop is set by parent
   useEffect(() => {
@@ -429,7 +451,7 @@ const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = fals
   if (isLoading) {
     return (
       <div className={`modal`} id="movieModal">
-        <div className={`modal-content ${modalClass}`}>
+        <div className={`modal-content ${modalClass}`} ref={modalContentRef}>
           <div className="spinner-container" style={{display:"flex"}}>
             <div className="spinner-border"></div>
           </div>
@@ -440,7 +462,7 @@ const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = fals
 
   return (
     <div className={`modal blur`} id="movieModal">
-      <div className={`modal-content ${modalClass}`} onAnimationEnd={handleContentAnimationEnd}>
+      <div className={`modal-content ${modalClass}`} ref={modalContentRef} onAnimationEnd={handleContentAnimationEnd}>
         <div className='header' style={{ backgroundImage: `url(${imgSrc})`, width: '100%', backgroundSize: 'cover', backgroundPosition: 'top', minHeight: '600px' }}>
           <div className='header-shadow'></div>
           <div className='header-interactive'>
@@ -700,6 +722,12 @@ MovieModal.propTypes = {
     production_countries: PropTypes.arrayOf(PropTypes.shape({ name: PropTypes.string.isRequired })).isRequired,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
+  originRect: PropTypes.shape({
+    top: PropTypes.number.isRequired,
+    left: PropTypes.number.isRequired,
+    width: PropTypes.number.isRequired,
+    height: PropTypes.number.isRequired,
+  }),
 };
 
 export default MovieModal;
