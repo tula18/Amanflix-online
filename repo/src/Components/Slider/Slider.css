@@ -28,26 +28,6 @@
   transition: width 0.3s ease;
 }
 
-/* ── Episode badge ───────────────────────────────────────────── */
-.netflix-episode-badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background-color: rgba(0, 0, 0, 0.72);
-  color: #ffffff;
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  z-index: 6;
-  pointer-events: none;
-}
-
-.netflix-episode-badge.next-episode {
-  background-color: rgba(229, 9, 20, 0.85);
-}
-
 /* ── Item wrapper (for relative positioning of badges/bars) ─── */
 .slider-item-wrapper {
   position: relative;

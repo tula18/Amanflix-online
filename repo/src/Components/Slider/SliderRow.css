@@ -148,10 +148,6 @@
   will-change: transform;
 }
 
-.slider-row__track--dragging {
-  transition: none;
-}
-
 /* ── Force card / loading-card to fill their slot ───────────── */
 .slider-row__item .slider-item-wrapper,
 .slider-row__item .slider-btn,
