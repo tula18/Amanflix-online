@@ -1,31 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Carousel from 'react-elastic-carousel';
 import { API_URL } from '../../config';
 import './ContinueWatchingSlider.css';
+import SliderRow from '../Slider/SliderRow';
 import Card from '../Card/Card';
-import LoadingCard from '../Card/LoadingCard';
 import MovieModal from '../Model/Model';
 
 const ContinueWatchingSlider = () => {
     const [continueWatching, setContinueWatching] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const navigate = useNavigate();
-    
-    // Add these state variables for the modal
+
+    // Modal state
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [showModal, setShowModal] = useState(false);
-
-    // Breakpoints for responsive design (matching other sliders)
-    const breakPoints = [
-        { width: 1, itemsToShow: 1 },
-        { width: 500, itemsToShow: 2 },
-        { width: 768, itemsToShow: 3 },
-        { width: 1200, itemsToShow: 4 },
-        { width: 1350, itemsToShow: 4.5 },
-        { width: 1750, itemsToShow: 6 },
-    ];
 
     useEffect(() => {
         const fetchContinueWatching = async () => {
@@ -179,18 +166,7 @@ const ContinueWatchingSlider = () => {
     }, [showModal]);
 
     if (isLoading) {
-        return (
-          <div className="slider continue-watching-slider-wrapper">
-            <div className="loading-slider-title"></div>
-            <Carousel disableWindowSizeListener itemsToShow={5} className="my-carousel" breakPoints={breakPoints}>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <span key={i}>
-                    <LoadingCard key={i} />
-                  </span>
-                ))}
-            </Carousel>
-          </div>
-        );
+        return <SliderRow title="Continue Watching" isLoading skeletonCount={6} />;
     }
 
     // Helper function to determine if we should show next episode info
@@ -205,7 +181,6 @@ const ContinueWatchingSlider = () => {
     // Helper to get progress percentage (from current or next episode)
     const getProgressPercentage = (item) => {
         if (shouldShowNextEpisode(item)) {
-            // For next episodes, always return 0 progress (not started yet)
             return 0;
         }
         return item.watch_history.progress_percentage;
@@ -225,67 +200,45 @@ const ContinueWatchingSlider = () => {
             episode: item.watch_history.episode_number,
             isNext: false
         };
-    };    // Hide the entire slider if there are no titles to show
+    };
+
+    // Hide the entire slider if there are no titles to show
     if (!isLoading && !error && continueWatching.length === 0) {
         return null;
     }
 
     return (
-        <div className="slider continue-watching-slider-wrapper">
-            <h2 className="slider-title">Continue Watching</h2>
-            
-            {error && <div className="continue-watching-error">{error}</div>}
-            
-            {!isLoading && !error && continueWatching.length === 0 && (
-                <div className="continue-watching-empty">
-                    <p>Your continue watching list is empty</p>
-                    <p className="empty-suggestion">Start watching movies and shows to see them here</p>
-                </div>
-            )}
-            
-            {!isLoading && !error && continueWatching.length > 0 && (
-                <Carousel 
-                    disableWindowSizeListener 
-                    itemsToShow={5} 
-                    className="my-carousel continue-watching-carousel" 
-                    breakPoints={breakPoints}
-                    showEmptySlots
-                >
-                    {continueWatching.map((item, index) => {
-                        const progressPercentage = getProgressPercentage(item);
-                        const episodeInfo = getEpisodeInfo(item);
-                        
-                        return (
-                            <div key={index} className="continue-item-wrapper">
-                                <button className="button3" onClick={(event) => handleMovieClick(item, event)}>
-                                    <Card 
-                                        movie={item} 
-                                        title={item.title || item.name}
-                                        mediaType={item.media_type || item.content_type}
-                                        image={item.backdrop_path}
-                                        watchProgress={progressPercentage}
-                                    />
+        <>
+            <SliderRow title="Continue Watching">
+                {continueWatching.map((item, index) => {
+                    const progressPercentage = getProgressPercentage(item);
+                    const episodeInfo = getEpisodeInfo(item);
+
+                    return (
+                        <div key={index} className="slider-item-wrapper">
+                            <button className="slider-btn" onClick={(event) => handleMovieClick(item, event)}>
+                                <Card
+                                    movie={item}
+                                    title={item.title || item.name}
+                                    mediaType={item.media_type || item.content_type}
+                                    image={item.backdrop_path}
+                                    watchProgress={progressPercentage}
+                                    episodeInfo={episodeInfo}
+                                />
+                                {progressPercentage > 0 && (
                                     <div className="netflix-progress-container">
-                                        <div 
-                                            className="netflix-progress-bar" 
+                                        <div
+                                            className="netflix-progress-bar"
                                             style={{ width: `${progressPercentage}%` }}
-                                        ></div>
+                                        />
                                     </div>
-                                    {(item.media_type === 'tv' || item.content_type === 'tv') && (
-                                        <div className={`netflix-episode-badge ${episodeInfo.isNext ? 'next-episode' : ''}`}>
-                                            <span>
-                                                {episodeInfo.isNext ? 'Next: ' : ''}
-                                                S{episodeInfo.season} E{episodeInfo.episode}
-                                            </span>
-                                        </div>
-                                    )}
-                                </button>
-                            </div>
-                        );
-                    })}
-                </Carousel>
-            )}
-            
+                                )}
+                            </button>
+                        </div>
+                    );
+                })}
+            </SliderRow>
+
             {showModal && (
                 <MovieModal
                     movie={selectedMovie}
@@ -293,7 +246,7 @@ const ContinueWatchingSlider = () => {
                     handleMovieClick={handleMovieClick}
                 />
             )}
-        </div>
+        </>
     );
 };
 

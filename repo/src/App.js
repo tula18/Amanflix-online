@@ -78,6 +78,19 @@ function App() {
   }, [clientIp]);
 
   useEffect(() => {
+    // Measure actual scrollbar width and expose as CSS variable.
+    // Used by body.no-scroll to compensate the layout shift when the
+    // scrollbar disappears (fixed elements like the navbar also need it).
+    const measure = document.createElement('div');
+    measure.style.cssText =
+      'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll;visibility:hidden';
+    document.body.appendChild(measure);
+    const sbw = measure.offsetWidth - measure.clientWidth;
+    document.body.removeChild(measure);
+    document.documentElement.style.setProperty('--scrollbar-width', `${sbw}px`);
+  }, []);
+
+  useEffect(() => {
     
     let timeoutId;
     const body = document.body;

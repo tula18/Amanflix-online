@@ -8,12 +8,30 @@ import MovieModal from '../../Components/Model/Model';
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
 
+const getItemsPerPage = (width) => {
+  if (width < 500) return 2;
+  if (width < 768) return 3;
+  if (width < 1350) return 4;
+  if (width < 1750) return 5;
+  return 6;
+};
+
 const HomePage = () => {
   const { contentId } = useParams();
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(() => getItemsPerPage(window.innerWidth));
+
+  useEffect(() => {
+    const onResize = () => setItemsPerPage(getItemsPerPage(window.innerWidth));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // 3 full pages, minus 1 slot reserved for the ShowMoreCard
+  const perPage = itemsPerPage * 3 - 1;
   
   // Fetch content if contentId is provided in URL
   useEffect(() => {
@@ -176,13 +194,13 @@ const HomePage = () => {
     <div className='homePageContainer'>
       <Banner />
       <ContinueWatchingSlider />
-      <MovieSlider title="New Titles" apiUrl={`${API_URL}/api/discovery/new-titles?per_page=10&with_images=true&days=5`} category='new' redirect='/new-titles' />
-      <MovieSlider title="Uploaded Movies" apiUrl={`${API_URL}/api/movies?per_page=10&order=desc&reverse=true`} category='uploaded' mediaType='movies'/>
-      <MovieSlider title="Uploaded Shows" apiUrl={`${API_URL}/api/shows?per_page=10&order=desc&reverse=true`} category='uploaded' mediaType='shows'/>
-      <MovieSlider title="Random Movies" apiUrl={`${API_URL}/cdn/movies/random?min_rating=8.9&with_images=true&per_page=10`} category='random'/>
-      <MovieSlider title="Random TV Shows" apiUrl={`${API_URL}/cdn/tv/random?min_rating=8.9&with_images=true&per_page=10`} category='random' mediaType='shows'/>
-      <MovieSlider title="Movies" apiUrl={`${API_URL}/cdn/movies?per_page=10&include_watch_history=true`} redirect={"/movies"}/>
-      <MovieSlider title="TV Shows" apiUrl={`${API_URL}/cdn/tv?per_page=10&include_watch_history=true`} redirect={"/shows"}/>
+      <MovieSlider title="New Titles" apiUrl={`${API_URL}/api/discovery/new-titles?per_page=${perPage}&with_images=true&days=5`} category='new' redirect='/new-titles' />
+      <MovieSlider title="Uploaded Movies" apiUrl={`${API_URL}/api/movies?per_page=${perPage}&order=desc&reverse=true`} category='uploaded' mediaType='movies'/>
+      <MovieSlider title="Uploaded Shows" apiUrl={`${API_URL}/api/shows?per_page=${perPage}&order=desc&reverse=true`} category='uploaded' mediaType='shows'/>
+      <MovieSlider title="Random Movies" apiUrl={`${API_URL}/cdn/movies/random?min_rating=8.9&with_images=true&per_page=${perPage}`} category='random'/>
+      <MovieSlider title="Random TV Shows" apiUrl={`${API_URL}/cdn/tv/random?min_rating=8.9&with_images=true&per_page=${perPage}`} category='random' mediaType='shows'/>
+      <MovieSlider title="Movies" apiUrl={`${API_URL}/cdn/movies?per_page=${perPage}&include_watch_history=true`} redirect={"/movies"}/>
+      <MovieSlider title="TV Shows" apiUrl={`${API_URL}/cdn/tv?per_page=${perPage}&include_watch_history=true`} redirect={"/shows"}/>
       
       {/* Modal for displaying content details */}
       {showModal && selectedMovie && (

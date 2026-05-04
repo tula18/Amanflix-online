@@ -23,6 +23,7 @@ api/migrations/*
 qr_encder2.5.py
 update_tool.py
 Data/
+.playwright-mcp
 
 # Python cache files and directories
 __pycache__/
