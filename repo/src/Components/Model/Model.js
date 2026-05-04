@@ -9,6 +9,7 @@ import { API_URL } from '../../config';
 import { CheckCircleFilled, CheckCircleOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import { Flex, Tooltip, message } from 'antd';
 import EpisodeSelector from '../EpisodeSelector/EpisodeSelector';
+import { createMyListFormData } from '../../Utils/myListPayload';
 
 const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = false }) => {
   const navigate = useNavigate();
@@ -42,9 +43,7 @@ const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = fals
 
   useEffect(() => {
     const checkInMyList = async () => {
-      const formData = new FormData();
-      formData.append('content_type', movie.media_type);
-      formData.append('content_id', movie.id || movie.show_id);
+      const formData = createMyListFormData(movie);
   
       try {
         const response = await fetch(API_URL+'/api/mylist/check', {
@@ -364,9 +363,7 @@ const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = fals
     if (!movie) return;
     
     setInList(!inList);
-    const formData = new FormData();
-    formData.append('content_type', movie.media_type);
-    formData.append('content_id', movie.id || movie.show_id);
+    const formData = createMyListFormData(movie);
 
     try {
       const url = `${API_URL}/api/mylist/${inList ? 'delete' : 'add'}`

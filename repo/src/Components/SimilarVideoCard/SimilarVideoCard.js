@@ -3,15 +3,13 @@ import './SimilarVideoCard.css'
 // import { FaPlus } from 'react-icons/fa';
 import { FaCheck, FaPlus } from 'react-icons/fa6';
 import { API_URL } from '../../config';
+import { createMyListFormData } from '../../Utils/myListPayload';
 
 function SimilarVideoCard({ video, handleMovieClick, isFirstRender, fetchSimilarData, watchProgress = 0, episodeInfo }) {
     // Guard clause
     // if (!video) return null;
     
     // Now it's safe to use video.media_type
-    const formData = new FormData();
-    formData.append('content_type', video.media_type);
-
     const [imgSrc, setImgSrc] = useState(`${API_URL}/cdn/images/${video.backdrop_path}`);
     const [imageFailed, setImageFailed] = useState(false);
     // const [isLoading, setIsLoading] = useState(true);
@@ -31,9 +29,7 @@ function SimilarVideoCard({ video, handleMovieClick, isFirstRender, fetchSimilar
 
     useEffect(() => {
         const checkInMyList = async () => {
-          const formData = new FormData();
-          formData.append('content_type', video.media_type);
-          formData.append('content_id', video.id);
+          const formData = createMyListFormData(video);
       
           try {
             const response = await fetch(API_URL+'/api/mylist/check', {
@@ -93,9 +89,7 @@ function SimilarVideoCard({ video, handleMovieClick, isFirstRender, fetchSimilar
 
     const toggleInList = async () => {
         setInList(!inList)
-        const formData = new FormData();
-        formData.append('content_type', video.media_type);
-        formData.append('content_id', video.id);
+        const formData = createMyListFormData(video);
     
         try {
           const url = `${API_URL}/api/mylist/${inList ? 'delete' : 'add'}`

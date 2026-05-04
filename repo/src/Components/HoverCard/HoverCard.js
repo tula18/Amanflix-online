@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import './HoverCard.css';
 import { API_URL } from '../../config';
+import { createMyListFormData } from '../../Utils/myListPayload';
 
 const HOVER_WIDTH = 320; // px
 
@@ -22,9 +23,7 @@ function HoverCard({ movie, anchorRect, onClose, onInfoClick, onPopupEnter, clos
       const token = localStorage.getItem('token');
       if (!token || !movie) return;
       try {
-        const fd = new FormData();
-        fd.append('content_type', movie.media_type || movie.content_type);
-        fd.append('content_id', movie.id || movie.show_id);
+        const fd = createMyListFormData(movie);
         const res = await fetch(`${API_URL}/api/mylist/check`, {
           method: 'POST',
           body: fd,
@@ -158,9 +157,7 @@ function HoverCard({ movie, anchorRect, onClose, onInfoClick, onPopupEnter, clos
     if (!token || listLoading) return;
     setListLoading(true);
     try {
-      const fd = new FormData();
-      fd.append('content_type', movie.media_type || movie.content_type);
-      fd.append('content_id', movie.id || movie.show_id);
+      const fd = createMyListFormData(movie);
       const url = `${API_URL}/api/mylist/${inList ? 'delete' : 'add'}`;
       const res = await fetch(url, {
         method: 'POST',
