@@ -248,7 +248,7 @@
   z-index: 50;
 }
 
-.modal-open .modal-content {
+.modal-content.modal-open {
   animation: openModal 0.2s ease-in-out forwards;
 }
 

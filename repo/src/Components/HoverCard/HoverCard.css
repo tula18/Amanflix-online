@@ -1,0 +1,193 @@
+/* ============================================================
+   HoverCard — Netflix-style card hover popup
+   Portal-rendered so it escapes slider overflow: hidden
+   ============================================================ */
+
+.hover-card {
+  position: absolute;
+  z-index: 9999;
+  width: 320px;
+  background: #181818;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  pointer-events: none; /* let drag events pass through to the slider */
+
+  /* Start scaled down + invisible, animate to full on .hover-card--visible */
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  transform-origin: center center;
+}
+
+.hover-card--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Thumbnail ──────────────────────────────────────────────── */
+.hover-card__thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #2a2a2a;
+  position: relative;
+  /* pointer-events: none inherited from parent — events pass through to slider */
+}
+
+.hover-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ── Info section ───────────────────────────────────────────── */
+.hover-card__info {
+  padding: 12px 14px 14px;  pointer-events: auto; /* buttons must be interactive */}
+
+/* ── Action buttons ─────────────────────────────────────────── */
+.hover-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hover-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.hover-card__btn:hover {
+  transform: scale(1.1);
+}
+
+.hover-card__btn--play {
+  background: #ffffff;
+  color: #000000;
+  border: none;
+}
+
+.hover-card__btn--play-wide {
+  width: auto;
+  border-radius: 20px;
+  padding: 0 14px 0 10px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.hover-card__btn--play:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.hover-card__btn--list {
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+.hover-card__btn--list:hover {
+  border-color: #ffffff;
+}
+
+.hover-card__btn--list-active {
+  border-color: #ffffff;
+}
+
+.hover-card__btn--info {
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+.hover-card__btn--info:hover {
+  border-color: #ffffff;
+}
+
+/* Push info button to far right */
+.hover-card__btn--right {
+  margin-left: auto;
+}
+
+/* ── Title ──────────────────────────────────────────────────── */
+.hover-card__title {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* ── Meta row (rating / year / type) ───────────────────────── */
+.hover-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hover-card__rating {
+  color: #46d369;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hover-card__year {
+  color: #bcbcbc;
+  font-size: 12px;
+}
+
+.hover-card__type {
+  color: #bcbcbc;
+  font-size: 11px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 1px 5px;
+  line-height: 1.4;
+}
+
+/* ── Badge — matches Card.css .card-episode-badge exactly ─────────────── */
+.hover-card__badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* ── Progress — matches Card.css card__progress-container/bar ─────────── */
+.hover-card__progress-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.hover-card__progress-bar {
+  height: 100%;
+  background-color: #e50914;
+}

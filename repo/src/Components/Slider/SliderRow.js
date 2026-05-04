@@ -9,6 +9,7 @@ function SliderRow({
   onTitleClick,
   isLoading = false,
   skeletonCount = 6,
+  onDragStateChange = null,
 }) {
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(6);
@@ -19,12 +20,15 @@ function SliderRow({
   const paginationRef  = useRef(null); // the pagination container DOM node
 
   // Drag refs — avoid stale closures in window event listeners
-  const isDraggingRef   = useRef(false);
-  const dragStartXRef   = useRef(0);
-  const hasDraggedRef   = useRef(false);
-  const pageOffsetRef   = useRef(0);
-  const totalPagesRef   = useRef(0);
-  const currentPageRef  = useRef(0);
+  const isDraggingRef          = useRef(false);
+  const dragStartXRef          = useRef(0);
+  const hasDraggedRef          = useRef(false);
+  const pageOffsetRef          = useRef(0);
+  const totalPagesRef          = useRef(0);
+  const currentPageRef         = useRef(0);
+  // Ref-based callback so window handlers always call the latest prop
+  const onDragStateChangeRef   = useRef(onDragStateChange);
+  useEffect(() => { onDragStateChangeRef.current = onDragStateChange; }, [onDragStateChange]);
 
   const DRAG_DEADZONE = 8; // px — movement below this is treated as a click
 
@@ -150,8 +154,8 @@ function SliderRow({
     const onMouseUp = (e) => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
-      // Remove drag cursor class directly
       if (sliderRowRef.current) sliderRowRef.current.classList.remove('slider-row--dragging');
+      if (onDragStateChangeRef.current) onDragStateChangeRef.current(false);
 
       if (hasDraggedRef.current) {
         const delta = e.clientX - dragStartXRef.current;
@@ -192,8 +196,8 @@ function SliderRow({
     isDraggingRef.current  = true;
     hasDraggedRef.current  = false;
     dragStartXRef.current  = e.clientX;
-    // Add drag cursor class directly — no React state
     if (sliderRowRef.current) sliderRowRef.current.classList.add('slider-row--dragging');
+    if (onDragStateChangeRef.current) onDragStateChangeRef.current(true);
   }, []);
 
   // Capture-phase click: swallow the click if the mouse moved far enough

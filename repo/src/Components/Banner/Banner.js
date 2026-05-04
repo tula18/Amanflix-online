@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FaPlay } from 'react-icons/fa'
-import { MdInfoOutline } from 'react-icons/md'
+import { MdInfoOutline, MdReplay } from 'react-icons/md'
 import './Banner.css'
 import MovieModal from '../Model/Model'
 import { useNavigate } from "react-router";
@@ -417,9 +417,17 @@ function Banner() {
                 </div>
                 <div className='banner_buttons'>
                     <button className='banner_play_button' onClick={() => handlePlay(movie)}>
-                        <FaPlay style={{fontSize:25, paddingRight:'5px'}}/>
+                        {(() => {
+                          const isReplay = movie.media_type === 'tv'
+                            ? watchHistory?.finished_show
+                            : watchHistory?.progress_percentage >= 98;
+                          return isReplay
+                            ? <MdReplay style={{fontSize: 28, paddingRight: '5px'}}/>
+                            : <FaPlay style={{fontSize: 25, paddingRight: '5px'}}/>;
+                        })()}
                         {movie.media_type === 'tv' ? (
                           watchHistory ? (
+                            watchHistory.finished_show ? 'Replay' :
                             watchHistory.is_completed && watchHistory.next_episode ? (
                               watchHistory.next_episode.restarted ? 'Play' : 'Play Next Episode'
                             ) : (
@@ -429,7 +437,8 @@ function Banner() {
                             'Play'
                           )
                         ) : (
-                          watchHistory && watchHistory.progress_percentage < 98 ? 'Resume' : 'Play'
+                          watchHistory?.progress_percentage >= 98 ? 'Replay' :
+                          watchHistory?.progress_percentage > 0 ? 'Resume' : 'Play'
                         )}
                     </button>
                     <button className='banner_info_button' onClick={(event) => handleMovieClick(movie, event)}>

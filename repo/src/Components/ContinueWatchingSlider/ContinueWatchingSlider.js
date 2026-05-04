@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API_URL } from '../../config';
 import './ContinueWatchingSlider.css';
 import SliderRow from '../Slider/SliderRow';
 import Card from '../Card/Card';
 import MovieModal from '../Model/Model';
+import HoverCard from '../HoverCard/HoverCard';
 
 const ContinueWatchingSlider = () => {
     const [continueWatching, setContinueWatching] = useState([]);
@@ -13,6 +14,103 @@ const ContinueWatchingSlider = () => {
     // Modal state
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [showModal, setShowModal] = useState(false);
+
+    // Hover card state
+    const [hoveredMovie, setHoveredMovie]       = useState(null);
+    const [hoverAnchorRect, setHoverAnchorRect] = useState(null);
+    const [hoverCardClosing, setHoverCardClosing] = useState(false);
+    const hoverShowTimerRef  = useRef(null);
+    const hoverHideTimerRef  = useRef(null);
+    const isSliderDraggingRef = useRef(false);
+    const hoveredMovieRef     = useRef(null);
+    const sliderIdRef         = useRef(`s-${Math.random().toString(36).slice(2)}`);
+    const moviesRef           = useRef([]);
+    const lastMousePos        = useRef({ x: 0, y: 0 });
+
+    useEffect(() => { moviesRef.current = continueWatching; }, [continueWatching]);
+    useEffect(() => {
+        const track = (e) => { lastMousePos.current = { x: e.clientX, y: e.clientY }; };
+        window.addEventListener('mousemove', track, { passive: true });
+        return () => window.removeEventListener('mousemove', track);
+    }, []);
+
+    // Modal closing animation state
+    const [modalClosing, setModalClosing] = useState(false);
+
+    const handleCardMouseEnter = (movie, e) => {
+        if (isSliderDraggingRef.current) return;
+        clearTimeout(hoverHideTimerRef.current);
+        clearTimeout(hoverShowTimerRef.current);
+        const rect = e.currentTarget.getBoundingClientRect();
+
+        if (hoveredMovieRef.current) {
+            setHoverCardClosing(true);
+        } else {
+            setHoverCardClosing(false);
+        }
+
+        hoverShowTimerRef.current = setTimeout(() => {
+            if (!isSliderDraggingRef.current) {
+                setHoverAnchorRect(rect);
+                hoveredMovieRef.current = movie;
+                setHoveredMovie(movie);
+            }
+        }, 400);
+    };
+
+    const handleCardMouseLeave = () => {
+        if (isSliderDraggingRef.current) return;
+        clearTimeout(hoverShowTimerRef.current);
+        hoverHideTimerRef.current = setTimeout(() => {
+            setHoverCardClosing(true);
+        }, 200);
+    };
+
+    const handleHoverClose = () => {
+        clearTimeout(hoverHideTimerRef.current);
+        setHoverCardClosing(true);
+    };
+
+    const handleDragStateChange = useCallback((dragging) => {
+        if (dragging) {
+            isSliderDraggingRef.current = true;
+            clearTimeout(hoverShowTimerRef.current);
+            clearTimeout(hoverHideTimerRef.current);
+            if (hoveredMovieRef.current) {
+                hoveredMovieRef.current = null;
+                setHoveredMovie(null);
+                setHoverAnchorRect(null);
+                setHoverCardClosing(false);
+            }
+        } else {
+            // Keep drag guard active for the full 400ms so that mouseleave
+            // events from the 350ms snap animation can't cancel the timer.
+            hoverShowTimerRef.current = setTimeout(() => {
+                isSliderDraggingRef.current = false;
+                const { x, y } = lastMousePos.current;
+                const el = document.elementFromPoint(x, y);
+                const sid = sliderIdRef.current;
+                const wrapper = el?.closest(`[data-slider-id="${sid}"]`);
+                if (wrapper) {
+                    const idx = parseInt(wrapper.dataset.sliderIdx, 10);
+                    const movie = moviesRef.current[idx];
+                    if (movie) {
+                        const rect = wrapper.getBoundingClientRect();
+                        setHoverAnchorRect(rect);
+                        hoveredMovieRef.current = movie;
+                        setHoveredMovie(movie);
+                    }
+                }
+            }, 400);
+        }
+    }, []); // stable
+
+    const handleHoverExitComplete = () => {
+        hoveredMovieRef.current = null;
+        setHoveredMovie(null);
+        setHoverAnchorRect(null);
+        setHoverCardClosing(false);
+    };
 
     useEffect(() => {
         const fetchContinueWatching = async () => {
@@ -121,6 +219,13 @@ const ContinueWatchingSlider = () => {
 
     const handleMovieClick = (movie, event) => {
         event.stopPropagation();
+        clearTimeout(hoverShowTimerRef.current);
+        clearTimeout(hoverHideTimerRef.current);
+        hoveredMovieRef.current = null;
+        setHoveredMovie(null);
+        setHoverAnchorRect(null);
+        setHoverCardClosing(false);
+        setModalClosing(false);
         setSelectedMovie(movie);
         setShowModal(true);
         const navbar = document.getElementsByClassName('navbar');
@@ -130,11 +235,13 @@ const ContinueWatchingSlider = () => {
     };
 
     const handleModalClose = () => {
-        let timeoutId;
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => console.log('hello'), 1000);
-        setSelectedMovie(null);
+        setModalClosing(true);
+    };
+
+    const handleModalClosed = () => {
+        setModalClosing(false);
         setShowModal(false);
+        setSelectedMovie(null);
         const navbar = document.getElementsByClassName('navbar');
         if (navbar[0]) {
             navbar[0].classList.remove('navbar_hide');
@@ -209,13 +316,20 @@ const ContinueWatchingSlider = () => {
 
     return (
         <>
-            <SliderRow title="Continue Watching">
+            <SliderRow title="Continue Watching" onDragStateChange={handleDragStateChange}>
                 {continueWatching.map((item, index) => {
                     const progressPercentage = getProgressPercentage(item);
                     const episodeInfo = getEpisodeInfo(item);
 
                     return (
-                        <div key={index} className="slider-item-wrapper">
+                        <div
+                            key={index}
+                            className="slider-item-wrapper"
+                            data-slider-id={sliderIdRef.current}
+                            data-slider-idx={index}
+                            onMouseEnter={(e) => handleCardMouseEnter(item, e)}
+                            onMouseLeave={handleCardMouseLeave}
+                        >
                             <button className="slider-btn" onClick={(event) => handleMovieClick(item, event)}>
                                 <Card
                                     movie={item}
@@ -243,7 +357,21 @@ const ContinueWatchingSlider = () => {
                 <MovieModal
                     movie={selectedMovie}
                     onClose={handleModalClose}
+                    onClosed={handleModalClosed}
+                    closing={modalClosing}
                     handleMovieClick={handleMovieClick}
+                />
+            )}
+
+            {hoveredMovie && hoverAnchorRect && !showModal && (
+                <HoverCard
+                    movie={hoveredMovie}
+                    anchorRect={hoverAnchorRect}
+                    closing={hoverCardClosing}
+                    onClose={handleHoverClose}
+                    onExitComplete={handleHoverExitComplete}
+                    onInfoClick={handleMovieClick}
+                    onPopupEnter={() => clearTimeout(hoverHideTimerRef.current)}
                 />
             )}
         </>

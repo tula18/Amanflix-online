@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { MdClose, MdClosedCaption } from 'react-icons/md';
+import { MdClose, MdClosedCaption, MdReplay } from 'react-icons/md';
 import './Model.css';
 import { useNavigate } from "react-router";
 import SimilarVideoCard from '../SimilarVideoCard/SimilarVideoCard';
@@ -10,10 +10,10 @@ import { CheckCircleFilled, CheckCircleOutlined, PlusCircleOutlined } from '@ant
 import { Flex, Tooltip, message } from 'antd';
 import EpisodeSelector from '../EpisodeSelector/EpisodeSelector';
 
-const MovieModal = ({ movie, onClose, handleMovieClick }) => {
+const MovieModal = ({ movie, onClose, onClosed, handleMovieClick, closing = false }) => {
   const navigate = useNavigate();
 
-  const [modalClass, setModalClass] = React.useState('modal-close');
+  const [modalClass, setModalClass] = React.useState('');
   const [imgSrc, setImgSrc] = useState(`${API_URL}/cdn/images/${movie.backdrop_path}`);
   const [imageFailed, setImageFailed] = useState(false);
   const [inList, setInList] = useState(false)
@@ -245,23 +245,22 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
     // eslint-disable-next-line
   }, [imgSrc]);
 
-  React.useEffect(() => {
-    setModalClass('modal-open');
-    return () => {
-      setModalClass('modal-close');
-    };
-  }, [movie]);
-
+  // Open animation: fire exactly once when MovieModal first mounts.
+  // The modal-content div is reconciled in-place (not remounted) during loading state
+  // changes, so the animation class stays and does not replay.
   useEffect(() => {
-    const modalElement = document.querySelector('.modal');
-    if (modalElement) {
-        modalElement.classList.add('modal-open');
-    }
+    const id = requestAnimationFrame(() => setModalClass('modal-open'));
+    return () => cancelAnimationFrame(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return () => {
-        modalElement.classList.remove('modal-open');
-    };
-}, []);
+  // Animate out when closing prop is set by parent
+  useEffect(() => {
+    if (closing) setModalClass('modal-close');
+  }, [closing]);
+
+  const handleContentAnimationEnd = (e) => {
+    if (e.animationName === 'closeModal' && onClosed) onClosed();
+  };
 
   function formatText(text, maxLength) {
     if (typeof text === 'string' && text !== null && text !== undefined) {
@@ -444,7 +443,7 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
 
   return (
     <div className={`modal blur`} id="movieModal">
-      <div className={`modal-content ${modalClass}`}>
+      <div className={`modal-content ${modalClass}`} onAnimationEnd={handleContentAnimationEnd}>
         <div className='header' style={{ backgroundImage: `url(${imgSrc})`, width: '100%', backgroundSize: 'cover', backgroundPosition: 'top', minHeight: '600px' }}>
           <div className='header-shadow'></div>
           <div className='header-interactive'>
@@ -486,8 +485,11 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
               ) : mediaType === 'tv' ? (
                 vidExist.exist ? (
                   <button className="play-button" onClick={() => handlePlay(movie)}>
-                    <FaPlay style={{ fontSize: 15, paddingRight: 10 }} />
+                    {watchHistory?.finished_show
+                      ? <MdReplay style={{ fontSize: 18, paddingRight: 10 }} />
+                      : <FaPlay style={{ fontSize: 15, paddingRight: 10 }} />}
                     {watchHistory ? (
+                      watchHistory.finished_show ? 'Replay' :
                       watchHistory.is_completed && watchHistory.next_episode ? (
                         watchHistory.next_episode.restarted ? 'Play' : 'Play Next Episode'
                       ) : (
@@ -510,8 +512,11 @@ const MovieModal = ({ movie, onClose, handleMovieClick }) => {
                 </button>
               ) : (
                 <button className="play-button" onClick={() => handlePlay(movie)}>
-                  <FaPlay style={{ fontSize: 15, paddingRight: 10 }} />
-                  {watchHistory && watchHistory.progress_percentage < 98 ? 'Resume' : 'Play'}
+                  {watchHistory?.progress_percentage >= 98
+                    ? <MdReplay style={{ fontSize: 18, paddingRight: 10 }} />
+                    : <FaPlay style={{ fontSize: 15, paddingRight: 10 }} />}
+                  {watchHistory?.progress_percentage >= 98 ? 'Replay' :
+                   watchHistory?.progress_percentage > 0 ? 'Resume' : 'Play'}
                 </button>
               )}
               {vidExist.exist && (<button className='similar_add-button model_add-button' onClick={toggleInList}>
