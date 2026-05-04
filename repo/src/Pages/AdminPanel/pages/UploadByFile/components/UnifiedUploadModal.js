@@ -916,13 +916,142 @@ const UnifiedUploadModal = ({
     };
 
 
+    // -----------------------------------------------------------------------
+    // Chunked upload helpers
+    // -----------------------------------------------------------------------
+
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB per chunk
+
+    /** Generate a stable upload ID that survives page refreshes (resume support). */
+    const generateUploadId = (contentType, contentId, fileSize, fileName, seasonNum = '', episodeNum = '') => {
+        const parts = [contentType, contentId, seasonNum, episodeNum, fileSize, fileName].join('_');
+        // Simple but stable: replace characters that are problematic in URLs
+        return parts.replace(/[^A-Za-z0-9_\-.]/g, '_');
+    };
+
+    /**
+     * Upload a single File in chunks to the server.
+     * Resumes automatically if some chunks were already received.
+     *
+     * @param {File}     file       - The File object to upload
+     * @param {string}   uploadId   - Stable identifier for this upload session
+     * @param {Function} onProgress - (bytesUploaded, totalBytes) callback
+     * @returns {Promise<{uploadId: string, totalChunks: number}>}
+     */
+    const uploadFileInChunks = async (file, uploadId, onProgress) => {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+        // ── check which chunks the server already has (for resume) ──────────
+        let receivedChunks = [];
+        try {
+            const statusRes = await fetch(
+                `${API_URL}/api/upload/chunk/status/${encodeURIComponent(uploadId)}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (statusRes.ok) {
+                const statusJson = await statusRes.json();
+                receivedChunks = statusJson.received_chunks || [];
+            }
+        } catch (_) {
+            // If status check fails, start from scratch
+        }
+
+        const receivedSet = new Set(receivedChunks);
+        // Bytes already uploaded (for accurate progress on resume)
+        const alreadyUploadedBytes = receivedChunks.reduce((sum, idx) => {
+            const start = idx * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            return sum + (end - start);
+        }, 0);
+
+        let uploadedBytes = alreadyUploadedBytes;
+
+        for (let i = 0; i < totalChunks; i++) {
+            if (receivedSet.has(i)) continue; // skip already-uploaded chunks
+
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const chunkForm = new FormData();
+            chunkForm.append('upload_id', uploadId);
+            chunkForm.append('chunk_index', i);
+            chunkForm.append('total_chunks', totalChunks);
+            chunkForm.append('chunk', chunk, file.name);
+
+            // Upload this chunk (with retry logic)
+            let success = false;
+            let lastError = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const res = await fetch(`${API_URL}/api/upload/chunk`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: chunkForm,
+                    });
+                    if (res.ok) {
+                        success = true;
+                        break;
+                    }
+                    const errJson = await res.json().catch(() => ({}));
+                    lastError = errJson.message || `HTTP ${res.status}`;
+                } catch (err) {
+                    lastError = err.message;
+                }
+                // Brief back-off before retry (exponential)
+                await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+            }
+
+            if (!success) {
+                throw new Error(`Failed to upload chunk ${i}: ${lastError}`);
+            }
+
+            uploadedBytes += end - start;
+            if (onProgress) onProgress(uploadedBytes, file.size);
+        }
+
+        return { uploadId, totalChunks };
+    };
+
+    // -----------------------------------------------------------------------
+    // Legacy XHR helper (used for edit/PUT requests where chunking is not needed)
+    // -----------------------------------------------------------------------
+    const sendFormDataXHR = (method, url, formData) =>
+        new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open(method, url, true);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+            let startTime = Date.now();
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const pct = Math.round((event.loaded / event.total) * 100);
+                    setProgress(pct);
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const speed = event.loaded / elapsed;
+                    setUploadSpeed((speed / 1024 / 1024).toFixed(2));
+                    setRemainingTime(formatEstimatedTime(((event.total - event.loaded) / speed).toFixed(2)));
+                    setUploadedSize(event.loaded);
+                }
+            };
+
+            xhr.onload = () => resolve(xhr);
+            xhr.onerror = () => reject(new Error('Network error during upload'));
+            xhr.onabort = () => reject(new Error('Upload cancelled'));
+            xhr.send(formData);
+        });
+
+    // -----------------------------------------------------------------------
+    // Main submit handler
+    // -----------------------------------------------------------------------
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaveLoading(true);
         setProgress(0);
     
         try {
-            const formData = new FormData();
             let isValid = false;
     
             if (type === 'movie') {
@@ -935,15 +1064,6 @@ const UnifiedUploadModal = ({
                     setSaveLoading(false);
                     return;
                 }
-    
-                // Add movie data to formData
-                Object.keys(movieData).forEach(key => {
-                    if (key === 'vid_movie' && movieData[key]) {
-                        formData.append('vid_movie', movieData[key]);
-                    } else if (movieData[key] !== null && movieData[key] !== '') {
-                        formData.append(key, movieData[key]);
-                    }
-                });
 
                 // Pre-upload validation (only for new uploads)
                 if (!isEdit) {
@@ -967,75 +1087,108 @@ const UnifiedUploadModal = ({
                     }
                 }
 
-                // Use XHR for better progress tracking
-                const method = isEdit ? 'PUT' : 'POST';
-                const url = isEdit ? `${API_URL}/api/upload/movie/${movieData.id}` : `${API_URL}/api/upload/movie`;
-
-                const xhr = new XMLHttpRequest();
-                xhr.open(method, url, true);
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-
-                let startTime = Date.now();
-
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const progress = Math.round((event.loaded / event.total) * 100);
-                        setProgress(progress);
-                        const elapsedTime = (Date.now() - startTime) / 1000;
-                        const uploadSpeed = event.loaded / elapsedTime;
-                        setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
-                        const remainingSize = event.total - event.loaded;
-                        const estimatedTime = remainingSize / uploadSpeed;
-                        setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)));
-                        setUploadedSize(event.loaded);
+                // ── NEW chunked upload path for NEW movies ──────────────────
+                if (!isEdit && movieData.vid_movie) {
+                    if (!movieData.id) {
+                        notification.error({
+                            message: 'Validation Error',
+                            description: 'Movie ID is required before uploading.',
+                        });
+                        setSaveLoading(false);
+                        return;
                     }
-                };
 
-                xhr.onload = function() {
-                    const json = JSON.parse(xhr.responseText);
-                    if (xhr.status === 200 || xhr.status === 201) {
-                        notification.success({message: json.message, duration: 0});
+                    const file = movieData.vid_movie;
+                    const uploadId = generateUploadId('movie', movieData.id, file.size, file.name);
+
+                    let startTime = Date.now();
+
+                    const { totalChunks } = await uploadFileInChunks(
+                        file,
+                        uploadId,
+                        (uploaded, total) => {
+                            const pct = Math.round((uploaded / total) * 100);
+                            setProgress(pct);
+                            const elapsed = (Date.now() - startTime) / 1000;
+                            if (elapsed > 0) {
+                                const speed = uploaded / elapsed;
+                                setUploadSpeed((speed / 1024 / 1024).toFixed(2));
+                                setRemainingTime(formatEstimatedTime(((total - uploaded) / speed).toFixed(2)));
+                                setUploadedSize(uploaded);
+                            }
+                        }
+                    );
+
+                    // Build form data for finalize (metadata only, no file)
+                    const finalizeForm = new FormData();
+                    finalizeForm.append('upload_id', uploadId);
+                    finalizeForm.append('total_chunks', totalChunks);
+                    Object.keys(movieData).forEach(key => {
+                        if (key !== 'vid_movie' && movieData[key] !== null && movieData[key] !== '') {
+                            finalizeForm.append(key, movieData[key]);
+                        }
+                    });
+
+                    const finalizeRes = await fetch(`${API_URL}/api/upload/finalize/movie`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: finalizeForm,
+                    });
+                    const finalizeJson = await finalizeRes.json();
+                    if (finalizeRes.ok) {
+                        notification.success({ message: finalizeJson.message, duration: 0 });
                         if (onSuccess) onSuccess();
                         if (refresh) refresh();
                         onClose();
                     } else {
-                        notification.error({message: json.message, duration: 0});
+                        notification.error({ message: finalizeJson.message || 'Finalize failed', duration: 0 });
                     }
                     setSaveLoading(false);
-                };
+                    return;
+                }
 
-                xhr.onerror = function() {
-                    notification.error({message: 'An error occurred during upload', duration: 0});
-                    setSaveLoading(false);
-                };
+                // ── Legacy path: edit (PUT) or no video file ────────────────
+                const formData = new FormData();
+                Object.keys(movieData).forEach(key => {
+                    if (key === 'vid_movie' && movieData[key]) {
+                        formData.append('vid_movie', movieData[key]);
+                    } else if (movieData[key] !== null && movieData[key] !== '') {
+                        formData.append(key, movieData[key]);
+                    }
+                });
 
-                xhr.onabort = () => {
-                    notification.info({message: 'Upload canceled.'});
-                    setSaveLoading(false);
-                };
+                const method = isEdit ? 'PUT' : 'POST';
+                const url = isEdit
+                    ? `${API_URL}/api/upload/movie/${movieData.id}`
+                    : `${API_URL}/api/upload/movie`;
 
-                xhr.send(formData);
+                const xhr = await sendFormDataXHR(method, url, formData);
+                const json = JSON.parse(xhr.responseText);
+                if (xhr.status === 200 || xhr.status === 201) {
+                    notification.success({ message: json.message, duration: 0 });
+                    if (onSuccess) onSuccess();
+                    if (refresh) refresh();
+                    onClose();
+                } else {
+                    notification.error({ message: json.message, duration: 0 });
+                }
+                setSaveLoading(false);
 
             } else {
-                // TV Show validation and formData preparation
+                // TV Show upload
                 let hasFiles = false;
                 let hasEpisodes = false;
-                
+
                 showData.seasons.forEach((season) => {
                     season.episodes.forEach((episode) => {
                         hasEpisodes = true;
-                        // Check for either uploaded video files OR pre-filled filenames OR existing episodes on server
                         const episodeExistsOnServer = episodeExists?.episodes?.[season.seasonNumber]?.[episode.episodeNumber]?.exists;
                         if (episode.videoFile || (episode.filename && episode.filename.trim() !== '') || episodeExistsOnServer) {
                             hasFiles = true;
-                            if (episode.videoFile) {
-                                formData.append(`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`, episode.videoFile);
-                            }
                         }
                     });
                 });
-    
-                // For edit mode, we don't require files if episodes already exist
+
                 if (!hasFiles && !isEdit) {
                     notification.error({
                         message: 'Upload Error',
@@ -1053,28 +1206,6 @@ const UnifiedUploadModal = ({
                     setSaveLoading(false);
                     return;
                 }
-    
-                // Add show data to formData
-                Object.keys(showData).forEach(key => {
-                    if (key !== 'seasons' && showData[key] !== null && showData[key] !== '') {
-                        formData.append(key, showData[key]);
-                    }
-                });
-    
-                // Add seasons data
-                const seasonsData = showData.seasons.map(season => ({
-                    season_number: season.seasonNumber,
-                    episodes: season.episodes.map(episode => ({
-                        episode_number: episode.episodeNumber,
-                        title: episode.title,
-                        overview: episode.overview,
-                        has_subtitles: episode.has_subtitles,
-                        force: episode.force,
-                        filename: episode.filename // Include filename for pre-filled data
-                    }))
-                }));
-                
-                formData.append('seasons', JSON.stringify(seasonsData));
 
                 // Pre-upload validation (only for new uploads)
                 if (!isEdit && showData.show_id) {
@@ -1090,7 +1221,7 @@ const UnifiedUploadModal = ({
                         });
                     });
                     const validationResult = await validateUpload('tv', showData.show_id, episodes, showData);
-                    
+
                     if (validationResult && !validationResult.can_upload) {
                         const errorMessages = validationResult.errors.map(error => error.message).join('\n');
                         notification.error({
@@ -1110,55 +1241,188 @@ const UnifiedUploadModal = ({
                     }
                 }
 
-                // Use XHR for better progress tracking
-                const method = isEdit ? 'PUT' : 'POST';
-                const url = isEdit ? `${API_URL}/api/upload/show/${showData.show_id}` : `${API_URL}/api/upload/show`;
+                // ── NEW chunked upload path for NEW TV show ─────────────────
+                if (!isEdit) {
+                    const startTime = Date.now();
 
-                const xhr = new XMLHttpRequest();
-                xhr.open(method, url, true);
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                    // Compute total bytes to upload for accurate overall progress
+                    const allEpisodeFiles = [];
+                    showData.seasons.forEach(season => {
+                        season.episodes.forEach(episode => {
+                            if (episode.videoFile) {
+                                allEpisodeFiles.push({ season, episode, file: episode.videoFile });
+                            }
+                        });
+                    });
 
-                let startTime = Date.now();
-                setTimeStart(startTime);
+                    const totalBytes = allEpisodeFiles.reduce((s, { file }) => s + file.size, 0);
+                    let globalUploadedBytes = 0;
 
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const progress = Math.round((event.loaded / event.total) * 100);
-                        setProgress(progress);
-                        const elapsedTime = (Date.now() - startTime) / 1000;
-                        const uploadSpeed = event.loaded / elapsedTime;
-                        setUploadSpeed((uploadSpeed / 1024 / 1024).toFixed(2));
-                        const remainingSize = event.total - event.loaded;
-                        const estimatedTime = remainingSize / uploadSpeed;
-                        setRemainingTime(formatEstimatedTime(estimatedTime.toFixed(2)));
-                        setUploadedSize(event.loaded);
+                    // Upload each episode in chunks, then finalize
+                    const finalizedSeasons = {};
+
+                    for (const { season, episode, file } of allEpisodeFiles) {
+                        const uploadId = generateUploadId(
+                            'show', showData.show_id, file.size, file.name,
+                            season.seasonNumber, episode.episodeNumber
+                        );
+
+                        const bytesBeforeThisEpisode = globalUploadedBytes;
+
+                        await uploadFileInChunks(file, uploadId, (episodeUploaded, episodeTotal) => {
+                            globalUploadedBytes = bytesBeforeThisEpisode + episodeUploaded;
+                            const pct = totalBytes > 0 ? Math.round((globalUploadedBytes / totalBytes) * 100) : 0;
+                            setProgress(pct);
+                            const elapsed = (Date.now() - startTime) / 1000;
+                            if (elapsed > 0) {
+                                const speed = globalUploadedBytes / elapsed;
+                                setUploadSpeed((speed / 1024 / 1024).toFixed(2));
+                                setRemainingTime(formatEstimatedTime(((totalBytes - globalUploadedBytes) / speed).toFixed(2)));
+                                setUploadedSize(globalUploadedBytes);
+                            }
+                        });
+
+                        globalUploadedBytes = bytesBeforeThisEpisode + file.size;
+
+                        // Finalize this episode (assemble file on server)
+                        const epFinalizeForm = new FormData();
+                        epFinalizeForm.append('upload_id', uploadId);
+                        epFinalizeForm.append('total_chunks', Math.ceil(file.size / CHUNK_SIZE));
+                        epFinalizeForm.append('show_id', showData.show_id);
+                        epFinalizeForm.append('season_number', season.seasonNumber);
+                        epFinalizeForm.append('episode_number', episode.episodeNumber);
+                        epFinalizeForm.append('force', episode.force ? 'true' : 'false');
+
+                        const epRes = await fetch(`${API_URL}/api/upload/finalize/episode`, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${token}` },
+                            body: epFinalizeForm,
+                        });
+                        if (!epRes.ok) {
+                            const errJson = await epRes.json().catch(() => ({}));
+                            throw new Error(`Episode S${season.seasonNumber}E${episode.episodeNumber} finalize failed: ${errJson.message || epRes.status}`);
+                        }
+                        const epJson = await epRes.json();
+
+                        // Accumulate finalized episode data
+                        if (!finalizedSeasons[season.seasonNumber]) {
+                            finalizedSeasons[season.seasonNumber] = { season_number: season.seasonNumber, episodes: [] };
+                        }
+                        finalizedSeasons[season.seasonNumber].episodes.push({
+                            episode_number: episode.episodeNumber,
+                            title: episode.title,
+                            overview: episode.overview,
+                            has_subtitles: episode.has_subtitles,
+                            runtime: epJson.runtime ?? 0,
+                            video_id: epJson.video_id,
+                        });
                     }
-                };
 
-                xhr.onload = function() {
-                    const json = JSON.parse(xhr.responseText);
-                    if (xhr.status === 200 || xhr.status === 201) {
-                        notification.success({message: json.message, duration: 0});
+                    // Include seasons that had no video files (e.g. existing episodes in edit)
+                    showData.seasons.forEach(season => {
+                        season.episodes.forEach(episode => {
+                            if (!episode.videoFile) {
+                                if (!finalizedSeasons[season.seasonNumber]) {
+                                    finalizedSeasons[season.seasonNumber] = { season_number: season.seasonNumber, episodes: [] };
+                                }
+                                finalizedSeasons[season.seasonNumber].episodes.push({
+                                    episode_number: episode.episodeNumber,
+                                    title: episode.title,
+                                    overview: episode.overview,
+                                    has_subtitles: episode.has_subtitles,
+                                    runtime: 0,
+                                    video_id: parseInt(`${showData.show_id}${season.seasonNumber}${episode.episodeNumber}`),
+                                });
+                            }
+                        });
+                    });
+
+                    // Finalize show (DB write)
+                    const showPayload = {
+                        show: {
+                            show_id: showData.show_id,
+                            title: showData.title,
+                            genres: showData.genres,
+                            created_by: showData.created_by,
+                            overview: showData.overview,
+                            poster_path: showData.poster_path,
+                            backdrop_path: showData.backdrop_path,
+                            vote_average: showData.vote_average,
+                            tagline: showData.tagline,
+                            spoken_languages: showData.spoken_languages,
+                            first_air_date: showData.first_air_date,
+                            last_air_date: showData.last_air_date,
+                            production_companies: showData.production_companies,
+                            production_countries: showData.production_countries,
+                            networks: showData.networks,
+                            status: showData.status,
+                        },
+                        seasons: Object.values(finalizedSeasons),
+                    };
+
+                    const showRes = await fetch(`${API_URL}/api/upload/finalize/show`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(showPayload),
+                    });
+                    const showJson = await showRes.json();
+                    if (showRes.ok) {
+                        notification.success({ message: showJson.message, duration: 0 });
                         if (onSuccess) onSuccess();
                         if (refresh) refresh();
                         onClose();
                     } else {
-                        notification.error({message: json.message, duration: 0});
+                        notification.error({ message: showJson.message || 'Show finalize failed', duration: 0 });
                     }
                     setSaveLoading(false);
-                };
+                    return;
+                }
 
-                xhr.onerror = function() {
-                    notification.error({message: 'An error occurred during upload', duration: 0});
-                    setSaveLoading(false);
-                };
+                // ── Legacy path: edit (PUT) ─────────────────────────────────
+                const formData = new FormData();
+                showData.seasons.forEach((season) => {
+                    season.episodes.forEach((episode) => {
+                        if (episode.videoFile) {
+                            formData.append(`video_season_${season.seasonNumber}_episode_${episode.episodeNumber}`, episode.videoFile);
+                        }
+                    });
+                });
 
-                xhr.onabort = () => {
-                    notification.info({message: 'Upload canceled.'});
-                    setSaveLoading(false);
-                };
+                Object.keys(showData).forEach(key => {
+                    if (key !== 'seasons' && showData[key] !== null && showData[key] !== '') {
+                        formData.append(key, showData[key]);
+                    }
+                });
 
-                xhr.send(formData);
+                const seasonsData = showData.seasons.map(season => ({
+                    season_number: season.seasonNumber,
+                    episodes: season.episodes.map(episode => ({
+                        episode_number: episode.episodeNumber,
+                        title: episode.title,
+                        overview: episode.overview,
+                        has_subtitles: episode.has_subtitles,
+                        force: episode.force,
+                        filename: episode.filename,
+                    }))
+                }));
+                formData.append('seasons', JSON.stringify(seasonsData));
+
+                const method = 'PUT';
+                const url = `${API_URL}/api/upload/show/${showData.show_id}`;
+                const xhr = await sendFormDataXHR(method, url, formData);
+                const json = JSON.parse(xhr.responseText);
+                if (xhr.status === 200 || xhr.status === 201) {
+                    notification.success({ message: json.message, duration: 0 });
+                    if (onSuccess) onSuccess();
+                    if (refresh) refresh();
+                    onClose();
+                } else {
+                    notification.error({ message: json.message, duration: 0 });
+                }
+                setSaveLoading(false);
             }
         } catch (error) {
             notification.error({
