@@ -191,3 +191,10 @@
   height: 100%;
   background-color: #e50914;
 }
+
+/* ── Safety net: never show hover cards on touch-only devices ── */
+@media (hover: none) {
+  .hover-card {
+    display: none !important;
+  }
+}

@@ -6,6 +6,12 @@ import MovieModal from "../Model/Model";
 import HoverCard from '../HoverCard/HoverCard';
 import { useNavigate } from "react-router-dom";
 
+// Evaluated once on module load — true on phones/tablets, false on mouse-driven devices.
+// Hover cards are meaningless on touch; tapping a card goes straight to the modal.
+const IS_TOUCH_DEVICE =
+  typeof window !== 'undefined' &&
+  window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
 /* ── ShowMoreCard ─────────────────────────────────────────────
    Pure-CSS chevron card. No external icon library.
    ─────────────────────────────────────────────────────────── */
@@ -27,7 +33,6 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalOriginRect, setModalOriginRect] = useState(null);
   const [movies_fetch, setMovies] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,6 +43,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
   const [hoverCardClosing, setHoverCardClosing] = useState(false);
   const hoverShowTimerRef   = useRef(null);
   const hoverHideTimerRef   = useRef(null);
+  const dragEndTimerRef     = useRef(null); // dedicated timer to clear drag guard — never cancelled by other actions
   const isSliderDraggingRef = useRef(false);
   const hoveredMovieRef     = useRef(null); // sync mirror of hoveredMovie
   // Stable unique ID so drag handler can scope elementFromPoint to THIS slider
@@ -90,28 +96,15 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
   }, [apiUrl]);
 
   // ── Modal helpers ───────────────────────────────────────────
-  const getRectSnapshot = (rect) => {
-    if (!rect) return null;
-    return {
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const handleMovieClick = (movie, event, sourceRect = null) => {
+  const handleMovieClick = (movie, event) => {
     event.stopPropagation();
-    const clickedRect = sourceRect || event.currentTarget?.getBoundingClientRect();
     clearTimeout(hoverShowTimerRef.current);
     clearTimeout(hoverHideTimerRef.current);
     hoveredMovieRef.current = null;
     setHoveredMovie(null);
     setHoverAnchorRect(null);
     setHoverCardClosing(false);
-    isSliderDraggingRef.current = false;
     setModalClosing(false);
-    setModalOriginRect(getRectSnapshot(clickedRect));
     setSelectedMovie(movie);
     setShowModal(true);
     const navbar = document.getElementsByClassName('navbar');
@@ -125,17 +118,9 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
 
   // Called by MovieModal after close animation completes
   const handleModalClosed = () => {
-    clearTimeout(hoverShowTimerRef.current);
-    clearTimeout(hoverHideTimerRef.current);
-    hoveredMovieRef.current = null;
-    setHoveredMovie(null);
-    setHoverAnchorRect(null);
-    setHoverCardClosing(false);
-    isSliderDraggingRef.current = false;
     setModalClosing(false);
     setShowModal(false);
     setSelectedMovie(null);
-    setModalOriginRect(null);
     const navbar = document.getElementsByClassName('navbar');
     if (navbar[0]) navbar[0].classList.remove('navbar_hide');
   };
@@ -187,6 +172,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
   const handleCardMouseLeave = () => {
     if (isSliderDraggingRef.current) return;
     clearTimeout(hoverShowTimerRef.current);
+    clearTimeout(hoverHideTimerRef.current); // prevent orphan timers when mouseleave fires rapidly
     hoverHideTimerRef.current = setTimeout(() => {
       setHoverCardClosing(true);
     }, 200);
@@ -203,6 +189,7 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
       isSliderDraggingRef.current = true;
       clearTimeout(hoverShowTimerRef.current);
       clearTimeout(hoverHideTimerRef.current);
+      clearTimeout(dragEndTimerRef.current); // cancel any pending drag-end clear
       if (hoveredMovieRef.current) {
         hoveredMovieRef.current = null;
         setHoveredMovie(null);
@@ -210,8 +197,16 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
         setHoverCardClosing(false);
       }
     } else {
-      hoverShowTimerRef.current = setTimeout(() => {
+      // Dedicated timer that ONLY clears the drag guard — never cancelled by
+      // user actions (clicking, hovering, etc.) so it always fires.
+      clearTimeout(dragEndTimerRef.current);
+      dragEndTimerRef.current = setTimeout(() => {
         isSliderDraggingRef.current = false;
+      }, 360);
+
+      // Separate hover re-trigger — safe to cancel; drag guard clears independently.
+      hoverShowTimerRef.current = setTimeout(() => {
+        if (isSliderDraggingRef.current) return; // another drag may have started
         const { x, y } = lastMousePos.current;
         const el = document.elementFromPoint(x, y);
         const sid = sliderIdRef.current;
@@ -312,8 +307,8 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
               className="slider-item-wrapper"
               data-slider-id={sliderIdRef.current}
               data-slider-idx={idx}
-              onMouseEnter={(e) => handleCardMouseEnter(movie, e)}
-              onMouseLeave={handleCardMouseLeave}
+              onMouseEnter={IS_TOUCH_DEVICE ? undefined : (e) => handleCardMouseEnter(movie, e)}
+              onMouseLeave={IS_TOUCH_DEVICE ? undefined : handleCardMouseLeave}
             >
               <button className="slider-btn" onClick={(event) => handleMovieClick(movie, event)}>
                 <Card
@@ -348,12 +343,11 @@ function MovieSlider({ title, apiUrl, lessItems = 0, category = "", mediaType = 
           onClose={handleModalClose}
           onClosed={handleModalClosed}
           closing={modalClosing}
-          originRect={modalOriginRect}
           handleMovieClick={handleMovieClick}
         />
       )}
 
-      {hoveredMovie && hoverAnchorRect && !showModal && (
+      {hoveredMovie && hoverAnchorRect && !showModal && !IS_TOUCH_DEVICE && (
         <HoverCard
           movie={hoveredMovie}
           anchorRect={hoverAnchorRect}

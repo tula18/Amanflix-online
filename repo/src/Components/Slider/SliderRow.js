@@ -26,6 +26,11 @@ function SliderRow({
   const pageOffsetRef          = useRef(0);
   const totalPagesRef          = useRef(0);
   const currentPageRef         = useRef(0);
+  // Touch refs
+  const touchStartXRef         = useRef(0);
+  const touchStartYRef         = useRef(0);
+  const touchAxisRef           = useRef(null); // 'h' | 'v' — locked after first 5 px of movement
+  const lastTouchRef           = useRef(false); // suppress synthesized mousedown after touchstart
   // Ref-based callback so window handlers always call the latest prop
   const onDragStateChangeRef   = useRef(onDragStateChange);
   useEffect(() => { onDragStateChangeRef.current = onDragStateChange; }, [onDragStateChange]);
@@ -183,19 +188,112 @@ function SliderRow({
       }
     };
 
+    // ── Touch handlers ──────────────────────────────────────────
+    const onTouchMove = (e) => {
+      if (!isDraggingRef.current) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - touchStartXRef.current;
+      const dy = touch.clientY - touchStartYRef.current;
+
+      // Lock scroll axis after the first 5 px of movement
+      if (!touchAxisRef.current) {
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+          touchAxisRef.current = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+        }
+        return;
+      }
+      if (touchAxisRef.current === 'v') return; // let the browser handle vertical scroll
+
+      e.preventDefault(); // block page scroll for horizontal swipe
+      if (Math.abs(dx) > DRAG_DEADZONE) {
+        hasDraggedRef.current = true;
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'none';
+          trackRef.current.style.transform  =
+            `translateX(${-(currentPageRef.current * pageOffsetRef.current) + dx}px)`;
+        }
+        const po = pageOffsetRef.current;
+        if (po > 0) {
+          const vp = Math.max(0, Math.min(
+            currentPageRef.current + (-dx / po),
+            totalPagesRef.current - 1
+          ));
+          updatePaginationDirect(vp);
+        }
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+      if (sliderRowRef.current) sliderRowRef.current.classList.remove('slider-row--dragging');
+      if (onDragStateChangeRef.current) onDragStateChangeRef.current(false);
+
+      const wasHorizontal = touchAxisRef.current === 'h';
+      touchAxisRef.current = null;
+      if (!wasHorizontal) return; // vertical scroll — no page change
+
+      if (hasDraggedRef.current) {
+        const lastTouch = e.changedTouches[0];
+        const delta = lastTouch.clientX - touchStartXRef.current;
+        const po = pageOffsetRef.current;
+        const tp = totalPagesRef.current;
+        const cp = currentPageRef.current;
+        const SNAP_PX = 60;
+        const absDelta = Math.abs(delta);
+        const dir = -Math.sign(delta);
+        const pages = absDelta < SNAP_PX ? 0 : Math.max(1, Math.round(absDelta / po));
+        const nextPage = Math.max(0, Math.min(cp + dir * pages, tp - 1));
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          trackRef.current.style.transform  = `translateX(${-(nextPage * po)}px)`;
+        }
+        resetPaginationDirect(nextPage);
+        setCurrentPage(nextPage);
+      } else {
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          trackRef.current.style.transform  =
+            `translateX(${-(currentPageRef.current * pageOffsetRef.current)}px)`;
+        }
+        resetPaginationDirect(currentPageRef.current);
+      }
+    };
+
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup',   onMouseUp);
+    // passive:false so onTouchMove can call preventDefault for horizontal swipes
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend',  onTouchEnd);
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup',   onMouseUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend',  onTouchEnd);
     };
   }, [updatePaginationDirect, resetPaginationDirect]);
 
   const handleTrackMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
+    // Ignore the synthesized mousedown the browser fires after touchend
+    if (lastTouchRef.current) { lastTouchRef.current = false; return; }
     isDraggingRef.current  = true;
     hasDraggedRef.current  = false;
     dragStartXRef.current  = e.clientX;
+    if (sliderRowRef.current) sliderRowRef.current.classList.add('slider-row--dragging');
+    if (onDragStateChangeRef.current) onDragStateChangeRef.current(true);
+  }, []);
+
+  const handleTrackTouchStart = useCallback((e) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    lastTouchRef.current   = true;  // flag so the upcoming synthesized mousedown is ignored
+    isDraggingRef.current  = true;
+    hasDraggedRef.current  = false;
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    touchAxisRef.current   = null;
     if (sliderRowRef.current) sliderRowRef.current.classList.add('slider-row--dragging');
     if (onDragStateChangeRef.current) onDragStateChangeRef.current(true);
   }, []);
@@ -269,6 +367,7 @@ function SliderRow({
           ref={trackRef}
           className="slider-row__track"
           onMouseDown={handleTrackMouseDown}
+          onTouchStart={handleTrackTouchStart}
           onClickCapture={handleTrackClickCapture}
         >
           {items.map((item, idx) => (

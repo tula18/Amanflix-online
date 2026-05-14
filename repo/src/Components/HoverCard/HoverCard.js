@@ -14,10 +14,17 @@ function HoverCard({ movie, anchorRect, onClose, onInfoClick, onPopupEnter, clos
   const [inList, setInList] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const leaveTimerRef = useRef(null);
+  // Tracks whether the opening rAF has fired; used to fast-exit if closing
+  // arrives before the card ever became visible (prevents stuck closing=true).
+  const hasOpenedRef = useRef(false);
 
   // Fade-in on mount + check mylist status
   useEffect(() => {
-    const id = requestAnimationFrame(() => setVisible(true));
+    hasOpenedRef.current = false; // reset when movie prop changes
+    const id = requestAnimationFrame(() => {
+      hasOpenedRef.current = true;
+      setVisible(true);
+    });
 
     const checkMyList = async () => {
       const token = localStorage.getItem('token');
@@ -42,7 +49,17 @@ function HoverCard({ movie, anchorRect, onClose, onInfoClick, onPopupEnter, clos
 
   // Animate out when closing
   useEffect(() => {
-    if (closing) setVisible(false);
+    if (!closing) return;
+    if (hasOpenedRef.current) {
+      // Normal path: card was visible — animate it out
+      setVisible(false);
+    } else {
+      // Card was never visible (closing arrived before the opening rAF fired).
+      // No CSS transition will fire, so onTransitionEnd never would —
+      // call onExitComplete immediately to unblock the parent state machine.
+      if (onExitComplete) onExitComplete();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closing]);
 
   const handleTransitionEnd = (e) => {

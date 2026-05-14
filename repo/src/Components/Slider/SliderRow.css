@@ -249,6 +249,44 @@
   100% { opacity: 0.7; }
 }
 
+/* ── Touch / mobile overrides ────────────────────────────────
+   On touch-only devices (phones/tablets):
+   • Show arrows and pagination without requiring hover
+   • Remove grab cursors (meaningless on touch)
+   ──────────────────────────────────────────────────────────── */
+@media (hover: none) {
+  .slider-row__viewport {
+    cursor: default;
+  }
+
+  .slider-row--dragging .slider-row__viewport {
+    cursor: default;
+  }
+
+  .slider-row--dragging,
+  .slider-row--dragging * {
+    cursor: default !important;
+  }
+
+  /* Always-visible arrows on touch */
+  .slider-row__arrow {
+    opacity: 0.85;
+    width: 10%;
+    min-width: 40px;
+  }
+
+  /* Always-visible pagination on touch */
+  .slider-row__pagination {
+    opacity: 1;
+  }
+
+  /* Always-visible "Explore All" on touch */
+  .slider-row__explore {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* ── ShowMoreCard ─────────────────────────────────────────────
    The card itself lives in Card.css (.newCard), but we override
    here for no-antd approach and Netflix-style large chevron.

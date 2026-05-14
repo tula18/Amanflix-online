@@ -6,6 +6,11 @@ import Card from '../Card/Card';
 import MovieModal from '../Model/Model';
 import HoverCard from '../HoverCard/HoverCard';
 
+// Evaluated once on module load — true on phones/tablets, false on mouse-driven devices.
+const IS_TOUCH_DEVICE =
+  typeof window !== 'undefined' &&
+  window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
 const ContinueWatchingSlider = () => {
     const [continueWatching, setContinueWatching] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +27,7 @@ const ContinueWatchingSlider = () => {
     const [hoverCardClosing, setHoverCardClosing] = useState(false);
     const hoverShowTimerRef  = useRef(null);
     const hoverHideTimerRef  = useRef(null);
+    const dragEndTimerRef     = useRef(null); // dedicated timer to clear drag guard — never cancelled by other actions
     const isSliderDraggingRef = useRef(false);
     const hoveredMovieRef     = useRef(null);
     const sliderIdRef         = useRef(`s-${Math.random().toString(36).slice(2)}`);
@@ -62,6 +68,7 @@ const ContinueWatchingSlider = () => {
     const handleCardMouseLeave = () => {
         if (isSliderDraggingRef.current) return;
         clearTimeout(hoverShowTimerRef.current);
+        clearTimeout(hoverHideTimerRef.current); // prevent orphan timers when mouseleave fires rapidly
         hoverHideTimerRef.current = setTimeout(() => {
             setHoverCardClosing(true);
         }, 200);
@@ -77,6 +84,7 @@ const ContinueWatchingSlider = () => {
             isSliderDraggingRef.current = true;
             clearTimeout(hoverShowTimerRef.current);
             clearTimeout(hoverHideTimerRef.current);
+            clearTimeout(dragEndTimerRef.current); // cancel any pending drag-end clear
             if (hoveredMovieRef.current) {
                 hoveredMovieRef.current = null;
                 setHoveredMovie(null);
@@ -84,10 +92,16 @@ const ContinueWatchingSlider = () => {
                 setHoverCardClosing(false);
             }
         } else {
-            // Keep drag guard active for the full 400ms so that mouseleave
-            // events from the 350ms snap animation can't cancel the timer.
-            hoverShowTimerRef.current = setTimeout(() => {
+            // Dedicated timer that ONLY clears the drag guard — never cancelled by
+            // user actions (clicking, hovering, etc.) so it always fires.
+            clearTimeout(dragEndTimerRef.current);
+            dragEndTimerRef.current = setTimeout(() => {
                 isSliderDraggingRef.current = false;
+            }, 360);
+
+            // Separate hover re-trigger — safe to cancel; drag guard clears independently.
+            hoverShowTimerRef.current = setTimeout(() => {
+                if (isSliderDraggingRef.current) return; // another drag may have started
                 const { x, y } = lastMousePos.current;
                 const el = document.elementFromPoint(x, y);
                 const sid = sliderIdRef.current;
@@ -341,8 +355,8 @@ const ContinueWatchingSlider = () => {
                             className="slider-item-wrapper"
                             data-slider-id={sliderIdRef.current}
                             data-slider-idx={index}
-                            onMouseEnter={(e) => handleCardMouseEnter(item, e)}
-                            onMouseLeave={handleCardMouseLeave}
+                            onMouseEnter={IS_TOUCH_DEVICE ? undefined : (e) => handleCardMouseEnter(item, e)}
+                            onMouseLeave={IS_TOUCH_DEVICE ? undefined : handleCardMouseLeave}
                         >
                             <button className="slider-btn" onClick={(event) => handleMovieClick(item, event)}>
                                 <Card
@@ -378,7 +392,7 @@ const ContinueWatchingSlider = () => {
                 />
             )}
 
-            {hoveredMovie && hoverAnchorRect && !showModal && (
+            {hoveredMovie && hoverAnchorRect && !showModal && !IS_TOUCH_DEVICE && (
                 <HoverCard
                     movie={hoveredMovie}
                     anchorRect={hoverAnchorRect}
