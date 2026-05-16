@@ -672,7 +672,7 @@ def upload_tvshow(current_admin):
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
                     return jsonify({
                         'message': f'Video for season {season_data["season_number"]}, Episode {episode_data["episode_number"]} already exists. Use force upload to overwrite.'
-                    }, 400)
+                    }), 400
 
                 try:
                     save_with_progress(video_file, video_path)
