@@ -520,6 +520,27 @@
     border-color: rgba(229, 9, 20, 0.72);
 }
 
+.watchPartyEmojiToggle {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+    font-size: 16px;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.watchPartyEmojiToggle.active {
+    background: rgba(229, 9, 20, 0.22);
+    color: #ff6b73;
+}
+
 .watchPartyChatForm button {
     width: 40px;
     height: 40px;

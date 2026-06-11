@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaCopy, FaCrown, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignOutAlt, FaTimes } from 'react-icons/fa';
+import { FaCopy, FaCrown, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignOutAlt, FaSmile, FaTimes } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -45,6 +45,7 @@ const WatchPage = () => {
     const [partyExpiryRemaining, setPartyExpiryRemaining] = useState(null);
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [chatDraft, setChatDraft] = useState('');
+    const [showReactionBar, setShowReactionBar] = useState(false);
     const wsRef = useRef(null);
     const joinedPartyCodeRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
@@ -484,6 +485,7 @@ const WatchPage = () => {
             return;
         }
         wsRef.current.send(JSON.stringify({ type: 'reaction', reaction }));
+        setShowReactionBar(false);
     };
 
     const transferPartyLeader = (member) => {
@@ -1192,18 +1194,20 @@ const WatchPage = () => {
                                     {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
                                     {partyChat.map(renderPartyChatMessage)}
                                 </div>
-                                <div className="watchPartyReactionBar" aria-label="Chat reactions">
-                                    {PARTY_REACTIONS.map((reaction) => (
-                                        <button
-                                            key={reaction}
-                                            type="button"
-                                            onClick={() => sendPartyReaction(reaction)}
-                                            disabled={partyStatus !== 'connected'}
-                                        >
-                                            {reaction}
-                                        </button>
-                                    ))}
-                                </div>
+                                {showReactionBar && (
+                                    <div className="watchPartyReactionBar" aria-label="Chat reactions">
+                                        {PARTY_REACTIONS.map((reaction) => (
+                                            <button
+                                                key={reaction}
+                                                type="button"
+                                                onClick={() => sendPartyReaction(reaction)}
+                                                disabled={partyStatus !== 'connected'}
+                                            >
+                                                {reaction}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                                 <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
                                     <input
                                         value={chatDraft}
@@ -1211,6 +1215,14 @@ const WatchPage = () => {
                                         maxLength={500}
                                         placeholder="Message"
                                     />
+                                    <button
+                                        type="button"
+                                        className={`watchPartyEmojiToggle${showReactionBar ? ' active' : ''}`}
+                                        onClick={() => setShowReactionBar(v => !v)}
+                                        title="Reactions"
+                                    >
+                                        <FaSmile />
+                                    </button>
                                     <button type="submit" disabled={!chatDraft.trim()} title="Send">
                                         <FaPaperPlane />
                                     </button>
