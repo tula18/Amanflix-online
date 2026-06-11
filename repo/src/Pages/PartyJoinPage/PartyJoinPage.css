@@ -1,0 +1,102 @@
+.partyJoinPage {
+  min-height: 100vh;
+  background: #050505;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 18px 48px;
+}
+
+.partyJoinBox {
+  width: min(420px, 100%);
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 28px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+
+.partyJoinIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #e50914;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.partyJoinBox h1 {
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0 0 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.partyJoinInputRow {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 10px;
+}
+
+.partyJoinInputRow input {
+  height: 48px;
+  min-width: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #050505;
+  color: #fff;
+  font-size: 18px;
+  letter-spacing: 0;
+  padding: 0 14px;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.partyJoinInputRow input:focus {
+  border-color: #e50914;
+}
+
+.partyJoinInputRow button {
+  height: 48px;
+  border: none;
+  border-radius: 6px;
+  background: #e50914;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.partyJoinInputRow button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.partyJoinStatus,
+.partyJoinError {
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.partyJoinStatus {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.partyJoinError {
+  color: #ff7a7a;
+}
+
+@media (max-width: 520px) {
+  .partyJoinBox {
+    padding: 22px;
+  }
+
+  .partyJoinBox h1 {
+    font-size: 24px;
+  }
+}

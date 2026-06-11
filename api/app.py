@@ -9,6 +9,7 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
+from flask_sock import Sock
 from sqlalchemy import inspect, text
 from models import db, Movie, TVShow, Season, Episode, Admin, User, WatchHistory, MyList, UploadRequest, BugReport, BlacklistToken, Notification, UserSession, UserActivity
 from tqdm import tqdm
@@ -63,6 +64,7 @@ from api.routes.analytics import analytics_bp
 from api.routes.file_parser import file_parser_bp
 from api.routes.discovery import discovery_bp
 from api.routes.service_control import service_control_bp
+from api.routes.watch_party import watch_party_bp, register_watch_party_socket
 
 # Service controller for checking service status
 from api.service_controller import (
@@ -129,6 +131,8 @@ log_step("Initializing Flask app")
 app = Flask(__name__)
 CORS(app)
 app = setup_request_logging(app)
+app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
+sock = Sock(app)
 
 log_step("Configuring database")
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URI
@@ -235,6 +239,8 @@ app.register_blueprint(analytics_bp)
 app.register_blueprint(file_parser_bp)
 app.register_blueprint(discovery_bp)
 app.register_blueprint(service_control_bp)
+register_watch_party_socket(sock)
+app.register_blueprint(watch_party_bp)
 log_substep("Service control endpoints registered")
 log_section_end()
 

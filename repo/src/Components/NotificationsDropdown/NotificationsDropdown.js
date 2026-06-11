@@ -226,7 +226,6 @@ const NotificationsDropdown = () => {
                 cursor: 'pointer', 
                 fontWeight: 100, 
                 color: '#fff',
-                paddingRight: '5px', 
                 display: 'flex', 
                 alignItems: 'center',
                 marginTop: '8px'

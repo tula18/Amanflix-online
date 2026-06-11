@@ -4,6 +4,7 @@ Flask-SQLAlchemy==3.1.1
 Flask-CORS==4.0.1
 Flask-Bcrypt
 Flask-Migrate
+Flask-Sock
 
 # Database
 SQLAlchemy==2.0.31

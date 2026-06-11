@@ -18,6 +18,8 @@ import {
   FaForward,
   FaBackward,
   FaExternalLinkAlt,
+  FaUsers,
+  FaComments,
 } from 'react-icons/fa';
 import { FiX } from 'react-icons/fi';
 import {
@@ -42,6 +44,7 @@ import {
   VideoElement,
 } from './styles.ts';
 import translations from './i18n/index.ts';
+import { LuPartyPopper } from "react-icons/lu";
 
 // Constants for localStorage keys
 const VOLUME_STORAGE_KEY = 'netflix-player-volume';
@@ -126,6 +129,11 @@ export interface IProps {
   onLoadedMetadata?: (e: SyntheticEvent<HTMLVideoElement, Event>) => void;
   onEnded?: () => void;
   onErrorVideo?: (errorInfo?: any) => void;
+  onPlayPause?: (playing: boolean, position: number) => void;
+  onSeek?: (position: number) => void;
+  onWatchPartyClick?: () => void;
+  watchPartyActive?: boolean;
+  watchPartyLabel?: string;
   onNextClick?: () => void;
   onClickItemListReproduction?: (id: string | number, playing: boolean) => void;
   onCrossClick?: () => void;
@@ -142,6 +150,9 @@ export interface IProps {
   reproductionList?: IItemReproduction[];
   disablePreview?: boolean;
   disableBufferPreview?: boolean;
+  disableSeeking?: boolean;
+  disableNextControls?: boolean;
+  disableReproductionList?: boolean;
   videoRef?: React.MutableRefObject<HTMLVideoElement | null>;
 }
 
@@ -163,6 +174,11 @@ export default function ReactNetflixPlayer({
   onLoadedMetadata = undefined,
   onEnded = undefined,
   onErrorVideo = undefined,
+  onPlayPause = undefined,
+  onSeek = undefined,
+  onWatchPartyClick = undefined,
+  watchPartyActive = false,
+  watchPartyLabel = 'Watch Party',
   onNextClick = undefined,
   onClickItemListReproduction = undefined,
   onCrossClick = () => {},
@@ -182,6 +198,9 @@ export default function ReactNetflixPlayer({
   playbackRateStart = 1,
   disablePreview = true,
   disableBufferPreview = false,
+  disableSeeking = false,
+  disableNextControls = false,
+  disableReproductionList = false,
   videoRef,
 }: IProps) {
   const videoComponent = useRef<null | HTMLVideoElement>(null);
@@ -319,10 +338,14 @@ export default function ReactNetflixPlayer({
 }, [playing, waitingBuffer, onTimeUpdate, disableBufferPreview, progress, showInfo, end]);
 
   const goToPosition = (position: number) => {
+    if (disableSeeking) return;
     const video = videoComponent.current;
     if (!video) return;
     video.currentTime = position;
     setProgress(position);
+    if (onSeek) {
+      onSeek(position);
+    }
   };
 
   const showOperationOverlay = (icon: JSX.Element, text: string) => {
@@ -344,9 +367,15 @@ export default function ReactNetflixPlayer({
         await video.play();
         setRequiresInteraction(false);
         showOperationOverlay(<FaPlay />, 'Play');
+        if (onPlayPause) {
+          onPlayPause(true, video.currentTime);
+        }
       } else {
         video.pause();
         showOperationOverlay(<FaPause />, 'Pause');
+        if (onPlayPause) {
+          onPlayPause(false, video.currentTime);
+        }
       }
     } catch (error) {
       console.log("Play/pause failed:", error);
@@ -380,6 +409,7 @@ export default function ReactNetflixPlayer({
   };
 
   const seekBySeconds = (seconds: number) => {
+    if (disableSeeking) return;
     const video = videoComponent.current;
     if (!video) return;
     const current = video.currentTime;
@@ -400,6 +430,9 @@ export default function ReactNetflixPlayer({
 
     video.currentTime = newTime;
     setProgress(newTime);
+    if (onSeek) {
+      onSeek(newTime);
+    }
   };
 
   const startVideo = () => {
@@ -778,13 +811,13 @@ export default function ReactNetflixPlayer({
 
       case 'ArrowLeft':
         e.preventDefault();
-        seekBySeconds(-5);
+        if (!disableSeeking) seekBySeconds(-5);
         handleShowControls();
         break;
 
       case 'ArrowRight':
         e.preventDefault();
-        seekBySeconds(5);
+        if (!disableSeeking) seekBySeconds(5);
         handleShowControls();
         break;
 
@@ -822,7 +855,7 @@ export default function ReactNetflixPlayer({
         }
         break;
     }
-  }, [togglePlayPause, seekBySeconds, updateVolume, setMutedAction, toggleFullscreen, handleShowControls, showOperationOverlay, isPiPSupported, togglePictureInPicture]);
+  }, [togglePlayPause, seekBySeconds, updateVolume, setMutedAction, toggleFullscreen, handleShowControls, showOperationOverlay, isPiPSupported, togglePictureInPicture, disableSeeking]);
 
   function renderAutoplayOverlay() {
     if (!requiresInteraction) return null;
@@ -1112,6 +1145,7 @@ export default function ReactNetflixPlayer({
                 defaultValue={progress.toString()}
                 className="progress-bar"
                 max={duration}
+                disabled={disableSeeking}
                 onChange={e => goToPosition(+e.target.value)}
                 onMouseMove={handleProgressBarHover}
                 onMouseEnter={handleProgressBarHover}
@@ -1135,13 +1169,17 @@ export default function ReactNetflixPlayer({
                 {(playing && videoComponent.current && !videoComponent.current.paused) && <FaPause onClick={togglePlayPause} />}
               </div>
 
-              <div className="item-control">
-                <FaUndoAlt onClick={() => seekBySeconds(-5)} />
-              </div>
+              {!disableSeeking && (
+                <div className="item-control">
+                  <FaUndoAlt onClick={() => seekBySeconds(-5)} />
+                </div>
+              )}
 
-              <div className="item-control">
-                <FaRedoAlt onClick={() => seekBySeconds(5)} />
-              </div>
+              {!disableSeeking && (
+                <div className="item-control">
+                  <FaRedoAlt onClick={() => seekBySeconds(5)} />
+                </div>
+              )}
 
               {muted === false && (
                 <VolumeControl
@@ -1199,6 +1237,27 @@ export default function ReactNetflixPlayer({
             </div>
 
             <div className="end">
+              {onWatchPartyClick && (
+                <div className="item-control">
+                  <IconPlaylist
+                    $primaryColor={primaryColor}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onWatchPartyClick();
+                    }}
+                    title={watchPartyLabel}
+                    role="button"
+                    aria-label={watchPartyLabel}
+                  >
+                    {watchPartyActive ? (
+                      <FaComments />
+                    ) : (
+                      <LuPartyPopper />
+                    )}
+                  </IconPlaylist>
+                </div>
+              )}
+
               {!!playbackRateEnable && (
                 <div 
                   className="item-control playback-rate-container"
@@ -1253,7 +1312,7 @@ export default function ReactNetflixPlayer({
                 </div>
               )}
 
-              {onNextClick && (
+              {onNextClick && !disableNextControls && (
                 <div className="item-control" onMouseLeave={() => setShowDataNext(false)}>
                   {showDataNext === true && dataNext.title && (
                     <ItemNext>
@@ -1273,6 +1332,7 @@ export default function ReactNetflixPlayer({
                 </div>
               )}
 
+              {!disableReproductionList && (
               <div className="item-control" onMouseLeave={() => setShowReproductionList(false)}>
                 {showReproductionList && (
                   <ItemPlaylist>
@@ -1312,6 +1372,7 @@ export default function ReactNetflixPlayer({
                   </IconPlaylist>
                 )}
               </div>
+              )}
 
               {isPiPSupported && (
                 <div className="item-control">  

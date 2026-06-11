@@ -27,6 +27,7 @@ import ScrollToTop from './Utils/ScrolltoTop';
 import { API_URL } from './config';
 import ComingSoonPage from './Pages/ComingSoonPage/ComingSoonPage';
 import MaintenancePage from './Pages/ErrorsPages/MaintenancePage/MaintenancePage';
+import PartyJoinPage from './Pages/PartyJoinPage/PartyJoinPage';
 
 function App() {
   const [clientIp, setClientIp] = useState('');
@@ -258,6 +259,8 @@ function App() {
           <Route path='/movies/:categoryId' element={<PrivateRoute><MoviesCategoryPage /></PrivateRoute>}/>
           <Route path='/new-titles' element={<PrivateRoute><NewTitlesPage /></PrivateRoute>}/>
           <Route path="/watch/:watch_id" element={<PrivateRoute><Watch/></PrivateRoute>} />
+          <Route path="/party" element={<PrivateRoute><PartyJoinPage/></PrivateRoute>} />
+          <Route path="/party/:partyCode" element={<PrivateRoute><PartyJoinPage/></PrivateRoute>} />
           <Route path='/search' element={<PrivateRoute><SearchPage/></PrivateRoute>} />
           <Route path='/profile' element={<PrivateRoute><ProfilePage/></PrivateRoute>} />
           <Route path='/admin/*' element={<AdminPage/>} />

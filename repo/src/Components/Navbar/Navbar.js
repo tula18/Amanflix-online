@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './Navbar.css';
-import { FaMagnifyingGlass, FaBell, FaBars, FaCaretDown } from 'react-icons/fa6';
+import { FaMagnifyingGlass, FaBell, FaBars, FaCaretDown, FaUserGroup, FaArrowRight } from 'react-icons/fa6';
+import { LuPartyPopper } from "react-icons/lu";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaTimes } from 'react-icons/fa';
 import { IoHelpCircleOutline } from 'react-icons/io5'
@@ -155,6 +156,10 @@ function Navbar() {
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [showBugModal, setShowBugModal] = useState(false);
   const [alertShowMore, setAlertShowMore] = useState(false);
+  const [partyCode, setPartyCode] = useState('');
+  const [partyJoinError, setPartyJoinError] = useState('');
+  const [isJoiningParty, setIsJoiningParty] = useState(false);
+  const [showPartyJoin, setShowPartyJoin] = useState(false);
   const searchInputRef = useRef(null);
   const searchDebounceRef = useRef(null);
   const [isMenuVisible, setIsMenuVisible] = React.useState( );
@@ -317,6 +322,45 @@ function Navbar() {
     }, 0);
   }
 
+  const handleJoinParty = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const code = partyCode.trim().toUpperCase();
+    if (!code) {
+      setPartyJoinError('Enter a party code');
+      return;
+    }
+
+    setPartyJoinError('');
+    setIsJoiningParty(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/watch-party/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ code })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Could not join this party');
+      }
+
+      setPartyCode('');
+      setShowPartyJoin(false);
+      setIsMenuVisible(false);
+      navigate(`/watch/${data.party.watch_id}?party=${data.party.code}`);
+    } catch (error) {
+      setPartyJoinError(error.message || 'Could not join this party');
+    } finally {
+      setIsJoiningParty(false);
+    }
+  }
+
   // const clearSearchText = () => {
   //   setSearchQuery('');
   // };
@@ -411,6 +455,41 @@ function Navbar() {
           <div className="nav_right_item notifications__div">
             <NotificationsDropdown />
           </div>
+          <span className='nav_right_item party_join_nav'>
+              <LuPartyPopper
+              className={`party_join_icon ${showPartyJoin ? 'active' : ''}`}
+              onClick={() => setShowPartyJoin((value) => !value)}
+              title="Join Watch Party"
+              aria-label="Join Watch Party"
+              role="button"
+              tabIndex={0}
+              style={{fontSize:25, cursor: 'pointer', fontWeight: 100, paddingRight:'5px' }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setShowPartyJoin((value) => !value);
+                }
+              }}
+            />
+            {showPartyJoin && (
+              <div className="party_join_dropdown">
+                <div className="party_join_title">Join Watch Party</div>
+                <form className="party_join_form" onSubmit={handleJoinParty}>
+                  <input
+                    value={partyCode}
+                    onChange={(event) => setPartyCode(event.target.value.toUpperCase())}
+                    placeholder="PARTY CODE"
+                    maxLength={12}
+                    autoFocus
+                  />
+                  <button type="submit" disabled={isJoiningParty} title="Join party">
+                    <FaArrowRight />
+                  </button>
+                </form>
+                {partyJoinError && <div className="party_join_error">{partyJoinError}</div>}
+              </div>
+            )}
+          </span>
           <span className='profile__div'>
             <img loading={'lazy'} alt='User Avarar' className='profile-image' src={`${API_URL}/cdn/images/profile.png`} />
             <FaCaretDown className='profile_arrow' style={{fontSize:15, cursor: 'pointer', fontWeight: 100, paddingRight:'5px', display: 'flex', alignItems: 'center' }}/>
@@ -460,6 +539,24 @@ function Navbar() {
           <span className={`route_mobile ${location.pathname === '/shows' ? 'cur_route' : ''}`}><Link className='link_mobile' to="/shows">Tv Shows</Link></span>
           <span className={`route_mobile ${location.pathname === '/movies' ? 'cur_route' : ''}`}><Link className='link_mobile' to="/movies">Movies</Link></span>
           <span className={`route_mobile ${location.pathname === '/list' ? 'cur_route' : ''}`}><Link className='link_mobile' to="/list">My List</Link></span>
+          <form className="party_join_mobile_form" onSubmit={handleJoinParty} onClick={(event) => event.stopPropagation()}>
+            <div className="party_join_mobile_title">
+              <FaUserGroup />
+              <span>Join Watch Party</span>
+            </div>
+            <div className="party_join_mobile_row">
+              <input
+                value={partyCode}
+                onChange={(event) => setPartyCode(event.target.value.toUpperCase())}
+                placeholder="PARTY CODE"
+                maxLength={12}
+              />
+              <button type="submit" disabled={isJoiningParty} title="Join party">
+                <FaArrowRight />
+              </button>
+            </div>
+            {partyJoinError && <div className="party_join_error">{partyJoinError}</div>}
+          </form>
         </div>
 
         <div className='profile_menu_options'>

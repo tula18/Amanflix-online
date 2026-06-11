@@ -1,13 +1,17 @@
 .watchPageContainer {
-    /* width: 100vw;
-    height: 100vh; */
+    min-height: 100vh;
     background-color: #000;
     position: relative;
     overflow: hidden;
 }
 
 /* Ensure the Netflix player takes full space */
-.watchPageContainer > div {
+.watchPlayerShell {
+    width: 100%;
+    height: 100vh;
+}
+
+.watchPlayerShell > div {
     width: 100%;
     height: 100%;
 }
@@ -37,4 +41,291 @@
 /* Remove the conflicting controls styles that affect Netflix player */
 .use-old-player .controls {
     display: none; /* This prevents conflicts */
+}
+
+.watchPartyPanel {
+    position: fixed;
+    top: 70px;
+    right: 18px;
+    bottom: 18px;
+    z-index: 10050;
+    width: 352px;
+    max-width: calc(100vw - 36px);
+    background: rgba(12, 12, 12, 0.94);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.58);
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    transform: translateX(calc(100% + 28px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 180ms ease, opacity 180ms ease;
+    backdrop-filter: blur(16px);
+}
+
+.watchPartyPanel.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.watchPartyPanelHeader,
+.watchPartyActions,
+.watchPartyChatForm,
+.watchPartyMember,
+.watchPartyStatus {
+    display: flex;
+    align-items: center;
+}
+
+.watchPartyPanelHeader {
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.watchPartyEyebrow {
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.watchPartyTitle {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: 0;
+}
+
+.watchPartyIconButton {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.watchPartyStatus {
+    gap: 8px;
+    min-height: 28px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.72);
+    margin-bottom: 12px;
+}
+
+.watchPartyStatus span,
+.watchPartyMember > span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #747474;
+    flex: 0 0 auto;
+}
+
+.watchPartyStatus.connected span,
+.watchPartyMember > span.online {
+    background: #2fd17c;
+}
+
+.watchPartyStatus.reconnecting span,
+.watchPartyStatus.connecting span,
+.watchPartyStatus.joining span {
+    background: #f7c948;
+}
+
+.watchPartyStatus.error span,
+.watchPartyStatus.ended span {
+    background: #ff5d5d;
+}
+
+.watchPartyEmpty {
+    display: grid;
+    gap: 10px;
+}
+
+.watchPartyActions {
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.watchPartyPrimaryButton,
+.watchPartySecondaryButton,
+.watchPartyDangerButton {
+    min-height: 38px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 12px;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.watchPartyPrimaryButton {
+    background: #e50914;
+}
+
+.watchPartySecondaryButton {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.watchPartyDangerButton {
+    background: rgba(229, 9, 20, 0.2);
+    border-color: rgba(229, 9, 20, 0.55);
+}
+
+.watchPartyPrimaryButton:disabled,
+.watchPartySecondaryButton:disabled,
+.watchPartyDangerButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.watchPartySection {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 14px;
+    margin-top: 2px;
+}
+
+.watchPartySectionTitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.56);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0;
+}
+
+.watchPartyMembers {
+    display: grid;
+    gap: 8px;
+    max-height: 118px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.watchPartyMember {
+    gap: 8px;
+    min-height: 28px;
+    font-size: 14px;
+}
+
+.watchPartyMember strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.watchPartyMember svg {
+    color: #f7c948;
+    flex: 0 0 auto;
+}
+
+.watchPartyChatSection {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    margin-top: 14px;
+}
+
+.watchPartyChatLog {
+    flex: 1;
+    min-height: 140px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 2px;
+}
+
+.watchPartyChatEmpty {
+    color: rgba(255, 255, 255, 0.46);
+    font-size: 14px;
+}
+
+.watchPartyChatMessage {
+    display: grid;
+    gap: 3px;
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.watchPartyChatMessage strong {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 12px;
+}
+
+.watchPartyChatForm {
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.watchPartyChatForm input {
+    min-width: 0;
+    flex: 1;
+    height: 38px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.34);
+    color: #fff;
+    padding: 0 10px;
+    outline: none;
+}
+
+.watchPartyChatForm input:focus {
+    border-color: rgba(229, 9, 20, 0.72);
+}
+
+.watchPartyChatForm button {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 6px;
+    background: #e50914;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.watchPartyChatForm button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.watchPartyError {
+    margin-top: 12px;
+    color: #ffb1b1;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+    .watchPartyPanel {
+        top: 60px;
+        right: 12px;
+        left: 12px;
+        bottom: 12px;
+        width: auto;
+        max-width: none;
+    }
 }

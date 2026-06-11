@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { FaCopy, FaCrown, FaPaperPlane, FaSignOutAlt, FaTimes, FaUsers } from 'react-icons/fa';
+import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
 import ReactNetflixPlayer from '../../Components/NetflixPlayer/index.tsx';
@@ -29,6 +31,23 @@ const WatchPage = () => {
     const [disablePreview, setDisablePreview] = useState(true);
     const [disableBuffer, setDisableBuffer] = useState(false);
 
+    // Watch party state
+    const [party, setParty] = useState(null);
+    const [partyStatus, setPartyStatus] = useState('idle');
+    const [partyError, setPartyError] = useState('');
+    const [partyPanelOpen, setPartyPanelOpen] = useState(false);
+    const [isCreatingParty, setIsCreatingParty] = useState(false);
+    const [chatDraft, setChatDraft] = useState('');
+    const wsRef = useRef(null);
+    const joinedPartyCodeRef = useRef(null);
+    const reconnectTimeoutRef = useRef(null);
+    const heartbeatIntervalRef = useRef(null);
+    const reconnectAttemptsRef = useRef(0);
+    const shouldReconnectRef = useRef(false);
+    const applyingRemotePlaybackRef = useRef(false);
+    const partyRef = useRef(null);
+    const currentPartyUserIdRef = useRef(null);
+
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
     const [mediaSubTitle, setMediaSubTitle] = useState('');
@@ -37,6 +56,399 @@ const WatchPage = () => {
     const [mediaDataNext, setMediaDataNext] = useState(null);
     const [mediaReproductionList, setMediaReproductionList] = useState([]);
     const [isLoadingMediaData, setIsLoadingMediaData] = useState(true);
+
+    const getPartyCodeFromUrl = () => {
+        const queryParams = new URLSearchParams(location.search);
+        return queryParams.get('party');
+    };
+
+    const getPartySocketUrl = (code) => {
+        return `${API_URL.replace(/^http/, 'ws')}/api/watch-party/ws/${encodeURIComponent(code)}`;
+    };
+
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('token');
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    };
+
+    const updatePartyState = (nextParty) => {
+        if (!nextParty) return;
+        partyRef.current = nextParty;
+        if (nextParty.current_user_id) {
+            currentPartyUserIdRef.current = nextParty.current_user_id;
+        }
+        setParty(nextParty);
+    };
+
+    const closePartySocket = (allowReconnect = false) => {
+        shouldReconnectRef.current = allowReconnect;
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+        if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
+        }
+        if (wsRef.current) {
+            const socket = wsRef.current;
+            wsRef.current = null;
+            socket.onopen = null;
+            socket.onmessage = null;
+            socket.onclose = null;
+            socket.onerror = null;
+            try {
+                socket.close();
+            } catch (error) {
+                console.debug('Failed to close party socket:', error);
+            }
+        }
+    };
+
+    const applyRemotePlayback = (playback) => {
+        if (!videoRef.current || !playback) return;
+
+        const video = videoRef.current;
+        const nowSeconds = Date.now() / 1000;
+        const updatedAt = Number(playback.updated_at) || nowSeconds;
+        const elapsed = playback.playing ? Math.max(0, nowSeconds - updatedAt) : 0;
+        const targetTime = Math.max(0, Number(playback.position || 0) + elapsed);
+        const drift = Math.abs((video.currentTime || 0) - targetTime);
+
+        applyingRemotePlaybackRef.current = true;
+
+        try {
+            if (drift > 1.25 && Number.isFinite(targetTime)) {
+                video.currentTime = targetTime;
+                setCurrentTime(targetTime);
+            }
+
+            if (playback.playing && video.paused) {
+                video.play().catch((error) => {
+                    console.debug('Remote party play was blocked:', error);
+                });
+            } else if (!playback.playing && !video.paused) {
+                video.pause();
+            }
+        } finally {
+            setTimeout(() => {
+                applyingRemotePlaybackRef.current = false;
+            }, 350);
+        }
+    };
+
+    const sendPartyPlayback = (action, position, playing) => {
+        const activeParty = partyRef.current;
+        const socket = wsRef.current;
+        const video = videoRef.current;
+
+        if (!activeParty || !socket || socket.readyState !== WebSocket.OPEN || applyingRemotePlaybackRef.current) {
+            return;
+        }
+
+        if ((action === 'seek' || action === 'sync') && !activeParty.is_leader) {
+            return;
+        }
+
+        socket.send(JSON.stringify({
+            type: 'playback',
+            action,
+            position: typeof position === 'number' ? position : (video ? video.currentTime : 0),
+            playing: typeof playing === 'boolean' ? playing : (video ? !video.paused : false)
+        }));
+    };
+
+    const handlePartySocketMessage = (event) => {
+        let data;
+        try {
+            data = JSON.parse(event.data);
+        } catch (error) {
+            console.debug('Invalid watch party message:', error);
+            return;
+        }
+
+        if (data.type === 'ready') {
+            updatePartyState(data.party);
+            reconnectAttemptsRef.current = 0;
+            setPartyStatus('connected');
+            setPartyError('');
+            setPartyPanelOpen(true);
+
+            if (data.party?.is_leader && videoRef.current) {
+                setTimeout(() => {
+                    const video = videoRef.current;
+                    if (video) {
+                        sendPartyPlayback('sync', video.currentTime, !video.paused);
+                    }
+                }, 250);
+            } else if (data.party?.playback) {
+                applyRemotePlayback(data.party.playback);
+            }
+            return;
+        }
+
+        if (data.type === 'party_state') {
+            updatePartyState(data.party);
+            return;
+        }
+
+        if (data.type === 'playback') {
+            setParty((previousParty) => {
+                if (!previousParty) return previousParty;
+                const nextParty = { ...previousParty, playback: data.playback };
+                partyRef.current = nextParty;
+                return nextParty;
+            });
+
+            if (data.source_user_id !== currentPartyUserIdRef.current) {
+                applyRemotePlayback(data.playback);
+            }
+            return;
+        }
+
+        if (data.type === 'chat_message') {
+            setParty((previousParty) => {
+                if (!previousParty) return previousParty;
+                const nextChat = [...(previousParty.chat || []), data.message].slice(-100);
+                const nextParty = { ...previousParty, chat: nextChat };
+                partyRef.current = nextParty;
+                return nextParty;
+            });
+            return;
+        }
+
+        if (data.type === 'party_ended' || data.type === 'party_expired') {
+            closePartySocket(false);
+            joinedPartyCodeRef.current = null;
+            setPartyStatus('ended');
+            setPartyError(data.type === 'party_ended' ? 'Party ended' : 'Party expired');
+            setParty(null);
+            partyRef.current = null;
+            return;
+        }
+
+        if (data.type === 'error') {
+            setPartyError(data.message || 'Watch party error');
+        }
+    };
+
+    const connectPartySocket = (code) => {
+        const token = localStorage.getItem('token');
+        if (!token || !code) return;
+
+        closePartySocket(true);
+        shouldReconnectRef.current = true;
+        setPartyStatus('connecting');
+
+        const socket = new WebSocket(getPartySocketUrl(code));
+        wsRef.current = socket;
+
+        socket.onopen = () => {
+            socket.send(JSON.stringify({ type: 'auth', token }));
+            if (heartbeatIntervalRef.current) {
+                clearInterval(heartbeatIntervalRef.current);
+            }
+            heartbeatIntervalRef.current = setInterval(() => {
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ type: 'heartbeat' }));
+                }
+            }, 30000);
+        };
+
+        socket.onmessage = handlePartySocketMessage;
+
+        socket.onerror = () => {
+            setPartyStatus('error');
+            setPartyError('Watch party connection failed');
+        };
+
+        socket.onclose = () => {
+            if (heartbeatIntervalRef.current) {
+                clearInterval(heartbeatIntervalRef.current);
+                heartbeatIntervalRef.current = null;
+            }
+            if (!shouldReconnectRef.current || joinedPartyCodeRef.current !== code) {
+                return;
+            }
+            reconnectAttemptsRef.current += 1;
+            const delay = Math.min(10000, reconnectAttemptsRef.current * 1500);
+            setPartyStatus('reconnecting');
+            reconnectTimeoutRef.current = setTimeout(() => connectPartySocket(code), delay);
+        };
+    };
+
+    const joinPartyByCode = async (code) => {
+        const normalizedCode = (code || '').trim().toUpperCase();
+        if (!normalizedCode) return;
+
+        try {
+            setPartyStatus('joining');
+            setPartyError('');
+            const response = await fetch(`${API_URL}/api/watch-party/join`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ code: normalizedCode })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Could not join this party');
+            }
+
+            if (data.party.watch_id !== watch_id) {
+                navigate(`/watch/${data.party.watch_id}?party=${data.party.code}`, { replace: true });
+                return;
+            }
+
+            joinedPartyCodeRef.current = data.party.code;
+            updatePartyState(data.party);
+            setPartyPanelOpen(true);
+            connectPartySocket(data.party.code);
+        } catch (error) {
+            setPartyStatus('error');
+            setPartyError(error.message || 'Could not join this party');
+        }
+    };
+
+    const startWatchParty = async () => {
+        if (!watch_id || isCreatingParty) return;
+
+        try {
+            setIsCreatingParty(true);
+            setPartyError('');
+            const response = await fetch(`${API_URL}/api/watch-party/create`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ watch_id })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Could not start party');
+            }
+
+            joinedPartyCodeRef.current = data.party.code;
+            updatePartyState(data.party);
+            setPartyPanelOpen(true);
+            navigate(`/watch/${watch_id}?party=${data.party.code}`, { replace: true });
+            connectPartySocket(data.party.code);
+        } catch (error) {
+            setPartyStatus('error');
+            setPartyError(error.message || 'Could not start party');
+        } finally {
+            setIsCreatingParty(false);
+        }
+    };
+
+    const leaveWatchParty = () => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'leave' }));
+        }
+        closePartySocket(false);
+        joinedPartyCodeRef.current = null;
+        partyRef.current = null;
+        setParty(null);
+        setPartyStatus('idle');
+        setPartyError('');
+        navigate(`/watch/${watch_id}`, { replace: true });
+    };
+
+    const endWatchParty = async () => {
+        const activeParty = partyRef.current;
+        if (!activeParty?.code || !activeParty.is_leader) {
+            leaveWatchParty();
+            return;
+        }
+
+        try {
+            await fetch(`${API_URL}/api/watch-party/${activeParty.code}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+        } catch (error) {
+            console.debug('Failed to end watch party:', error);
+        } finally {
+            leaveWatchParty();
+        }
+    };
+
+    const copyPartyInvite = async () => {
+        if (!party?.code) return;
+        const inviteLink = `${window.location.origin}/party/${party.code}`;
+        try {
+            await navigator.clipboard.writeText(inviteLink);
+            setPartyError('Invite link copied');
+        } catch (error) {
+            setPartyError(inviteLink);
+        }
+    };
+
+    const sendChatMessage = (event) => {
+        event.preventDefault();
+        const message = chatDraft.trim();
+        if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+        wsRef.current.send(JSON.stringify({ type: 'chat', message }));
+        setChatDraft('');
+    };
+
+    const handlePartyPlayPause = (playing, position) => {
+        sendPartyPlayback(playing ? 'play' : 'pause', position, playing);
+    };
+
+    const handlePartySeek = (position) => {
+        if (!partyRef.current?.is_leader) return;
+        sendPartyPlayback('seek', position, videoRef.current ? !videoRef.current.paused : false);
+    };
+
+    useEffect(() => {
+        const code = getPartyCodeFromUrl();
+
+        if (!code) {
+            if (joinedPartyCodeRef.current) {
+                closePartySocket(false);
+                joinedPartyCodeRef.current = null;
+                partyRef.current = null;
+                setParty(null);
+                setPartyStatus('idle');
+            }
+            return;
+        }
+
+        const normalizedCode = code.trim().toUpperCase();
+        if (
+            joinedPartyCodeRef.current === normalizedCode &&
+            partyRef.current?.watch_id === watch_id
+        ) {
+            return;
+        }
+
+        joinPartyByCode(normalizedCode);
+    }, [location.search, watch_id]);
+
+    useEffect(() => {
+        return () => {
+            closePartySocket(false);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!party?.code || !party.is_leader || partyStatus !== 'connected') {
+            return;
+        }
+
+        const intervalId = setInterval(() => {
+            const video = videoRef.current;
+            if (video && !video.paused) {
+                sendPartyPlayback('sync', video.currentTime, true);
+            }
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [party?.code, party?.is_leader, partyStatus]);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {
@@ -444,12 +856,120 @@ const WatchPage = () => {
         navigate(`/watch/${episodeId}`, { replace: true });
     };
 
+    const isInParty = Boolean(party?.code);
+    const isPartyLeader = Boolean(party?.is_leader);
+    const disablePartyNavigation = isInParty && !isPartyLeader;
+    const partyMembers = party?.members || [];
+    const partyChat = party?.chat || [];
+    const partyStatusLabel = partyStatus === 'connected'
+        ? 'Connected'
+        : partyStatus === 'reconnecting'
+            ? 'Reconnecting'
+            : partyStatus === 'joining' || partyStatus === 'connecting'
+                ? 'Connecting'
+                : partyStatus === 'ended'
+                    ? 'Ended'
+                    : partyStatus === 'error'
+                        ? 'Offline'
+                        : 'Idle';
+
+    const renderWatchPartyPanel = () => (
+        <aside className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''}`}>
+            <div className="watchPartyPanelHeader">
+                <div>
+                    <div className="watchPartyEyebrow">Watch Party</div>
+                    <div className="watchPartyTitle">{party?.code || 'Start a party'}</div>
+                </div>
+                <button className="watchPartyIconButton" onClick={() => setPartyPanelOpen(false)} title="Close">
+                    <FaTimes />
+                </button>
+            </div>
+
+            <div className={`watchPartyStatus ${partyStatus}`}>
+                <span />
+                {partyStatusLabel}
+            </div>
+
+            {!party && (
+                <div className="watchPartyEmpty">
+                    <button className="watchPartyPrimaryButton" onClick={startWatchParty} disabled={isCreatingParty}>
+                        <LuPartyPopper />
+                        {isCreatingParty ? 'Starting...' : 'Start Party'}
+                    </button>
+                    <button className="watchPartySecondaryButton" onClick={() => navigate('/party')}>
+                        Join By Code
+                    </button>
+                </div>
+            )}
+
+            {party && (
+                <>
+                    <div className="watchPartyActions">
+                        <button className="watchPartySecondaryButton" onClick={copyPartyInvite}>
+                            <FaCopy />
+                            Copy Link
+                        </button>
+                        <button
+                            className={isPartyLeader ? 'watchPartyDangerButton' : 'watchPartySecondaryButton'}
+                            onClick={isPartyLeader ? endWatchParty : leaveWatchParty}
+                        >
+                            <FaSignOutAlt />
+                            {isPartyLeader ? 'End' : 'Leave'}
+                        </button>
+                    </div>
+
+                    <section className="watchPartySection">
+                        <div className="watchPartySectionTitle">Members</div>
+                        <div className="watchPartyMembers">
+                            {partyMembers.map((member) => (
+                                <div className="watchPartyMember" key={member.id}>
+                                    <span className={member.connected ? 'online' : ''} />
+                                    <strong>{member.username}</strong>
+                                    {member.is_leader && <FaCrown title="Leader" />}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <section className="watchPartySection watchPartyChatSection">
+                        <div className="watchPartySectionTitle">Chat</div>
+                        <div className="watchPartyChatLog">
+                            {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
+                            {partyChat.map((message) => (
+                                <div className="watchPartyChatMessage" key={message.id}>
+                                    <strong>{message.username}</strong>
+                                    <span>{message.message}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
+                            <input
+                                value={chatDraft}
+                                onChange={(event) => setChatDraft(event.target.value)}
+                                maxLength={500}
+                                placeholder="Message"
+                            />
+                            <button type="submit" disabled={!chatDraft.trim()} title="Send">
+                                <FaPaperPlane />
+                            </button>
+                        </form>
+                    </section>
+                </>
+            )}
+
+            {partyError && <div className="watchPartyError">{partyError}</div>}
+        </aside>
+    );
+
     if (isLoadingMediaData && !useOldPlayer) {
         return <div className="watchPageLoading">Loading player data...</div>; // Or a proper loading spinner
     }
 
     return (
         <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
+            {renderWatchPartyPanel()}
+
+            <div className="watchPlayerShell">
             {useOldPlayer ? (
                 <video
                     ref={videoRef}
@@ -487,10 +1007,18 @@ const WatchPage = () => {
                     reproductionList={mediaReproductionList}
                     onClickItemListReproduction={handleEpisodeClick}
                     videoRef={videoRef}
+                    onPlayPause={handlePartyPlayPause}
+                    onSeek={handlePartySeek}
+                    onWatchPartyClick={() => setPartyPanelOpen(true)}
+                    watchPartyActive={isInParty}
+                    watchPartyLabel={isInParty ? `Party ${party.code}` : 'Watch Party'}
+                    disableSeeking={disablePartyNavigation}
+                    disableNextControls={disablePartyNavigation}
+                    disableReproductionList={disablePartyNavigation}
                     onNextClick={mediaDataNext ? handleNextEpisode : undefined} // Pass the handler
                 />
             )}
-            
+            </div>
         </div>
     );
 };

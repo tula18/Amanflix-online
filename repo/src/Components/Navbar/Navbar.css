@@ -86,6 +86,99 @@
     cursor: pointer;
 }
 
+.party_join_nav {
+  position: relative;
+}
+
+.party_join_icon {
+  font-size: 25px;
+  cursor: pointer;
+  font-weight: 100;
+  color: #fff;
+  padding-right: 5px;
+  display: flex;
+  align-items: center;
+  /* margin-top: 8px; */
+  transition: color 0.2s;
+}
+
+.party_join_icon.active,
+.party_join_icon:hover {
+  color: #e50914;
+}
+
+.party_join_dropdown {
+  position: absolute;
+  top: 46px;
+  right: 0;
+  width: 286px;
+  padding: 14px;
+  background: #050505;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+
+.party_join_title {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.party_join_form,
+.party_join_mobile_row {
+  display: grid;
+  grid-template-columns: 1fr 40px;
+  gap: 8px;
+}
+
+.party_join_form input,
+.party_join_mobile_row input {
+  min-width: 0;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #111;
+  color: #fff;
+  padding: 0 10px;
+  outline: none;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.party_join_form input:focus,
+.party_join_mobile_row input:focus {
+  border-color: #e50914;
+}
+
+.party_join_form button,
+.party_join_mobile_row button {
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  background: #e50914;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.party_join_form button:disabled,
+.party_join_mobile_row button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.party_join_error {
+  margin-top: 9px;
+  color: #ff9b9b;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
 .profile__div {
     /* margin-left: 10px; */
     margin-right: 10px;
@@ -297,6 +390,27 @@
   margin-bottom: 30px;
   flex-direction: column;
   gap: 10px;
+}
+
+.party_join_mobile_form {
+  background-color: rgba(109, 109, 110, 0.3);
+  border-radius: 15px;
+  padding: 14px;
+  color: #fff;
+}
+
+.party_join_mobile_title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.party_join_mobile_title svg {
+  color: #e50914;
 }
 
 
