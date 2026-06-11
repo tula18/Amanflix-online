@@ -601,3 +601,26 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* iPad (641px – 1180px): fix cropped reaction bar and ensure panel stays above player controls */
+@media (min-width: 641px) and (max-width: 1180px) {
+    .watchPartyPanel {
+        top: 20px;
+        bottom: 115px;
+        max-height: calc(100vh - 255px);
+        z-index: 10060;
+    }
+
+    .watchPartyPanel.collapsed {
+        bottom: auto;
+        max-height: none;
+    }
+
+    .watchPartyChatLog {
+        min-height: 80px;
+    }
+
+    .watchPartyToast {
+        bottom: 215px;
+    }
+}
