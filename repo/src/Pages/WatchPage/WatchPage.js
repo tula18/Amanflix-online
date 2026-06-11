@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaCopy, FaCrown, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignOutAlt, FaSmile, FaTimes } from 'react-icons/fa';
+import { FaArrowDown, FaBan, FaCopy, FaCrown, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignOutAlt, FaSmile, FaTimes } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -46,6 +46,13 @@ const WatchPage = () => {
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [chatDraft, setChatDraft] = useState('');
     const [showReactionBar, setShowReactionBar] = useState(false);
+    const [typingUsers, setTypingUsers] = useState({});
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [chatAtBottom, setChatAtBottom] = useState(true);
+    const [floatingReactions, setFloatingReactions] = useState([]);
+    const [mentionOpen, setMentionOpen] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState('');
+    const [mentionIndex, setMentionIndex] = useState(0);
     const wsRef = useRef(null);
     const joinedPartyCodeRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
@@ -60,6 +67,10 @@ const WatchPage = () => {
     const currentPartyUserIdRef = useRef(null);
     const chatLogRef = useRef(null);
     const chatTextareaRef = useRef(null);
+    const partyPanelOpenRef = useRef(false);
+    const typingTimeoutsRef = useRef({});
+    const typingDebounceRef = useRef(null);
+    const isTypingRef = useRef(false);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
@@ -88,11 +99,14 @@ const WatchPage = () => {
     };
 
     const openPartyPanel = () => {
+        partyPanelOpenRef.current = true;
         setPartyPanelOpen(true);
         setPartyPanelCollapsed(false);
+        setUnreadCount(0);
     };
 
     const closePartyPanel = () => {
+        partyPanelOpenRef.current = false;
         setPartyPanelOpen(false);
         setPartyPanelCollapsed(false);
     };
@@ -262,6 +276,28 @@ const WatchPage = () => {
             return;
         }
 
+        if (data.type === 'typing') {
+            const typingUserId = data.user_id;
+            const typingUsername = data.username;
+            if (data.typing) {
+                setTypingUsers((prev) => ({ ...prev, [typingUserId]: typingUsername }));
+                if (typingTimeoutsRef.current[typingUserId]) {
+                    clearTimeout(typingTimeoutsRef.current[typingUserId]);
+                }
+                typingTimeoutsRef.current[typingUserId] = setTimeout(() => {
+                    setTypingUsers((prev) => { const next = { ...prev }; delete next[typingUserId]; return next; });
+                    delete typingTimeoutsRef.current[typingUserId];
+                }, 4000);
+            } else {
+                setTypingUsers((prev) => { const next = { ...prev }; delete next[typingUserId]; return next; });
+                if (typingTimeoutsRef.current[typingUserId]) {
+                    clearTimeout(typingTimeoutsRef.current[typingUserId]);
+                    delete typingTimeoutsRef.current[typingUserId];
+                }
+            }
+            return;
+        }
+
         if (data.type === 'playback') {
             setParty((previousParty) => {
                 if (!previousParty) return previousParty;
@@ -284,6 +320,17 @@ const WatchPage = () => {
                 partyRef.current = nextParty;
                 return nextParty;
             });
+            if (!partyPanelOpenRef.current) {
+                setUnreadCount((prev) => prev + 1);
+            }
+            if (data.message?.type === 'reaction') {
+                const emoji = data.message.reaction || data.message.message;
+                const reactionId = Date.now() + Math.random();
+                setFloatingReactions((prev) => [...prev, { id: reactionId, emoji, x: 15 + Math.random() * 70 }]);
+                setTimeout(() => {
+                    setFloatingReactions((prev) => prev.filter((r) => r.id !== reactionId));
+                }, 2000);
+            }
             return;
         }
 
@@ -298,6 +345,20 @@ const WatchPage = () => {
             partyRef.current = null;
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
+            return;
+        }
+
+        if (data.type === 'kicked') {
+            closePartySocket(false);
+            joinedPartyCodeRef.current = null;
+            setPartyStatus('ended');
+            setPartyError(data.message || 'You were kicked from the party');
+            showPartyToast(data.message || 'You were kicked from the party', 'error');
+            setParty(null);
+            partyRef.current = null;
+            partyExpiryAtRef.current = null;
+            setPartyExpiryRemaining(null);
+            navigate(`/watch/${watch_id}`, { replace: true });
             return;
         }
 
@@ -478,18 +539,59 @@ const WatchPage = () => {
 
         wsRef.current.send(JSON.stringify({ type: 'chat', message }));
         setChatDraft('');
+        setMentionOpen(false);
+        sendTypingIndicator(false);
         if (chatTextareaRef.current) {
             chatTextareaRef.current.style.height = 'auto';
         }
     };
 
     const handleChatKeyDown = (event) => {
+        if (event.key === 'Escape' && mentionOpen) {
+            event.preventDefault();
+            setMentionOpen(false);
+            setMentionIndex(0);
+            return;
+        }
+        if (mentionOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+            event.preventDefault();
+            const members = Array.isArray(partyRef.current?.members)
+                ? partyRef.current.members
+                : Object.values(partyRef.current?.members || {});
+            const matches = members
+                .filter(m => m.id !== currentPartyUserIdRef.current && m.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+                .slice(0, 5);
+            if (matches.length === 0) return;
+            setMentionIndex(prev =>
+                event.key === 'ArrowDown'
+                    ? (prev + 1) % matches.length
+                    : (prev - 1 + matches.length) % matches.length
+            );
+            return;
+        }
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
+            if (mentionOpen) {
+                const members = Array.isArray(partyRef.current?.members)
+                    ? partyRef.current.members
+                    : Object.values(partyRef.current?.members || {});
+                const matches = members
+                    .filter(m => m.id !== currentPartyUserIdRef.current && m.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+                    .slice(0, 5);
+                const selected = matches[mentionIndex] || matches[0];
+                if (selected) {
+                    insertMention(selected.username);
+                    setMentionIndex(0);
+                    return;
+                }
+            }
             const message = chatDraft.trim();
             if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
             wsRef.current.send(JSON.stringify({ type: 'chat', message }));
             setChatDraft('');
+            setMentionOpen(false);
+            setMentionIndex(0);
+            sendTypingIndicator(false);
             if (chatTextareaRef.current) {
                 chatTextareaRef.current.style.height = 'auto';
             }
@@ -510,6 +612,71 @@ const WatchPage = () => {
         }
         wsRef.current.send(JSON.stringify({ type: 'reaction', reaction }));
         setShowReactionBar(false);
+    };
+
+    const sendTypingIndicator = (typing) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !partyRef.current) return;
+        if (isTypingRef.current === typing) return;
+        isTypingRef.current = typing;
+        wsRef.current.send(JSON.stringify({ type: 'typing', typing }));
+    };
+
+    const kickPartyMember = (member) => {
+        if (!isPartyLeader || !member?.id || member.id === party?.current_user_id) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        wsRef.current.send(JSON.stringify({ type: 'kick', target_user_id: member.id }));
+    };
+
+    const handleChatScroll = () => {
+        const el = chatLogRef.current;
+        if (!el) return;
+        setChatAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
+    };
+
+    const scrollChatToBottom = () => {
+        if (chatLogRef.current) {
+            chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+        }
+        setChatAtBottom(true);
+    };
+
+    const insertMention = (username) => {
+        const textarea = chatTextareaRef.current;
+        if (!textarea) return;
+        const cursorPos = textarea.selectionStart;
+        const textBefore = chatDraft.slice(0, cursorPos);
+        const textAfter = chatDraft.slice(cursorPos);
+        const atIndex = textBefore.lastIndexOf('@');
+        const newDraft = textBefore.slice(0, atIndex) + '@' + username + ' ' + textAfter;
+        setChatDraft(newDraft);
+        setMentionOpen(false);
+        setMentionQuery('');
+        textarea.focus();
+    };
+
+    const handleChatChange = (event) => {
+        const value = event.target.value;
+        setChatDraft(value);
+        if (value.trim() && partyRef.current) {
+            sendTypingIndicator(true);
+            if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+            typingDebounceRef.current = setTimeout(() => sendTypingIndicator(false), 2000);
+        } else {
+            if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+            sendTypingIndicator(false);
+        }
+        const cursorPos = event.target.selectionStart;
+        const textBefore = value.slice(0, cursorPos);
+        const mentionMatch = textBefore.match(/@(\w*)$/);
+        if (mentionMatch) {
+            setMentionQuery(mentionMatch[1]);
+            setMentionOpen(true);
+            setMentionIndex(0);
+        } else {
+            setMentionOpen(false);
+            setMentionQuery('');
+            setMentionIndex(0);
+        }
     };
 
     const transferPartyLeader = (member) => {
@@ -569,6 +736,10 @@ const WatchPage = () => {
             if (partyToastTimerRef.current) {
                 clearTimeout(partyToastTimerRef.current);
             }
+            if (typingDebounceRef.current) {
+                clearTimeout(typingDebounceRef.current);
+            }
+            Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
         };
     }, []);
 
@@ -603,7 +774,7 @@ const WatchPage = () => {
     }, [party?.code, party?.is_leader, partyStatus]);
 
     useEffect(() => {
-        if (chatLogRef.current) {
+        if (chatAtBottom && chatLogRef.current) {
             chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
         }
     }, [party?.chat?.length]);
@@ -1020,6 +1191,12 @@ const WatchPage = () => {
     const partyMembers = party?.members || [];
     const partyChat = party?.chat || [];
     const partyOnlineCount = partyMembers.filter((member) => member.connected).length;
+    const filteredMentionMembers = mentionOpen
+        ? partyMembers
+            .filter(m => m.id !== party?.current_user_id && m.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+            .slice(0, 5)
+        : [];
+    const typingUsernames = Object.values(typingUsers);
     const showExpiryWarning = isInParty
         && typeof partyExpiryRemaining === 'number'
         && partyExpiryRemaining > 0
@@ -1066,6 +1243,20 @@ const WatchPage = () => {
         return `Last seen ${formatMemberLastSeen(member.last_seen)}`;
     };
 
+    const renderMessageWithMentions = (text) => {
+        if (!text || !text.includes('@')) return text;
+        const selfMember = partyMembers.find(m => m.id === party?.current_user_id);
+        const selfUsername = selfMember?.username || '';
+        const parts = text.split(/(@\w+)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('@')) {
+                const isSelf = selfUsername && part.slice(1).toLowerCase() === selfUsername.toLowerCase();
+                return <mark key={i} className={`watchPartyMention${isSelf ? ' self' : ''}`}>{part}</mark>;
+            }
+            return part;
+        });
+    };
+
     const renderPartyChatMessage = (message) => {
         if (message.type === 'system') {
             return (
@@ -1094,7 +1285,7 @@ const WatchPage = () => {
                         </time>
                     )}
                 </div>
-                <span>{isReaction ? message.reaction || message.message : message.message}</span>
+                <span>{isReaction ? message.reaction || message.message : renderMessageWithMentions(message.message)}</span>
             </div>
         );
     };
@@ -1206,6 +1397,15 @@ const WatchPage = () => {
                                                         Make Leader
                                                     </button>
                                                 )}
+                                                {isPartyLeader && !member.is_leader && member.id !== party.current_user_id && (
+                                                    <button
+                                                        className="watchPartyKickButton"
+                                                        onClick={() => kickPartyMember(member)}
+                                                        title={`Kick ${member.username}`}
+                                                    >
+                                                        <FaBan />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -1214,10 +1414,23 @@ const WatchPage = () => {
 
                             <section className="watchPartySection watchPartyChatSection">
                                 <div className="watchPartySectionTitle">Chat</div>
-                                <div className="watchPartyChatLog" ref={chatLogRef}>
-                                    {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
-                                    {partyChat.map(renderPartyChatMessage)}
+                                <div className="watchPartyChatLogWrapper">
+                                    <div className="watchPartyChatLog" ref={chatLogRef} onScroll={handleChatScroll}>
+                                        {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
+                                        {partyChat.map(renderPartyChatMessage)}
+                                    </div>
+                                    {!chatAtBottom && (
+                                        <button type="button" className="watchPartyChatScrollBtn" onClick={scrollChatToBottom} title="Scroll to bottom">
+                                            <FaArrowDown />
+                                        </button>
+                                    )}
                                 </div>
+                                {typingUsernames.length > 0 && (
+                                    <div className="watchPartyTypingIndicator">
+                                        <span className="watchPartyTypingDots"><span /><span /><span /></span>
+                                        {typingUsernames.join(', ')} {typingUsernames.length === 1 ? 'is' : 'are'} typing
+                                    </div>
+                                )}
                                 {showReactionBar && (
                                     <div className="watchPartyReactionBar" aria-label="Chat reactions">
                                         {PARTY_REACTIONS.map((reaction) => (
@@ -1232,12 +1445,28 @@ const WatchPage = () => {
                                         ))}
                                     </div>
                                 )}
-                                <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
+                                <div className="watchPartyChatInputArea">
+                                    {mentionOpen && filteredMentionMembers.length > 0 && (
+                                        <div className="watchPartyMentionDropdown">
+                                            {filteredMentionMembers.map((member, idx) => (
+                                                <button
+                                                    key={member.id}
+                                                    type="button"
+                                                    className={`watchPartyMentionItem${idx === mentionIndex ? ' active' : ''}`}
+                                                    onMouseDown={(e) => { e.preventDefault(); insertMention(member.username); }}
+                                                >
+                                                    @{member.username}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
                                     <textarea
                                         ref={chatTextareaRef}
                                         value={chatDraft}
-                                        onChange={(event) => setChatDraft(event.target.value)}
+                                        onChange={handleChatChange}
                                         onKeyDown={handleChatKeyDown}
+                                        onBlur={() => setTimeout(() => setMentionOpen(false), 200)}
                                         maxLength={500}
                                         placeholder="Message"
                                         rows={1}
@@ -1254,6 +1483,7 @@ const WatchPage = () => {
                                         <FaPaperPlane />
                                     </button>
                                 </form>
+                                </div>
                             </section>
                         </>
                     )}
@@ -1278,6 +1508,15 @@ const WatchPage = () => {
         <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
             {renderWatchPartyPanel()}
             {renderPartyToast()}
+            {floatingReactions.length > 0 && (
+                <div className="watchPartyFloatingReactions" aria-hidden="true">
+                    {floatingReactions.map((r) => (
+                        <span key={r.id} className="watchPartyFloatingReaction" style={{ left: `${r.x}%` }}>
+                            {r.emoji}
+                        </span>
+                    ))}
+                </div>
+            )}
 
             <div className="watchPlayerShell">
             {useOldPlayer ? (
@@ -1322,6 +1561,7 @@ const WatchPage = () => {
                     onWatchPartyClick={openPartyPanel}
                     watchPartyActive={isInParty}
                     watchPartyLabel={isInParty ? `Party ${party.code}` : 'Watch Party'}
+                    watchPartyUnreadCount={unreadCount}
                     disableSeeking={disablePartyNavigation}
                     disableNextControls={disablePartyNavigation}
                     disableReproductionList={disablePartyNavigation}

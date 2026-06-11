@@ -134,6 +134,7 @@ export interface IProps {
   onWatchPartyClick?: () => void;
   watchPartyActive?: boolean;
   watchPartyLabel?: string;
+  watchPartyUnreadCount?: number;
   onNextClick?: () => void;
   onClickItemListReproduction?: (id: string | number, playing: boolean) => void;
   onCrossClick?: () => void;
@@ -179,6 +180,7 @@ export default function ReactNetflixPlayer({
   onWatchPartyClick = undefined,
   watchPartyActive = false,
   watchPartyLabel = 'Watch Party',
+  watchPartyUnreadCount = 0,
   onNextClick = undefined,
   onClickItemListReproduction = undefined,
   onCrossClick = () => {},
@@ -1248,11 +1250,37 @@ export default function ReactNetflixPlayer({
                     title={watchPartyLabel}
                     role="button"
                     aria-label={watchPartyLabel}
+                    style={{ position: 'relative' } as React.CSSProperties}
                   >
                     {watchPartyActive ? (
                       <FaComments />
                     ) : (
                       <LuPartyPopper />
+                    )}
+                    {watchPartyUnreadCount > 0 && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: '-5px',
+                          right: '-6px',
+                          minWidth: '16px',
+                          height: '16px',
+                          padding: '0 4px',
+                          borderRadius: '999px',
+                          background: '#e50914',
+                          color: '#fff',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          lineHeight: '16px',
+                          textAlign: 'center',
+                          pointerEvents: 'none',
+                          boxSizing: 'border-box',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
+                        } as React.CSSProperties}
+                        aria-label={`${watchPartyUnreadCount} unread messages`}
+                      >
+                        {watchPartyUnreadCount > 99 ? '99+' : watchPartyUnreadCount}
+                      </span>
                     )}
                   </IconPlaylist>
                 </div>

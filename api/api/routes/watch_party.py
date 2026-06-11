@@ -564,6 +564,26 @@ def register_watch_party_socket(sock):
                         _broadcast(normalized_code, 'chat_message', message=message)
                     continue
 
+                if message_type == 'typing':
+                    is_typing = bool(data.get('typing'))
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            continue
+                        others = [
+                            (cid, record['ws'])
+                            for cid, record in party.get('connections', {}).items()
+                            if record['user_id'] != int(user.id)
+                        ]
+                    payload = _json_message(
+                        'typing',
+                        user_id=int(user.id),
+                        username=getattr(user, 'username', f'User {user.id}'),
+                        typing=is_typing
+                    )
+                    _send_to_connections(normalized_code, others, payload)
+                    continue
+
                 if message_type == 'leader_transfer':
                     with _party_lock:
                         party = _parties.get(normalized_code)
@@ -597,6 +617,49 @@ def register_watch_party_socket(sock):
                             action=data.get('action'),
                             source_user_id=int(user.id)
                         )
+                    continue
+
+                if message_type == 'kick':
+                    kicked_connections_local = []
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        if int(user.id) != party['leader_id']:
+                            ws.send(_json_message('error', message='Only the party leader can kick members'))
+                            continue
+                        try:
+                            target_user_id = int(data.get('target_user_id'))
+                        except (TypeError, ValueError):
+                            ws.send(_json_message('error', message='Invalid member'))
+                            continue
+                        target_member = party['members'].get(target_user_id)
+                        if not target_member:
+                            ws.send(_json_message('error', message='Member not found'))
+                            continue
+                        if target_user_id == party['leader_id']:
+                            ws.send(_json_message('error', message='Cannot kick the leader'))
+                            continue
+                        kicked_connections_local = [
+                            (cid, record['ws'])
+                            for cid, record in party.get('connections', {}).items()
+                            if record['user_id'] == target_user_id
+                        ]
+                        for cid, _ in kicked_connections_local:
+                            party.get('connections', {}).pop(cid, None)
+                        target_name = target_member.get('username') or f'User {target_user_id}'
+                        party['members'].pop(target_user_id, None)
+                        _refresh_member_connections_locked(party)
+                        _append_system_message_locked(party, f'{target_name} was kicked from the party')
+                    kicked_payload = _json_message('kicked', message='You were kicked from the party')
+                    for _, kicked_ws in kicked_connections_local:
+                        try:
+                            kicked_ws.send(kicked_payload)
+                            kicked_ws.close()
+                        except Exception:
+                            pass
+                    _broadcast_party_state(normalized_code)
                     continue
 
                 if message_type == 'leave':
