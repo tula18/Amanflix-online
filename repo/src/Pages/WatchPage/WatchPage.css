@@ -73,6 +73,13 @@
     pointer-events: auto;
 }
 
+.watchPartyPanel.collapsed {
+    bottom: auto;
+    width: 300px;
+    min-height: 0;
+    max-height: none;
+}
+
 .watchPartyPanelHeader,
 .watchPartyActions,
 .watchPartyChatForm,
@@ -90,6 +97,13 @@
 
 .watchPartyPanelHeader > div:first-child {
     min-width: 0;
+}
+
+.watchPartyHeaderButtons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
 }
 
 .watchPartyEyebrow {
@@ -131,7 +145,7 @@
 }
 
 .watchPartyStatus span,
-.watchPartyMember > span {
+.watchPartyMemberInfo > span {
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -140,7 +154,7 @@
 }
 
 .watchPartyStatus.connected span,
-.watchPartyMember > span.online {
+.watchPartyMemberInfo > span.online {
     background: #2fd17c;
 }
 
@@ -155,6 +169,47 @@
     background: #ff5d5d;
 }
 
+.watchPartyToast {
+    position: fixed;
+    right: 18px;
+    bottom: 184px;
+    box-sizing: border-box;
+    z-index: 10070;
+    max-width: min(360px, calc(100vw - 36px));
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    background: rgba(10, 10, 10, 0.94);
+    color: #fff;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(14px);
+    font-size: 13px;
+}
+
+.watchPartyToast.warning {
+    border-color: rgba(247, 201, 72, 0.44);
+}
+
+.watchPartyToast.error {
+    border-color: rgba(255, 93, 93, 0.44);
+}
+
+.watchPartyToast button {
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    cursor: pointer;
+    padding: 0 10px;
+    font-weight: 800;
+    flex: 0 0 auto;
+}
+
 .watchPartyEmpty {
     display: grid;
     gap: 10px;
@@ -163,6 +218,7 @@
 .watchPartyActions {
     gap: 10px;
     margin-bottom: 16px;
+    flex-wrap: wrap;
 }
 
 .watchPartyPrimaryButton,
@@ -221,20 +277,38 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    max-height: 92px;
+    max-height: 96px;
     overflow: auto;
     padding-right: 2px;
 }
 
 .watchPartyMember {
+    box-sizing: border-box;
     gap: 8px;
     min-height: 30px;
     max-width: 100%;
-    padding: 0 10px;
+    padding: 0 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.08);
     font-size: 14px;
+}
+
+.watchPartyMemberInfo,
+.watchPartyMemberActions,
+.watchPartyLeaderBadge {
+    display: flex;
+    align-items: center;
+}
+
+.watchPartyMemberInfo {
+    min-width: 0;
+    gap: 8px;
+}
+
+.watchPartyMemberText {
+    min-width: 0;
+    display: flex;
 }
 
 .watchPartyMember strong {
@@ -245,9 +319,39 @@
     font-weight: 700;
 }
 
+.watchPartyMemberActions {
+    gap: 5px;
+    flex: 0 0 auto;
+}
+
 .watchPartyMember svg {
     color: #f7c948;
     flex: 0 0 auto;
+}
+
+.watchPartyLeaderBadge {
+    width: 20px;
+    height: 20px;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(247, 201, 72, 0.12);
+}
+
+.watchPartyMakeLeaderButton {
+    min-height: 22px;
+    border: 1px solid rgba(247, 201, 72, 0.32);
+    border-radius: 999px;
+    background: rgba(247, 201, 72, 0.12);
+    color: #fff;
+    cursor: pointer;
+    padding: 0 7px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.watchPartyMakeLeaderButton:hover {
+    background: rgba(247, 201, 72, 0.2);
 }
 
 .watchPartyChatSection {
@@ -304,6 +408,12 @@
     align-items: flex-end;
 }
 
+.watchPartyChatMessage.system {
+    align-self: center;
+    align-items: center;
+    max-width: 92%;
+}
+
 .watchPartyChatMeta {
     display: flex;
     align-items: center;
@@ -336,10 +446,53 @@
     color: rgba(255, 255, 255, 0.92);
 }
 
+.watchPartyChatMessage.system > span {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 12px;
+    padding: 6px 11px;
+    text-align: center;
+}
+
 .watchPartyChatMessage.own > span {
     background: rgba(229, 9, 20, 0.86);
     border-color: rgba(255, 255, 255, 0.08);
     color: #fff;
+}
+
+.watchPartyChatMessage.reaction > span {
+    font-size: 24px;
+    line-height: 1;
+    padding: 8px 10px;
+}
+
+.watchPartyReactionBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+
+.watchPartyReactionBar button {
+    width: 34px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 17px;
+}
+
+.watchPartyReactionBar button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .watchPartyChatForm {
@@ -386,6 +539,33 @@
     cursor: not-allowed;
 }
 
+.watchPartyNotice,
+.watchPartyExpiryInline {
+    margin-top: 12px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.watchPartyNotice {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.78);
+    overflow-wrap: anywhere;
+}
+
+.watchPartyNotice.success {
+    border-color: rgba(47, 209, 124, 0.35);
+    color: #a9f5c8;
+}
+
+.watchPartyExpiryInline {
+    border: 1px solid rgba(247, 201, 72, 0.34);
+    background: rgba(247, 201, 72, 0.1);
+    color: #ffe49a;
+}
+
 .watchPartyError {
     margin-top: 12px;
     color: #ffb1b1;
@@ -402,5 +582,22 @@
         width: auto;
         max-width: none;
         max-height: calc(100vh - 164px);
+    }
+
+    .watchPartyPanel.collapsed {
+        left: auto;
+        bottom: auto;
+        width: min(300px, calc(100vw - 24px));
+        max-height: none;
+    }
+
+    .watchPartyToast {
+        right: 12px;
+        bottom: 154px;
+    }
+
+    .watchPartyActions {
+        display: grid;
+        grid-template-columns: 1fr;
     }
 }

@@ -20,6 +20,7 @@ MAX_CHAT_MESSAGES = 100
 MAX_CHAT_LENGTH = 500
 PARTY_CODE_LENGTH = 6
 CODE_ALPHABET = ''.join(ch for ch in string.ascii_uppercase + string.digits if ch not in '0O1I')
+ALLOWED_REACTIONS = {'👍', '😂', '❤️', '😮', '🔥', '👏'}
 
 _party_lock = threading.RLock()
 _parties = {}
@@ -28,6 +29,10 @@ _socket_route_registered = False
 
 def _utc_now_iso():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
+def _utc_timestamp_iso(timestamp):
+    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 def _normalize_code(code):
@@ -110,13 +115,20 @@ def _upsert_member_locked(party, user, connected=None):
 
 
 def _serialize_member(member):
+    connected = bool(member.get('connected'))
     return {
         'id': member['id'],
         'username': member.get('username') or f"User {member['id']}",
         'is_leader': bool(member.get('is_leader')),
-        'connected': bool(member.get('connected')),
+        'connected': connected,
+        'connection_status': 'online' if connected else 'offline',
         'last_seen': member.get('last_seen'),
     }
+
+
+def _party_expires_in_locked(party, now=None):
+    timestamp = now if now is not None else time.time()
+    return max(0, int(PARTY_TTL_SECONDS - (timestamp - party['last_activity'])))
 
 
 def _serialize_party_locked(party, current_user_id=None):
@@ -142,7 +154,8 @@ def _serialize_party_locked(party, current_user_id=None):
         'chat': list(party['chat']),
         'created_at': party['created_at_iso'],
         'last_activity': party['last_activity'],
-        'expires_in': max(0, int(PARTY_TTL_SECONDS - (now - party['last_activity']))),
+        'expires_in': _party_expires_in_locked(party, now),
+        'expires_at': _utc_timestamp_iso(party['last_activity'] + PARTY_TTL_SECONDS),
     }
 
 
@@ -217,6 +230,22 @@ def _refresh_member_connections_locked(party):
         member['connected'] = user_id in connected_user_ids
 
 
+def _append_chat_item_locked(party, item):
+    party['chat'].append(item)
+    if len(party['chat']) > MAX_CHAT_MESSAGES:
+        del party['chat'][:-MAX_CHAT_MESSAGES]
+    return item
+
+
+def _append_system_message_locked(party, message):
+    return _append_chat_item_locked(party, {
+        'id': uuid.uuid4().hex[:12],
+        'type': 'system',
+        'message': message,
+        'created_at': _utc_now_iso(),
+    })
+
+
 def _decode_user_from_token(raw_token):
     token = (raw_token or '').strip()
     if token.startswith('Bearer '):
@@ -265,11 +294,12 @@ def _create_party_for_user(user, watch_id):
             },
         }
         _upsert_member_locked(party, user, connected=False)
+        _append_system_message_locked(party, f"{getattr(user, 'username', f'User {user.id}')} started the party")
         _parties[code] = party
         return _serialize_party_locked(party, user.id)
 
 
-def _join_party_for_user(user, code):
+def _join_party_for_user(user, code, announce=False):
     normalized_code = _normalize_code(code)
     with _party_lock:
         _cleanup_expired_locked()
@@ -277,7 +307,13 @@ def _join_party_for_user(user, code):
         if not party:
             return None
         _touch_party_locked(party)
+        was_member = int(user.id) in party['members']
         _upsert_member_locked(party, user)
+        if announce and not was_member:
+            _append_system_message_locked(
+                party,
+                f"{getattr(user, 'username', f'User {user.id}')} joined the party"
+            )
         return _serialize_party_locked(party, user.id)
 
 
@@ -297,9 +333,10 @@ def create_watch_party(current_user):
 @token_required
 def join_watch_party(current_user):
     data = request.get_json(silent=True) or {}
-    party = _join_party_for_user(current_user, data.get('code'))
+    party = _join_party_for_user(current_user, data.get('code'), announce=True)
     if not party:
         return jsonify({'message': 'Party not found or expired'}), 404
+    _broadcast_party_state(party['code'])
     return jsonify({'party': party}), 200
 
 
@@ -342,15 +379,59 @@ def _handle_chat_message(party, user, data):
 
     message = {
         'id': uuid.uuid4().hex[:12],
+        'type': 'message',
         'user_id': int(user.id),
         'username': getattr(user, 'username', f'User {user.id}'),
         'message': message_text,
         'created_at': _utc_now_iso(),
     }
-    party['chat'].append(message)
-    if len(party['chat']) > MAX_CHAT_MESSAGES:
-        del party['chat'][:-MAX_CHAT_MESSAGES]
-    return message, None
+    return _append_chat_item_locked(party, message), None
+
+
+def _handle_reaction_message(party, user, data):
+    reaction = data.get('reaction')
+    if reaction not in ALLOWED_REACTIONS:
+        return None, 'Invalid reaction'
+
+    message = {
+        'id': uuid.uuid4().hex[:12],
+        'type': 'reaction',
+        'user_id': int(user.id),
+        'username': getattr(user, 'username', f'User {user.id}'),
+        'message': reaction,
+        'reaction': reaction,
+        'created_at': _utc_now_iso(),
+    }
+    return _append_chat_item_locked(party, message), None
+
+
+def _handle_leader_transfer_message(party, user, data):
+    if int(user.id) != party['leader_id']:
+        return 'Only the party leader can transfer leadership'
+
+    try:
+        target_user_id = int(data.get('target_user_id'))
+    except (TypeError, ValueError):
+        return 'Invalid member'
+
+    target_member = party['members'].get(target_user_id)
+    if not target_member:
+        return 'Member not found'
+    if target_user_id == party['leader_id']:
+        return 'This member is already the leader'
+    if not target_member.get('connected'):
+        return 'Member must be connected to become leader'
+
+    old_leader = party['members'].get(party['leader_id'], {})
+    old_leader_name = old_leader.get('username') or getattr(user, 'username', f'User {user.id}')
+    new_leader_name = target_member.get('username') or f'User {target_user_id}'
+
+    party['leader_id'] = target_user_id
+    for member in party['members'].values():
+        member['is_leader'] = member['id'] == target_user_id
+
+    _append_system_message_locked(party, f"{old_leader_name} made {new_leader_name} the leader")
+    return None
 
 
 def _handle_playback_message(party, user, data):
@@ -397,6 +478,7 @@ def register_watch_party_socket(sock):
         normalized_code = _normalize_code(code)
         conn_id = uuid.uuid4().hex
         user = None
+        left_by_user = False
         try:
             raw_auth = ws.receive(timeout=10)
             auth_data = json.loads(raw_auth or '{}')
@@ -449,7 +531,9 @@ def register_watch_party_socket(sock):
                         member = party['members'].get(int(user.id))
                         if member:
                             member['last_seen'] = time.time()
-                    ws.send(_json_message('pong'))
+                        expires_in = _party_expires_in_locked(party)
+                        last_activity = party['last_activity']
+                    ws.send(_json_message('pong', expires_in=expires_in, last_activity=last_activity))
                     continue
 
                 if message_type == 'chat':
@@ -464,6 +548,34 @@ def register_watch_party_socket(sock):
                         ws.send(_json_message('error', message=error))
                     else:
                         _broadcast(normalized_code, 'chat_message', message=message)
+                    continue
+
+                if message_type == 'reaction':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        message, error = _handle_reaction_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast(normalized_code, 'chat_message', message=message)
+                    continue
+
+                if message_type == 'leader_transfer':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        error = _handle_leader_transfer_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast_party_state(normalized_code)
                     continue
 
                 if message_type == 'playback':
@@ -488,6 +600,7 @@ def register_watch_party_socket(sock):
                     continue
 
                 if message_type == 'leave':
+                    left_by_user = True
                     break
 
                 ws.send(_json_message('error', message='Unknown message type'))
@@ -507,4 +620,14 @@ def register_watch_party_socket(sock):
                         if member:
                             member['last_seen'] = time.time()
                     _refresh_member_connections_locked(party)
+                    if left_by_user and user is not None:
+                        user_has_connection = any(
+                            record['user_id'] == int(user.id)
+                            for record in party.get('connections', {}).values()
+                        )
+                        if not user_has_connection:
+                            _append_system_message_locked(
+                                party,
+                                f"{getattr(user, 'username', f'User {user.id}')} left the party"
+                            )
             _broadcast_party_state(normalized_code)

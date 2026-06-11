@@ -86,6 +86,74 @@ class WatchPartyMemoryTests(unittest.TestCase):
 
             self.assertEqual(len(party['chat']), watch_party.MAX_CHAT_MESSAGES)
 
+    def test_reactions_are_chat_items(self):
+        leader = FakeUser(1, 'leader')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            message, error = watch_party._handle_reaction_message(
+                party,
+                leader,
+                {'reaction': '🔥'}
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(message['type'], 'reaction')
+        self.assertEqual(message['reaction'], '🔥')
+
+    def test_invalid_reaction_is_rejected(self):
+        leader = FakeUser(1, 'leader')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            message, error = watch_party._handle_reaction_message(
+                party,
+                leader,
+                {'reaction': 'invalid'}
+            )
+
+        self.assertIsNone(message)
+        self.assertIsNotNone(error)
+
+    def test_leader_can_transfer_leadership(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            watch_party._upsert_member_locked(party, member, connected=True)
+            error = watch_party._handle_leader_transfer_message(
+                party,
+                leader,
+                {'target_user_id': 2}
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(party['leader_id'], 2)
+        self.assertFalse(party['members'][1]['is_leader'])
+        self.assertTrue(party['members'][2]['is_leader'])
+        self.assertEqual(party['chat'][-1]['type'], 'system')
+
+    def test_non_leader_cannot_transfer_leadership(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            watch_party._upsert_member_locked(party, member)
+            error = watch_party._handle_leader_transfer_message(
+                party,
+                member,
+                {'target_user_id': 2}
+            )
+
+        self.assertIsNotNone(error)
+        self.assertEqual(party['leader_id'], 1)
+
     def test_expired_parties_are_removed(self):
         leader = FakeUser(1, 'leader')
         created = watch_party._create_party_for_user(leader, 'm-123')

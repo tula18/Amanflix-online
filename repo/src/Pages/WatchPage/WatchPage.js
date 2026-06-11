@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaCopy, FaCrown, FaPaperPlane, FaSignOutAlt, FaTimes } from 'react-icons/fa';
+import { FaCopy, FaCrown, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignOutAlt, FaTimes } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
 import ReactNetflixPlayer from '../../Components/NetflixPlayer/index.tsx';
+
+const PARTY_REACTIONS = ['👍', '😂', '❤️', '😮', '🔥', '👏'];
+const PARTY_EXPIRY_WARNING_SECONDS = 10 * 60;
 
 const WatchPage = () => {
     const { watch_id } = useParams();
@@ -35,7 +38,11 @@ const WatchPage = () => {
     const [party, setParty] = useState(null);
     const [partyStatus, setPartyStatus] = useState('idle');
     const [partyError, setPartyError] = useState('');
+    const [partyNotice, setPartyNotice] = useState(null);
+    const [partyToast, setPartyToast] = useState(null);
     const [partyPanelOpen, setPartyPanelOpen] = useState(false);
+    const [partyPanelCollapsed, setPartyPanelCollapsed] = useState(false);
+    const [partyExpiryRemaining, setPartyExpiryRemaining] = useState(null);
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [chatDraft, setChatDraft] = useState('');
     const wsRef = useRef(null);
@@ -46,6 +53,9 @@ const WatchPage = () => {
     const shouldReconnectRef = useRef(false);
     const applyingRemotePlaybackRef = useRef(false);
     const partyRef = useRef(null);
+    const partyExpiryAtRef = useRef(null);
+    const partyNoticeTimerRef = useRef(null);
+    const partyToastTimerRef = useRef(null);
     const currentPartyUserIdRef = useRef(null);
     const chatLogRef = useRef(null);
 
@@ -75,11 +85,58 @@ const WatchPage = () => {
         };
     };
 
+    const openPartyPanel = () => {
+        setPartyPanelOpen(true);
+        setPartyPanelCollapsed(false);
+    };
+
+    const closePartyPanel = () => {
+        setPartyPanelOpen(false);
+        setPartyPanelCollapsed(false);
+    };
+
+    const togglePartyPanelCollapsed = () => {
+        setPartyPanelCollapsed((collapsed) => !collapsed);
+    };
+
+    const updatePartyExpiry = (expiresIn) => {
+        const remaining = Number(expiresIn);
+        if (!Number.isFinite(remaining)) return;
+        const normalizedRemaining = Math.max(0, Math.ceil(remaining));
+        partyExpiryAtRef.current = Date.now() + normalizedRemaining * 1000;
+        setPartyExpiryRemaining(normalizedRemaining);
+    };
+
+    const showPartyNotice = (message, type = 'info') => {
+        if (partyNoticeTimerRef.current) {
+            clearTimeout(partyNoticeTimerRef.current);
+        }
+        setPartyNotice({ message, type });
+        partyNoticeTimerRef.current = setTimeout(() => {
+            setPartyNotice(null);
+            partyNoticeTimerRef.current = null;
+        }, 2600);
+    };
+
+    const showPartyToast = (message, type = 'info') => {
+        if (partyToastTimerRef.current) {
+            clearTimeout(partyToastTimerRef.current);
+        }
+        setPartyToast({ message, type });
+        partyToastTimerRef.current = setTimeout(() => {
+            setPartyToast(null);
+            partyToastTimerRef.current = null;
+        }, 5200);
+    };
+
     const updatePartyState = (nextParty) => {
         if (!nextParty) return;
         partyRef.current = nextParty;
         if (nextParty.current_user_id) {
             currentPartyUserIdRef.current = nextParty.current_user_id;
+        }
+        if (typeof nextParty.expires_in === 'number') {
+            updatePartyExpiry(nextParty.expires_in);
         }
         setParty(nextParty);
     };
@@ -176,7 +233,7 @@ const WatchPage = () => {
             reconnectAttemptsRef.current = 0;
             setPartyStatus('connected');
             setPartyError('');
-            setPartyPanelOpen(true);
+            openPartyPanel();
 
             if (data.party?.is_leader && videoRef.current) {
                 setTimeout(() => {
@@ -193,6 +250,13 @@ const WatchPage = () => {
 
         if (data.type === 'party_state') {
             updatePartyState(data.party);
+            return;
+        }
+
+        if (data.type === 'pong') {
+            if (typeof data.expires_in === 'number') {
+                updatePartyExpiry(data.expires_in);
+            }
             return;
         }
 
@@ -225,14 +289,19 @@ const WatchPage = () => {
             closePartySocket(false);
             joinedPartyCodeRef.current = null;
             setPartyStatus('ended');
-            setPartyError(data.type === 'party_ended' ? 'Party ended' : 'Party expired');
+            const message = data.type === 'party_ended' ? 'Party ended' : 'Party expired';
+            setPartyError(message);
+            showPartyToast(message, 'warning');
             setParty(null);
             partyRef.current = null;
+            partyExpiryAtRef.current = null;
+            setPartyExpiryRemaining(null);
             return;
         }
 
         if (data.type === 'error') {
             setPartyError(data.message || 'Watch party error');
+            showPartyToast(data.message || 'Watch party error', 'error');
         }
     };
 
@@ -306,7 +375,7 @@ const WatchPage = () => {
 
             joinedPartyCodeRef.current = data.party.code;
             updatePartyState(data.party);
-            setPartyPanelOpen(true);
+            openPartyPanel();
             connectPartySocket(data.party.code);
         } catch (error) {
             setPartyStatus('error');
@@ -333,7 +402,7 @@ const WatchPage = () => {
 
             joinedPartyCodeRef.current = data.party.code;
             updatePartyState(data.party);
-            setPartyPanelOpen(true);
+            openPartyPanel();
             navigate(`/watch/${watch_id}?party=${data.party.code}`, { replace: true });
             connectPartySocket(data.party.code);
         } catch (error) {
@@ -351,9 +420,12 @@ const WatchPage = () => {
         closePartySocket(false);
         joinedPartyCodeRef.current = null;
         partyRef.current = null;
+        partyExpiryAtRef.current = null;
         setParty(null);
         setPartyStatus('idle');
         setPartyError('');
+        setPartyNotice(null);
+        setPartyExpiryRemaining(null);
         navigate(`/watch/${watch_id}`, { replace: true });
     };
 
@@ -381,9 +453,19 @@ const WatchPage = () => {
         const inviteLink = `${window.location.origin}/party/${party.code}`;
         try {
             await navigator.clipboard.writeText(inviteLink);
-            setPartyError('Invite link copied');
+            showPartyNotice('Invite link copied', 'success');
         } catch (error) {
-            setPartyError(inviteLink);
+            showPartyNotice(inviteLink, 'info');
+        }
+    };
+
+    const copyPartyCode = async () => {
+        if (!party?.code) return;
+        try {
+            await navigator.clipboard.writeText(party.code);
+            showPartyNotice('Party code copied', 'success');
+        } catch (error) {
+            showPartyNotice(party.code, 'info');
         }
     };
 
@@ -394,6 +476,26 @@ const WatchPage = () => {
 
         wsRef.current.send(JSON.stringify({ type: 'chat', message }));
         setChatDraft('');
+    };
+
+    const sendPartyReaction = (reaction) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            return;
+        }
+        wsRef.current.send(JSON.stringify({ type: 'reaction', reaction }));
+    };
+
+    const transferPartyLeader = (member) => {
+        if (!isPartyLeader || !member?.id || member.id === party?.current_user_id) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            return;
+        }
+        wsRef.current.send(JSON.stringify({
+            type: 'leader_transfer',
+            target_user_id: member.id
+        }));
     };
 
     const handlePartyPlayPause = (playing, position) => {
@@ -413,8 +515,10 @@ const WatchPage = () => {
                 closePartySocket(false);
                 joinedPartyCodeRef.current = null;
                 partyRef.current = null;
+                partyExpiryAtRef.current = null;
                 setParty(null);
                 setPartyStatus('idle');
+                setPartyExpiryRemaining(null);
             }
             return;
         }
@@ -433,8 +537,29 @@ const WatchPage = () => {
     useEffect(() => {
         return () => {
             closePartySocket(false);
+            if (partyNoticeTimerRef.current) {
+                clearTimeout(partyNoticeTimerRef.current);
+            }
+            if (partyToastTimerRef.current) {
+                clearTimeout(partyToastTimerRef.current);
+            }
         };
     }, []);
+
+    useEffect(() => {
+        if (!party?.code || !partyExpiryAtRef.current) {
+            return;
+        }
+
+        const updateRemaining = () => {
+            const remaining = Math.max(0, Math.ceil((partyExpiryAtRef.current - Date.now()) / 1000));
+            setPartyExpiryRemaining(remaining);
+        };
+
+        updateRemaining();
+        const intervalId = setInterval(updateRemaining, 1000);
+        return () => clearInterval(intervalId);
+    }, [party?.code]);
 
     useEffect(() => {
         if (!party?.code || !party.is_leader || partyStatus !== 'connected') {
@@ -868,10 +993,15 @@ const WatchPage = () => {
     const disablePartyNavigation = isInParty && !isPartyLeader;
     const partyMembers = party?.members || [];
     const partyChat = party?.chat || [];
+    const partyOnlineCount = partyMembers.filter((member) => member.connected).length;
+    const showExpiryWarning = isInParty
+        && typeof partyExpiryRemaining === 'number'
+        && partyExpiryRemaining > 0
+        && partyExpiryRemaining <= PARTY_EXPIRY_WARNING_SECONDS;
     const partyStatusLabel = partyStatus === 'connected'
-        ? 'Connected'
+        ? `Connected • ${partyOnlineCount} online`
         : partyStatus === 'reconnecting'
-            ? 'Reconnecting'
+            ? 'Reconnecting • trying to restore sync'
             : partyStatus === 'joining' || partyStatus === 'connecting'
                 ? 'Connecting'
                 : partyStatus === 'ended'
@@ -880,16 +1010,110 @@ const WatchPage = () => {
                         ? 'Offline'
                         : 'Idle';
 
+    const formatPartyRemaining = (seconds) => {
+        const safeSeconds = Math.max(0, Number(seconds) || 0);
+        const minutes = Math.floor(safeSeconds / 60);
+        const remainingSeconds = safeSeconds % 60;
+        if (minutes <= 0) {
+            return `${remainingSeconds}s`;
+        }
+        return `${minutes}m ${remainingSeconds.toString().padStart(2, '0')}s`;
+    };
+
+    const formatMemberLastSeen = (lastSeen) => {
+        if (!lastSeen) return 'Offline';
+        const secondsAgo = Math.max(0, Math.floor(Date.now() / 1000 - Number(lastSeen)));
+        if (secondsAgo < 30) return 'Just now';
+        if (secondsAgo < 60) return `${secondsAgo}s ago`;
+        const minutesAgo = Math.floor(secondsAgo / 60);
+        if (minutesAgo < 60) return `${minutesAgo}m ago`;
+        return `${Math.floor(minutesAgo / 60)}h ago`;
+    };
+
+    const getMemberConnectionLabel = (member) => {
+        if (member.id === party?.current_user_id && partyStatus === 'reconnecting') {
+            return 'Reconnecting';
+        }
+        if (member.connected) {
+            return 'Online';
+        }
+        return `Last seen ${formatMemberLastSeen(member.last_seen)}`;
+    };
+
+    const renderPartyChatMessage = (message) => {
+        if (message.type === 'system') {
+            return (
+                <div className="watchPartyChatMessage system" key={message.id}>
+                    <span>{message.message}</span>
+                </div>
+            );
+        }
+
+        const isOwnMessage = message.user_id === party?.current_user_id;
+        const isReaction = message.type === 'reaction';
+
+        return (
+            <div
+                className={`watchPartyChatMessage ${isOwnMessage ? 'own' : ''} ${isReaction ? 'reaction' : ''}`}
+                key={message.id}
+            >
+                <div className="watchPartyChatMeta">
+                    <strong>{message.username}</strong>
+                    {message.created_at && (
+                        <time>
+                            {new Date(message.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </time>
+                    )}
+                </div>
+                <span>{isReaction ? message.reaction || message.message : message.message}</span>
+            </div>
+        );
+    };
+
+    const renderPartyToast = () => {
+        if (partyToast) {
+            return (
+                <div className={`watchPartyToast ${partyToast.type}`}>
+                    <span>{partyToast.message}</span>
+                    {party && (
+                        <button onClick={openPartyPanel}>Open</button>
+                    )}
+                </div>
+            );
+        }
+
+        if (!showExpiryWarning) return null;
+
+        return (
+            <div className="watchPartyToast warning">
+                <span>Party expires in {formatPartyRemaining(partyExpiryRemaining)}</span>
+                <button onClick={openPartyPanel}>Open</button>
+            </div>
+        );
+    };
+
     const renderWatchPartyPanel = () => (
-        <aside className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''}`}>
+        <aside className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''}`}>
             <div className="watchPartyPanelHeader">
                 <div>
                     <div className="watchPartyEyebrow">Watch Party</div>
                     <div className="watchPartyTitle">{party?.code || 'Start a party'}</div>
                 </div>
-                <button className="watchPartyIconButton" onClick={() => setPartyPanelOpen(false)} title="Close">
-                    <FaTimes />
-                </button>
+                <div className="watchPartyHeaderButtons">
+                    <button
+                        className="watchPartyIconButton"
+                        onClick={togglePartyPanelCollapsed}
+                        title={partyPanelCollapsed ? 'Expand' : 'Collapse'}
+                    >
+                        {partyPanelCollapsed ? <FaExpandAlt /> : <FaMinus />}
+                    </button>
+                    <button className="watchPartyIconButton" onClick={closePartyPanel} title="Close">
+                        <FaTimes />
+                    </button>
+                </div>
             </div>
 
             <div className={`watchPartyStatus ${partyStatus}`}>
@@ -897,86 +1121,112 @@ const WatchPage = () => {
                 {partyStatusLabel}
             </div>
 
-            {!party && (
-                <div className="watchPartyEmpty">
-                    <button className="watchPartyPrimaryButton" onClick={startWatchParty} disabled={isCreatingParty}>
-                        <LuPartyPopper />
-                        {isCreatingParty ? 'Starting...' : 'Start Party'}
-                    </button>
-                    <button className="watchPartySecondaryButton" onClick={() => navigate('/party')}>
-                        Join By Code
-                    </button>
-                </div>
-            )}
-
-            {party && (
+            {!partyPanelCollapsed && (
                 <>
-                    <div className="watchPartyActions">
-                        <button className="watchPartySecondaryButton" onClick={copyPartyInvite}>
-                            <FaCopy />
-                            Copy Link
-                        </button>
-                        <button
-                            className={isPartyLeader ? 'watchPartyDangerButton' : 'watchPartySecondaryButton'}
-                            onClick={isPartyLeader ? endWatchParty : leaveWatchParty}
-                        >
-                            <FaSignOutAlt />
-                            {isPartyLeader ? 'End' : 'Leave'}
-                        </button>
-                    </div>
-
-                    <section className="watchPartySection">
-                        <div className="watchPartySectionTitle">Members</div>
-                        <div className="watchPartyMembers">
-                            {partyMembers.map((member) => (
-                                <div className="watchPartyMember" key={member.id}>
-                                    <span className={member.connected ? 'online' : ''} />
-                                    <strong>{member.username}</strong>
-                                    {member.is_leader && <FaCrown title="Leader" />}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <section className="watchPartySection watchPartyChatSection">
-                        <div className="watchPartySectionTitle">Chat</div>
-                        <div className="watchPartyChatLog" ref={chatLogRef}>
-                            {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
-                            {partyChat.map((message) => (
-                                <div
-                                    className={`watchPartyChatMessage ${message.user_id === party.current_user_id ? 'own' : ''}`}
-                                    key={message.id}
-                                >
-                                    <div className="watchPartyChatMeta">
-                                        <strong>{message.username}</strong>
-                                        {message.created_at && (
-                                            <time>
-                                                {new Date(message.created_at).toLocaleTimeString([], {
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                })}
-                                            </time>
-                                        )}
-                                    </div>
-                                    <span>{message.message}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
-                            <input
-                                value={chatDraft}
-                                onChange={(event) => setChatDraft(event.target.value)}
-                                maxLength={500}
-                                placeholder="Message"
-                            />
-                            <button type="submit" disabled={!chatDraft.trim()} title="Send">
-                                <FaPaperPlane />
+                    {!party && (
+                        <div className="watchPartyEmpty">
+                            <button className="watchPartyPrimaryButton" onClick={startWatchParty} disabled={isCreatingParty}>
+                                <LuPartyPopper />
+                                {isCreatingParty ? 'Starting...' : 'Start Party'}
                             </button>
-                        </form>
-                    </section>
+                            <button className="watchPartySecondaryButton" onClick={() => navigate('/party')}>
+                                Join By Code
+                            </button>
+                        </div>
+                    )}
+
+                    {party && (
+                        <>
+                            <div className="watchPartyActions">
+                                <button className="watchPartySecondaryButton" onClick={copyPartyInvite}>
+                                    <FaLink />
+                                    Copy Link
+                                </button>
+                                <button className="watchPartySecondaryButton" onClick={copyPartyCode}>
+                                    <FaCopy />
+                                    Copy Code
+                                </button>
+                                <button
+                                    className={isPartyLeader ? 'watchPartyDangerButton' : 'watchPartySecondaryButton'}
+                                    onClick={isPartyLeader ? endWatchParty : leaveWatchParty}
+                                >
+                                    <FaSignOutAlt />
+                                    {isPartyLeader ? 'End' : 'Leave'}
+                                </button>
+                            </div>
+
+                            <section className="watchPartySection">
+                                <div className="watchPartySectionTitle">Members</div>
+                                <div className="watchPartyMembers">
+                                    {partyMembers.map((member) => (
+                                        <div className="watchPartyMember" key={member.id} title={getMemberConnectionLabel(member)}>
+                                            <div className="watchPartyMemberInfo">
+                                                <span className={member.connected ? 'online' : ''} />
+                                                <div className="watchPartyMemberText">
+                                                    <strong>{member.username}</strong>
+                                                </div>
+                                            </div>
+                                            <div className="watchPartyMemberActions">
+                                                {member.is_leader && (
+                                                    <span className="watchPartyLeaderBadge" title="Leader">
+                                                        <FaCrown />
+                                                    </span>
+                                                )}
+                                                {isPartyLeader && !member.is_leader && member.connected && member.id !== party.current_user_id && (
+                                                    <button
+                                                        className="watchPartyMakeLeaderButton"
+                                                        onClick={() => transferPartyLeader(member)}
+                                                    >
+                                                        Make Leader
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className="watchPartySection watchPartyChatSection">
+                                <div className="watchPartySectionTitle">Chat</div>
+                                <div className="watchPartyChatLog" ref={chatLogRef}>
+                                    {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
+                                    {partyChat.map(renderPartyChatMessage)}
+                                </div>
+                                <div className="watchPartyReactionBar" aria-label="Chat reactions">
+                                    {PARTY_REACTIONS.map((reaction) => (
+                                        <button
+                                            key={reaction}
+                                            type="button"
+                                            onClick={() => sendPartyReaction(reaction)}
+                                            disabled={partyStatus !== 'connected'}
+                                        >
+                                            {reaction}
+                                        </button>
+                                    ))}
+                                </div>
+                                <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
+                                    <input
+                                        value={chatDraft}
+                                        onChange={(event) => setChatDraft(event.target.value)}
+                                        maxLength={500}
+                                        placeholder="Message"
+                                    />
+                                    <button type="submit" disabled={!chatDraft.trim()} title="Send">
+                                        <FaPaperPlane />
+                                    </button>
+                                </form>
+                            </section>
+                        </>
+                    )}
                 </>
             )}
 
+            {showExpiryWarning && (
+                <div className="watchPartyExpiryInline">
+                    Party expires in {formatPartyRemaining(partyExpiryRemaining)}
+                </div>
+            )}
+            {partyNotice && <div className={`watchPartyNotice ${partyNotice.type}`}>{partyNotice.message}</div>}
             {partyError && <div className="watchPartyError">{partyError}</div>}
         </aside>
     );
@@ -988,6 +1238,7 @@ const WatchPage = () => {
     return (
         <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
             {renderWatchPartyPanel()}
+            {renderPartyToast()}
 
             <div className="watchPlayerShell">
             {useOldPlayer ? (
@@ -1029,7 +1280,7 @@ const WatchPage = () => {
                     videoRef={videoRef}
                     onPlayPause={handlePartyPlayPause}
                     onSeek={handlePartySeek}
-                    onWatchPartyClick={() => setPartyPanelOpen(true)}
+                    onWatchPartyClick={openPartyPanel}
                     watchPartyActive={isInParty}
                     watchPartyLabel={isInParty ? `Party ${party.code}` : 'Watch Party'}
                     disableSeeking={disablePartyNavigation}
