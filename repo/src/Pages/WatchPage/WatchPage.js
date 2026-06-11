@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaCopy, FaCrown, FaPaperPlane, FaSignOutAlt, FaTimes, FaUsers } from 'react-icons/fa';
+import { FaCopy, FaCrown, FaPaperPlane, FaSignOutAlt, FaTimes } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -47,6 +47,7 @@ const WatchPage = () => {
     const applyingRemotePlaybackRef = useRef(false);
     const partyRef = useRef(null);
     const currentPartyUserIdRef = useRef(null);
+    const chatLogRef = useRef(null);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
@@ -449,6 +450,12 @@ const WatchPage = () => {
 
         return () => clearInterval(intervalId);
     }, [party?.code, party?.is_leader, partyStatus]);
+
+    useEffect(() => {
+        if (chatLogRef.current) {
+            chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+        }
+    }, [party?.chat?.length]);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {
@@ -933,11 +940,24 @@ const WatchPage = () => {
 
                     <section className="watchPartySection watchPartyChatSection">
                         <div className="watchPartySectionTitle">Chat</div>
-                        <div className="watchPartyChatLog">
+                        <div className="watchPartyChatLog" ref={chatLogRef}>
                             {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
                             {partyChat.map((message) => (
-                                <div className="watchPartyChatMessage" key={message.id}>
-                                    <strong>{message.username}</strong>
+                                <div
+                                    className={`watchPartyChatMessage ${message.user_id === party.current_user_id ? 'own' : ''}`}
+                                    key={message.id}
+                                >
+                                    <div className="watchPartyChatMeta">
+                                        <strong>{message.username}</strong>
+                                        {message.created_at && (
+                                            <time>
+                                                {new Date(message.created_at).toLocaleTimeString([], {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </time>
+                                        )}
+                                    </div>
                                     <span>{message.message}</span>
                                 </div>
                             ))}

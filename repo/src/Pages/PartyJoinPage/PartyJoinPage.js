@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FaArrowRight, FaUsers } from 'react-icons/fa';
+import { FaArrowRight } from 'react-icons/fa';
+import { LuPartyPopper } from 'react-icons/lu';
 import { API_URL } from '../../config';
 import './PartyJoinPage.css';
 
@@ -59,10 +60,15 @@ const PartyJoinPage = () => {
   return (
     <main className="partyJoinPage">
       <form className="partyJoinBox" onSubmit={handleSubmit}>
-        <div className="partyJoinIcon">
-          <FaUsers />
+        <div className="partyJoinHeader">
+          <div className="partyJoinIcon">
+            <LuPartyPopper />
+          </div>
+          <div>
+            <span className="partyJoinEyebrow">Watch Party</span>
+            <h1>Join a Party</h1>
+          </div>
         </div>
-        <h1>Join Watch Party</h1>
         <div className="partyJoinInputRow">
           <input
             value={code}

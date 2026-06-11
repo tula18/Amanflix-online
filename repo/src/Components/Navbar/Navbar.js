@@ -162,6 +162,7 @@ function Navbar() {
   const [showPartyJoin, setShowPartyJoin] = useState(false);
   const searchInputRef = useRef(null);
   const searchDebounceRef = useRef(null);
+  const partyJoinRef = useRef(null);
   const [isMenuVisible, setIsMenuVisible] = React.useState( );
   const token = localStorage.getItem('token')
   const admin_token = localStorage.getItem('admin_token')
@@ -171,10 +172,30 @@ function Navbar() {
   useEffect(() => {
     if (location.pathname === '/search' && query && query !== searchQuery && !searchDebounceRef.current) {
       setSearchQuery(query)
-    } 
+    }
   }, [setSearchQuery, location, query, searchQuery])
-  
-  
+
+  useEffect(() => {
+    if (!showPartyJoin) {
+      return;
+    }
+
+    const handleOutsidePress = (event) => {
+      if (partyJoinRef.current && !partyJoinRef.current.contains(event.target)) {
+        setShowPartyJoin(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsidePress);
+    document.addEventListener('touchstart', handleOutsidePress);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsidePress);
+      document.removeEventListener('touchstart', handleOutsidePress);
+    };
+  }, [showPartyJoin]);
+
+
   useEffect(() => {
     const getIP = async () => {
       try {
@@ -455,7 +476,7 @@ function Navbar() {
           <div className="nav_right_item notifications__div">
             <NotificationsDropdown />
           </div>
-          <span className='nav_right_item party_join_nav'>
+          <span className='nav_right_item party_join_nav' ref={partyJoinRef}>
               <LuPartyPopper
               className={`party_join_icon ${showPartyJoin ? 'active' : ''}`}
               onClick={() => setShowPartyJoin((value) => !value)}
@@ -473,9 +494,20 @@ function Navbar() {
             />
             {showPartyJoin && (
               <div className="party_join_dropdown">
-                <div className="party_join_title">Join Watch Party</div>
+                <div className="party_join_dropdown_arrow"></div>
+                <div className="party_join_header">
+                  <span className="party_join_header_icon">
+                    <LuPartyPopper />
+                  </span>
+                  <div>
+                    <div className="party_join_title">Join Watch Party</div>
+                    <div className="party_join_subtitle">Enter a party code</div>
+                  </div>
+                </div>
                 <form className="party_join_form" onSubmit={handleJoinParty}>
+                  <label className="party_join_label" htmlFor="navbar-party-code">Party code</label>
                   <input
+                    id="navbar-party-code"
                     value={partyCode}
                     onChange={(event) => setPartyCode(event.target.value.toUpperCase())}
                     placeholder="PARTY CODE"

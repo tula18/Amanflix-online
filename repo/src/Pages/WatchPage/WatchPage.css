@@ -47,11 +47,12 @@
     position: fixed;
     top: 70px;
     right: 18px;
-    bottom: 18px;
+    bottom: 132px;
     z-index: 10050;
-    width: 352px;
+    width: 380px;
     max-width: calc(100vw - 36px);
-    background: rgba(12, 12, 12, 0.94);
+    max-height: calc(100vh - 184px);
+    background: rgba(10, 10, 10, 0.96);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
@@ -87,6 +88,10 @@
     margin-bottom: 12px;
 }
 
+.watchPartyPanelHeader > div:first-child {
+    min-width: 0;
+}
+
 .watchPartyEyebrow {
     color: rgba(255, 255, 255, 0.58);
     font-size: 12px;
@@ -98,6 +103,9 @@
     font-weight: 800;
     line-height: 1.05;
     letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .watchPartyIconButton {
@@ -210,16 +218,22 @@
 }
 
 .watchPartyMembers {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    max-height: 118px;
+    max-height: 92px;
     overflow: auto;
     padding-right: 2px;
 }
 
 .watchPartyMember {
     gap: 8px;
-    min-height: 28px;
+    min-height: 30px;
+    max-width: 100%;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     font-size: 14px;
 }
 
@@ -246,44 +260,104 @@
 
 .watchPartyChatLog {
     flex: 1;
-    min-height: 140px;
+    min-height: 160px;
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-right: 2px;
+    gap: 9px;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.watchPartyChatLog::-webkit-scrollbar {
+    width: 5px;
+}
+
+.watchPartyChatLog::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
 }
 
 .watchPartyChatEmpty {
     color: rgba(255, 255, 255, 0.46);
     font-size: 14px;
+    margin: auto;
 }
 
 .watchPartyChatMessage {
-    display: grid;
-    gap: 3px;
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    max-width: 86%;
+    gap: 4px;
     font-size: 14px;
     line-height: 1.35;
     overflow-wrap: anywhere;
 }
 
-.watchPartyChatMessage strong {
+.watchPartyChatMessage.own {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.watchPartyChatMeta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 100%;
+    color: rgba(255, 255, 255, 0.56);
+}
+
+.watchPartyChatMeta strong {
     color: rgba(255, 255, 255, 0.72);
     font-size: 12px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.watchPartyChatMeta time {
+    color: rgba(255, 255, 255, 0.38);
+    font-size: 11px;
+    flex: 0 0 auto;
+}
+
+.watchPartyChatMessage > span {
+    display: block;
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.watchPartyChatMessage.own > span {
+    background: rgba(229, 9, 20, 0.86);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #fff;
 }
 
 .watchPartyChatForm {
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .watchPartyChatForm input {
     min-width: 0;
     flex: 1;
-    height: 38px;
+    height: 40px;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(0, 0, 0, 0.34);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.46);
     color: #fff;
     padding: 0 10px;
     outline: none;
@@ -294,8 +368,8 @@
 }
 
 .watchPartyChatForm button {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border: none;
     border-radius: 6px;
     background: #e50914;
@@ -324,8 +398,9 @@
         top: 60px;
         right: 12px;
         left: 12px;
-        bottom: 12px;
+        bottom: 104px;
         width: auto;
         max-width: none;
+        max-height: calc(100vh - 164px);
     }
 }
