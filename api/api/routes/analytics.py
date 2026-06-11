@@ -812,3 +812,92 @@ def get_user_analytics(current_admin, user_id):
     except Exception as e:
         log_error(f"Error retrieving user analytics for user {user_id}: {str(e)}")
         return jsonify({'error': 'Failed to retrieve user analytics'}), 500
+    
+@analytics_bp.route('/watch-party', methods=['GET'])
+@admin_token_required('moderator')
+def get_watch_party_analytics(current_admin):
+    """Return live watch party statistics derived from the in-memory party store."""
+    import time as _time
+    from api.routes.watch_party import _parties, _party_lock, PARTY_TTL_SECONDS
+
+    now = _time.time()
+
+    with _party_lock:
+        parties_snapshot = list(_parties.values())
+
+    total_active_parties = len(parties_snapshot)
+    total_connected_users = 0
+    total_chat_messages = 0
+    total_reactions = 0
+    party_sizes = []
+    content_counts = {}   # watch_id → count of parties watching it
+    chat_per_party = []
+
+    for party in parties_snapshot:
+        connected = sum(1 for m in party.get('members', {}).values() if m.get('connected'))
+        total_connected_users += connected
+        party_sizes.append(len(party.get('members', {})))
+
+        chat = party.get('chat', [])
+        msgs = sum(1 for m in chat if m.get('type') == 'message')
+        reactions = sum(1 for m in chat if m.get('type') == 'reaction')
+        total_chat_messages += msgs
+        total_reactions += reactions
+        chat_per_party.append(len(chat))
+
+        wid = party.get('watch_id', 'unknown')
+        content_counts[wid] = content_counts.get(wid, 0) + 1
+
+    avg_party_size = round(sum(party_sizes) / len(party_sizes), 2) if party_sizes else 0
+    avg_chat_per_party = round(sum(chat_per_party) / len(chat_per_party), 2) if chat_per_party else 0
+
+    # Top content being watched in parties right now
+    top_content = sorted(
+        [{'watch_id': wid, 'party_count': cnt} for wid, cnt in content_counts.items()],
+        key=lambda x: x['party_count'],
+        reverse=True
+    )[:10]
+
+    # Party size distribution buckets
+    size_dist = {'1': 0, '2': 0, '3-5': 0, '6+': 0}
+    for s in party_sizes:
+        if s == 1:
+            size_dist['1'] += 1
+        elif s == 2:
+            size_dist['2'] += 1
+        elif s <= 5:
+            size_dist['3-5'] += 1
+        else:
+            size_dist['6+'] += 1
+
+    size_distribution = [{'range': k, 'count': v} for k, v in size_dist.items()]
+
+    # Time-to-expiry distribution (minutes remaining)
+    expiry_buckets = {'<10m': 0, '10-30m': 0, '30-60m': 0, '>1h': 0}
+    for party in parties_snapshot:
+        remaining = max(0, PARTY_TTL_SECONDS - (now - party.get('last_activity', now)))
+        minutes = remaining / 60
+        if minutes < 10:
+            expiry_buckets['<10m'] += 1
+        elif minutes < 30:
+            expiry_buckets['10-30m'] += 1
+        elif minutes < 60:
+            expiry_buckets['30-60m'] += 1
+        else:
+            expiry_buckets['>1h'] += 1
+
+    expiry_distribution = [{'range': k, 'count': v} for k, v in expiry_buckets.items()]
+
+    return jsonify({
+        'summary': {
+            'active_parties': total_active_parties,
+            'connected_users': total_connected_users,
+            'total_chat_messages': total_chat_messages,
+            'total_reactions': total_reactions,
+            'avg_party_size': avg_party_size,
+            'avg_chat_per_party': avg_chat_per_party,
+        },
+        'top_content': top_content,
+        'size_distribution': size_distribution,
+        'expiry_distribution': expiry_distribution,
+    }), 200

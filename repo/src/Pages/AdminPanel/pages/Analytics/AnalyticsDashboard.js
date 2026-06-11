@@ -12,7 +12,8 @@ import {
   DownloadOutlined, FileTextOutlined, DatabaseOutlined, SyncOutlined, 
   ThunderboltOutlined, RiseOutlined, FallOutlined,
   CloudServerOutlined, HddOutlined, ReloadOutlined,
-  EyeOutlined, TeamOutlined, TrophyOutlined
+  EyeOutlined, TeamOutlined, TrophyOutlined, CustomerServiceOutlined,
+  MessageOutlined, SmileOutlined, UsergroupAddOutlined
 } from '@ant-design/icons';
 import { API_URL } from '../../../../config';
 import {
@@ -117,6 +118,7 @@ const AnalyticsDashboard = () => {
   const [dataIntegrity, setDataIntegrity] = useState(null);
   const [cacheStats, setCacheStats] = useState(null);
   const [cacheLoading, setCacheLoading] = useState(false);
+  const [watchPartyMetrics, setWatchPartyMetrics] = useState(null);
   const [adminRole, setAdminRole] = useState(null);
   const [timeRange, setTimeRange] = useState('1');
   const [refreshing, setRefreshing] = useState(false);
@@ -199,6 +201,21 @@ const AnalyticsDashboard = () => {
     }
   }, [token]);
 
+  // Fetch watch party analytics
+  const fetchWatchPartyMetrics = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/analytics/watch-party`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWatchPartyMetrics(data);
+      }
+    } catch (error) {
+      console.error("Error fetching watch party metrics:", error);
+    }
+  }, [token]);
+
   // Clear cache
   const handleClearCache = async () => {
     setCacheLoading(true);
@@ -245,7 +262,8 @@ const AnalyticsDashboard = () => {
         fetchDashboardData(),
         fetchContentMetrics(),
         fetchDataIntegrity(),
-        fetchCacheStats()
+        fetchCacheStats(),
+        fetchWatchPartyMetrics()
       ]);
 
       setLoading(false);
@@ -255,7 +273,7 @@ const AnalyticsDashboard = () => {
     fetchAllData();
     const interval = setInterval(fetchAllData, 300000);
     return () => clearInterval(interval);
-  }, [timeRange, fetchDashboardData, fetchContentMetrics, fetchDataIntegrity, fetchCacheStats]);
+  }, [timeRange, fetchDashboardData, fetchContentMetrics, fetchDataIntegrity, fetchCacheStats, fetchWatchPartyMetrics]);
 
   // Manual refresh
   const handleRefresh = async () => {
@@ -264,7 +282,8 @@ const AnalyticsDashboard = () => {
       fetchDashboardData(),
       fetchContentMetrics(),
       fetchDataIntegrity(),
-      fetchCacheStats()
+      fetchCacheStats(),
+      fetchWatchPartyMetrics()
     ]);
     setRefreshing(false);
     notification.success({ message: 'Data Refreshed', duration: 2 });
@@ -821,6 +840,114 @@ const AnalyticsDashboard = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Watch Party Analytics Section */}
+      {watchPartyMetrics && (
+        <>
+          <SectionHeader
+            icon={<CustomerServiceOutlined />}
+            title="Watch Party (Live)"
+          />
+
+          <Row gutter={[16, 16]}>
+            <Col xs={12} sm={6}>
+              <StatCard
+                title="Active Parties"
+                value={watchPartyMetrics.summary.active_parties}
+                icon={<CustomerServiceOutlined />}
+                color="primary"
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <StatCard
+                title="Connected Users"
+                value={watchPartyMetrics.summary.connected_users}
+                icon={<UsergroupAddOutlined />}
+                color="success"
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <StatCard
+                title="Chat Messages"
+                value={watchPartyMetrics.summary.total_chat_messages}
+                icon={<MessageOutlined />}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <StatCard
+                title="Reactions Sent"
+                value={watchPartyMetrics.summary.total_reactions}
+                icon={<SmileOutlined />}
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col xs={24} sm={12} lg={8}>
+              <ChartCard title="Party Size Distribution">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={watchPartyMetrics.size_distribution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="range" tick={{ fill: '#999', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#999', fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" name="Parties" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Col>
+            <Col xs={24} sm={12} lg={8}>
+              <ChartCard title="Time Until Expiry">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={watchPartyMetrics.expiry_distribution}
+                      dataKey="count"
+                      nameKey="range"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      label={({ range, percent }) => percent > 0 ? `${range} ${(percent * 100).toFixed(0)}%` : ''}
+                    >
+                      {watchPartyMetrics.expiry_distribution.map((_, index) => (
+                        <Cell key={index} fill={COLORS.chart[index % COLORS.chart.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Col>
+            <Col xs={24} lg={8}>
+              <Card className="metrics-card">
+                <div className="metric-item">
+                  <div className="metric-label"><TeamOutlined /> Avg Party Size</div>
+                  <div className="metric-value">{watchPartyMetrics.summary.avg_party_size}</div>
+                </div>
+                <div className="metric-item">
+                  <div className="metric-label"><MessageOutlined /> Avg Messages / Party</div>
+                  <div className="metric-value">{watchPartyMetrics.summary.avg_chat_per_party}</div>
+                </div>
+                {watchPartyMetrics.top_content.length > 0 && (
+                  <div className="metric-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+                    <div className="metric-label"><PlaySquareOutlined /> Top Content in Parties</div>
+                    {watchPartyMetrics.top_content.slice(0, 4).map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 12 }}>
+                        <span style={{ color: '#ccc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>
+                          {item.watch_id}
+                        </span>
+                        <Tag color="red">{item.party_count}</Tag>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
 
       {/* Cache Statistics Section */}
       {cacheStats && (
