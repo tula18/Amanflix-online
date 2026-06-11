@@ -59,6 +59,7 @@ const WatchPage = () => {
     const partyToastTimerRef = useRef(null);
     const currentPartyUserIdRef = useRef(null);
     const chatLogRef = useRef(null);
+    const chatTextareaRef = useRef(null);
 
     // State for player props
     const [mediaTitle, setMediaTitle] = useState('');
@@ -477,7 +478,30 @@ const WatchPage = () => {
 
         wsRef.current.send(JSON.stringify({ type: 'chat', message }));
         setChatDraft('');
+        if (chatTextareaRef.current) {
+            chatTextareaRef.current.style.height = 'auto';
+        }
     };
+
+    const handleChatKeyDown = (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            const message = chatDraft.trim();
+            if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+            wsRef.current.send(JSON.stringify({ type: 'chat', message }));
+            setChatDraft('');
+            if (chatTextareaRef.current) {
+                chatTextareaRef.current.style.height = 'auto';
+            }
+        }
+    };
+
+    useEffect(() => {
+        const el = chatTextareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }, [chatDraft]);
 
     const sendPartyReaction = (reaction) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -1209,11 +1233,14 @@ const WatchPage = () => {
                                     </div>
                                 )}
                                 <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
-                                    <input
+                                    <textarea
+                                        ref={chatTextareaRef}
                                         value={chatDraft}
                                         onChange={(event) => setChatDraft(event.target.value)}
+                                        onKeyDown={handleChatKeyDown}
                                         maxLength={500}
                                         placeholder="Message"
+                                        rows={1}
                                     />
                                     <button
                                         type="button"
