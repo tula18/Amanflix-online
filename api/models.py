@@ -306,8 +306,8 @@ class Episode(db.Model):
     video_id = db.Column(db.Integer, primary_key=True, unique=True)
     runtime = db.Column(db.Integer)  # Runtime in minutes
 
-    def __init__(self, id, episode_number, title, overview, has_subtitles, video_id, runtime, episode_number_end=None):
-        self.id = id
+    def __init__(self, id=None, episode_number=None, title=None, overview=None, has_subtitles=None, video_id=None, runtime=None, episode_number_end=None):
+        self.id = id  # None → SQLite auto-assigns ROWID for INTEGER PRIMARY KEY
         self.episode_number = episode_number
         self.episode_number_end = episode_number_end
         self.title = title

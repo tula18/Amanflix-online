@@ -397,10 +397,22 @@ def get_episode_video_id_cached(content_id, season_number, episode_number):
     except Exception as e:
         # If DB query fails (e.g., session poisoned), log error but don't crash
         log_error(f"Failed to query episode from DB: {e}")
-        # Try to construct fallback ID
-        fallback_id = f"{content_id}{season_number}{episode_number}"
-        log_warning(f"Using fallback video_id: {fallback_id}")
-        return fallback_id
+
+        # Fallback 1: new padded formula (season 2 digits, episode 3 digits)
+        # Used for episodes uploaded after the collision fix.
+        new_fallback = f"{content_id}{season_number:02d}{episode_number:03d}"
+        if os.path.exists(os.path.join(UPLOADS_DIR, f"{new_fallback}.mp4")):
+            log_warning(f"Using new-formula fallback video_id: {new_fallback}")
+            return new_fallback
+
+        # Fallback 2: old unpadded formula — legacy episodes uploaded before the fix
+        old_fallback = f"{content_id}{season_number}{episode_number}"
+        if os.path.exists(os.path.join(UPLOADS_DIR, f"{old_fallback}.mp4")):
+            log_warning(f"Using legacy-formula fallback video_id: {old_fallback}")
+            return old_fallback
+
+        log_warning(f"No video file found for show={content_id} S{season_number}E{episode_number} in either formula")
+        return None
 
 def clear_episode_cache():
     """Clear the episode cache. Useful when episodes are updated."""

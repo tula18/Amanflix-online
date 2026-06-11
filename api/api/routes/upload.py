@@ -627,8 +627,8 @@ def upload_tvshow(current_admin):
                 cleanup_uploaded_files(uploaded_files, new_show.show_id)
                 return error
 
-            # Generate a unique ID for the season
-            season_id = int(f'{new_show.show_id}{season_data["season_number"]}')
+            # Generate a unique ID for the season (zero-pad to 2 digits to avoid collisions like S11E1 == S1E11)
+            season_id = int(f'{new_show.show_id}{season_data["season_number"]:02d}')
 
             season = Season(
                 id=season_id,
@@ -662,11 +662,13 @@ def upload_tvshow(current_admin):
                     return jsonify(message=f"Season {season_data['season_number']}, Episode {episode_data['episode_number']}: {error_msg}"), 400
 
                 file_ext = os.path.splitext(secure_filename(video_file.filename))[1]
-                video_filename = f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}{file_ext}'
+                _sn = season_data["season_number"]
+                _en = episode_data["episode_number"]
+                video_filename = f'{new_show.show_id}{_sn:02d}{_en:03d}{file_ext}'
                 video_path = os.path.join(UPLOADS_DIR, video_filename)
 
-                # After your initial episode error validation
-                video_path = os.path.join(UPLOADS_DIR, f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}.mp4')
+                # Check for existing file using the canonical padded path
+                video_path = os.path.join(UPLOADS_DIR, f'{new_show.show_id}{_sn:02d}{_en:03d}.mp4')
                 if os.path.exists(video_path) and not episode_data.get('force', False):
                     # Clean up all files and database records
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
@@ -692,7 +694,8 @@ def upload_tvshow(current_admin):
                     cleanup_uploaded_files(uploaded_files, new_show.show_id)
                     return jsonify(message=f"An error occurred during file upload for S{season_data['season_number']}E{episode_data['episode_number']}. Error: {str(e)}"), 500
 
-                file_id = int(f'{new_show.show_id}{season_data["season_number"]}{episode_data["episode_number"]}')
+                # video_id uses zero-padded formula: season 2 digits, episode 3 digits
+                file_id = int(f'{new_show.show_id}{season_data["season_number"]:02d}{episode_data["episode_number"]:03d}')
 
                 has_subtitles_value = episode_data.get('has_subtitles')
                 if isinstance(has_subtitles_value, bool):
@@ -703,13 +706,12 @@ def upload_tvshow(current_admin):
                     has_subtitles = False
 
                 episode = Episode(
-                    id=file_id,
+                    id=file_id,  # id == video_id (both use padded formula, collision-free)
                     episode_number=episode_data.get('episode_number'),
                     title=episode_data.get('title'),
                     overview=episode_data.get('overview'),
                     has_subtitles=has_subtitles,
                     video_id=file_id,
-                    # Add runtime to Episode if your model supports it
                     runtime=episode_data.get('runtime', 0),
                     episode_number_end=episode_data.get('episode_number_end')
                 )
@@ -922,20 +924,22 @@ def update_tvshow(current_admin, show_id):
 
         for season_data in seasons_data:
             season_number = season_data['season_number']
-            season_id = int(f'{show_id}{season_number}')
-            updated_season_ids.add(season_id)
-            
-            # Find or create season
-            season = Season.query.filter_by(id=season_id).first()
+
+            # Find existing season by show + season_number (not by computed id)
+            season = Season.query.filter_by(tvshow_id=show_id, season_number=season_number).first()
             if not season:
+                # New season: use zero-padded formula to avoid collisions (S11 vs S1 of show 1)
+                new_season_id = int(f'{show_id}{season_number:02d}')
                 season = Season(
-                    id=season_id,
+                    id=new_season_id,
                     season_number=season_number,
                     tvshow_id=show.show_id,
                     episode=[]
                 )
                 db.session.add(season)
-                db.session.commit()
+                db.session.flush()  # persist so season.id is available immediately
+
+            updated_season_ids.add(season.id)
             
             # Track current and updated episode IDs for this season
             current_episode_ids = {episode.id for episode in season.episodes}
@@ -944,22 +948,21 @@ def update_tvshow(current_admin, show_id):
             # Process episodes
             for episode_data in season_data.get('episodes', []):
                 episode_number = episode_data.get('episode_number')
-                episode_id = int(f'{show_id}{season_number}{episode_number}')
-                updated_episode_ids.add(episode_id)
-                
-                # Check if episode exists
-                episode = Episode.query.filter_by(id=episode_id).first()
-                
+
+                # Find existing episode by season + episode_number (not by computed id)
+                episode = Episode.query.filter_by(season_id=season.id, episode_number=episode_number).first()
+
                 # Create new episode or update existing one
                 if not episode:
-                    # Create new episode
+                    # New episode: id == video_id, both use padded formula (collision-free)
+                    new_video_id = int(f'{show_id}{season_number:02d}{episode_number:03d}')
                     episode = Episode(
-                        id=episode_id,
+                        id=new_video_id,
                         episode_number=episode_number,
                         title=episode_data.get('title'),
                         overview=episode_data.get('overview'),
                         has_subtitles=episode_data.get('has_subtitles', False),
-                        video_id=episode_id,
+                        video_id=new_video_id,
                         runtime=episode_data.get('runtime', 0),
                         episode_number_end=episode_data.get('episode_number_end')
                     )
@@ -972,13 +975,15 @@ def update_tvshow(current_admin, show_id):
                     episode.has_subtitles = episode_data.get('has_subtitles', episode.has_subtitles)
                     if 'episode_number_end' in episode_data:
                         episode.episode_number_end = episode_data.get('episode_number_end')
-                
+
+                updated_episode_ids.add(episode.id)
+
                 # Look for video file upload
                 video_key = f'video_season_{season_number}_episode_{episode_number}'
                 if video_key in request.files:
                     video_file = request.files[video_key]
                     if video_file and video_file.filename:
-                        video_path = os.path.join(UPLOADS_DIR, f'{episode_id}.mp4')
+                        video_path = os.path.join(UPLOADS_DIR, f'{episode.video_id}.mp4')
                         
                         # Check if we should overwrite
                         force = episode_data.get('force', False)
