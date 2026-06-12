@@ -308,27 +308,37 @@ const ContinueWatchingSlider = () => {
     const shouldShowNextEpisode = (item) => {
         return (
             (item.media_type === 'tv' || item.content_type === 'tv') && 
-            item.watch_history.is_completed &&
-            item.watch_history.next_episode
+            item.watch_history?.is_completed &&
+            item.watch_history?.next_episode
         );
     };
 
     // Helper to get progress percentage (from current or next episode)
     const getProgressPercentage = (item) => {
+        if (!item.watch_history) {
+            return 0;
+        }
         if (shouldShowNextEpisode(item)) {
             return 0;
         }
-        return item.watch_history.progress_percentage;
+        return item.watch_history.progress_percentage || 0;
     };
 
     // Helper to get season and episode numbers
     const getEpisodeInfo = (item) => {
+        const isTv = item.media_type === 'tv' || item.content_type === 'tv';
+        if (!isTv || !item.watch_history || item.watch_history.finished_show) {
+            return null;
+        }
         if (shouldShowNextEpisode(item)) {
             return {
                 season: item.watch_history.next_episode.season_number,
                 episode: item.watch_history.next_episode.episode_number,
                 isNext: true
             };
+        }
+        if (item.watch_history.season_number == null || item.watch_history.episode_number == null) {
+            return null;
         }
         return {
             season: item.watch_history.season_number,

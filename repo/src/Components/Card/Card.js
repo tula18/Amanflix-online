@@ -48,11 +48,17 @@ function Card({movie, watchProgress = 0, episodeInfo}) {
         }
     };
 
-    const contentType = movie.media_type
+    const contentType = movie.media_type || movie.content_type
     const displayTitle = movie.name || movie.title || 'Title not available';
     const isWatched = movie.watch_history?.is_completed || false;
-    const isShowCompleted = contentType !== 'movie' && isWatched && movie.watch_history?.finished_show;
-    const shouldShowEpisodeBadge = episodeInfo && !movie.watch_history?.finished_show;
+    const isShowCompleted = contentType === 'tv' && isWatched && movie.watch_history?.finished_show;
+    const shouldShowEpisodeBadge = (
+        contentType === 'tv' &&
+        episodeInfo &&
+        episodeInfo.season != null &&
+        episodeInfo.episode != null &&
+        !movie.watch_history?.finished_show
+    );
     const shouldShowWatchedBadge = (contentType === 'movie' && isWatched) || isShowCompleted;
     
     return (
