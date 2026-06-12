@@ -297,8 +297,8 @@
 }
 
 .watch-history-section {
-    width: min(1200px, calc(100% - 2rem));
-    margin: 36px auto 0;
+    width: min(1040px, calc(100% - 2rem));
+    margin: 44px auto 0;
 }
 
 .watch-history-header {
@@ -306,34 +306,55 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .watch-history-header h2 {
     color: #fff;
-    font-size: 32px;
-    font-weight: 500;
+    font-size: 30px;
+    font-weight: 600;
     margin: 0;
 }
 
 .watch-history-count {
-    color: #9b9b9b;
-    font-size: 14px;
+    color: #d6d6d6;
+    font-size: 13px;
+    line-height: 1;
+    padding: 7px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
     white-space: nowrap;
 }
 
 .watch-history-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 10px;
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
 .watch-history-item {
-    background: rgba(255, 255, 255, 0.045);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+
+.watch-history-item:hover,
+.watch-history-item--expanded {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+.watch-history-item:hover {
+    transform: translateY(-1px);
 }
 
 .watch-history-row {
@@ -346,12 +367,12 @@
 
 .watch-history-main-button {
     display: grid;
-    grid-template-columns: 168px minmax(0, 1fr);
+    grid-template-columns: 176px minmax(0, 1fr);
     align-items: center;
-    gap: 18px;
+    gap: 20px;
     min-width: 0;
-    min-height: 108px;
-    padding: 12px 0 12px 16px;
+    min-height: 118px;
+    padding: 14px 0 14px 16px;
     background: transparent;
     border: none;
     color: #fff;
@@ -362,21 +383,39 @@
 
 .watch-history-row:hover,
 .watch-history-row:focus-within {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.035);
 }
 
 .watch-history-main-button:focus-visible,
 .watch-history-expand:focus-visible {
-    outline: none;
+    outline: 2px solid rgba(255, 255, 255, 0.72);
+}
+
+.watch-history-main-button:focus-visible {
+    outline-offset: -6px;
+}
+
+.watch-history-expand:focus-visible {
+    outline-offset: 2px;
 }
 
 .watch-history-thumb {
+    position: relative;
     display: block;
-    width: 168px;
+    width: 176px;
     aspect-ratio: 16 / 9;
     overflow: hidden;
     border-radius: 4px;
     background: #333;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.watch-history-thumb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.22));
+    pointer-events: none;
 }
 
 .watch-history-thumb img {
@@ -389,13 +428,13 @@
 .watch-history-copy {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
     min-width: 0;
 }
 
 .watch-history-title {
     color: #fff;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
     line-height: 1.25;
     overflow: hidden;
@@ -411,7 +450,7 @@
 }
 
 .watch-history-detail {
-    color: #fff;
+    color: #d8d8d8;
     font-size: 14px;
 }
 
@@ -421,8 +460,12 @@
 }
 
 .watch-history-type {
-    color: #cfcfcf;
+    color: #f2f2f2;
     font-size: 13px;
+    line-height: 1;
+    padding: 7px 9px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
     white-space: nowrap;
 }
 
@@ -430,7 +473,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
     padding: 0 16px;
 }
 
@@ -438,15 +481,26 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
+    gap: 4px;
+    width: auto;
     height: 34px;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    border-radius: 50%;
+    padding: 0 8px 0 11px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 6px;
     background: transparent;
     color: #fff;
     cursor: pointer;
-    font-size: 24px;
+    font-size: 13px;
+    font-weight: 600;
     transition: border-color 0.2s, background 0.2s;
+}
+
+.watch-history-expand span {
+    line-height: 1;
+}
+
+.watch-history-expand svg {
+    font-size: 22px;
 }
 
 .watch-history-expand:hover {
@@ -464,7 +518,7 @@
 
 .watch-history-progress {
     display: block;
-    width: min(260px, 100%);
+    width: min(300px, 100%);
     height: 4px;
     margin-top: 3px;
     overflow: hidden;
@@ -481,25 +535,44 @@
 .watch-history-episodes {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
     list-style: none;
     margin: 0;
-    padding: 0 16px 16px 202px;
+    padding: 0 18px 18px 212px;
 }
 
 .watch-history-episode {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
     min-height: 44px;
     padding: 10px 12px;
     border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(0, 0, 0, 0.24);
 }
 
-.watch-history-episode-title {
+.watch-history-episode-copy {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.watch-history-episode-badge {
+    flex: 0 0 auto;
     color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 5px 7px;
+    border-radius: 4px;
+    background: rgba(229, 9, 20, 0.82);
+}
+
+.watch-history-episode-title {
+    color: #f1f1f1;
     font-size: 14px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -524,9 +597,9 @@
     justify-content: center;
     min-height: 120px;
     color: #9b9b9b;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
 }
 
 .watch-history-error {
@@ -542,7 +615,7 @@
     min-height: 40px;
     padding: 0 18px;
     border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: #fff;
     cursor: pointer;

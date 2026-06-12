@@ -162,9 +162,11 @@ const getLastWatchedPoint = (item) => {
 };
 
 const formatEpisodeTitle = (episodeHistory) => {
-    const episodeTitle = episodeHistory.episode_details?.title;
-    const base = `S${episodeHistory.season_number} E${episodeHistory.episode_number}`;
-    return episodeTitle ? `${base} - ${episodeTitle}` : base;
+    return episodeHistory.episode_details?.title || 'Episode';
+};
+
+const formatEpisodeBadge = (episodeHistory) => {
+    return `S${episodeHistory.season_number} E${episodeHistory.episode_number}`;
 };
 
 const getHistoryImageSrc = (item) => {
@@ -363,6 +365,7 @@ const WatchHistorySection = ({ token }) => {
                                                     aria-expanded={isExpanded}
                                                     aria-label={`${isExpanded ? 'Hide' : 'Show'} watched episodes for ${item.title || item.name || 'this show'}`}
                                                 >
+                                                    <span>Episodes</span>
                                                     <MdExpandMore />
                                                 </button>
                                             )}
@@ -375,7 +378,10 @@ const WatchHistorySection = ({ token }) => {
 
                                                 return (
                                                     <li className="watch-history-episode" key={episodeHistory.id}>
-                                                        <span className="watch-history-episode-title">{formatEpisodeTitle(episodeHistory)}</span>
+                                                        <span className="watch-history-episode-copy">
+                                                            <span className="watch-history-episode-badge">{formatEpisodeBadge(episodeHistory)}</span>
+                                                            <span className="watch-history-episode-title">{formatEpisodeTitle(episodeHistory)}</span>
+                                                        </span>
                                                         <span className="watch-history-episode-meta">
                                                             {getHistoryStatus({ watch_history: episodeHistory })} - {formatHistoryDate(episodeHistory.last_watched)}
                                                         </span>
