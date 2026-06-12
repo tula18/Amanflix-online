@@ -683,6 +683,94 @@
     opacity: 0.9;
 }
 
+.watchPartyConfirmOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(4px);
+}
+
+.watchPartyConfirmBox {
+    width: min(340px, 100%);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(14, 14, 14, 0.98);
+    color: #fff;
+    padding: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.58);
+}
+
+.watchPartyConfirmBox.danger {
+    border-color: rgba(229, 9, 20, 0.45);
+}
+
+.watchPartyConfirmHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.watchPartyConfirmHeader strong {
+    font-size: 16px;
+}
+
+.watchPartyConfirmHeader button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.watchPartyConfirmBox p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.watchPartyConfirmActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.watchPartyConfirmActions button {
+    min-height: 34px;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    padding: 0 12px;
+    font-weight: 800;
+}
+
+.watchPartyConfirmActions .secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.watchPartyConfirmActions .primary {
+    background: #e50914;
+}
+
+.watchPartyConfirmBox:not(.danger) .watchPartyConfirmActions .primary {
+    background: rgba(47, 209, 124, 0.72);
+}
+
 .watchPartyEmpty {
     display: grid;
     gap: 10px;
@@ -738,6 +826,10 @@
     margin-top: 2px;
 }
 
+.watchPartyRequestsSection {
+    margin-bottom: 12px;
+}
+
 .watchPartySectionTitle {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.56);
@@ -785,6 +877,70 @@
     background: rgba(229, 9, 20, 0.22);
     border-color: rgba(229, 9, 20, 0.34);
     color: #fff;
+}
+
+.watchPartyJoinRequests {
+    display: grid;
+    gap: 8px;
+}
+
+.watchPartyJoinRequest {
+    min-height: 44px;
+    padding: 8px 9px;
+    border-radius: 8px;
+    background: rgba(138, 180, 255, 0.1);
+    border: 1px solid rgba(138, 180, 255, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.watchPartyJoinRequest > div:first-child {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.watchPartyJoinRequest strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.watchPartyJoinRequest span {
+    color: rgba(255, 255, 255, 0.52);
+    font-size: 12px;
+}
+
+.watchPartyJoinRequestActions {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.watchPartyJoinRequestActions button {
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    padding: 0 9px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.watchPartyJoinRequestActions button.approve {
+    background: rgba(47, 209, 124, 0.72);
+}
+
+.watchPartyJoinRequestActions button.deny {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.78);
 }
 
 .watchPartyMembers {

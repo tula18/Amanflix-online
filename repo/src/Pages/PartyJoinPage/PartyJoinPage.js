@@ -11,6 +11,8 @@ const PartyJoinPage = () => {
   const [code, setCode] = useState(partyCode || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [waitingApproval, setWaitingApproval] = useState(false);
+  const [pendingCode, setPendingCode] = useState('');
 
   const joinParty = async (rawCode) => {
     const normalizedCode = (rawCode || '').trim().toUpperCase();
@@ -19,7 +21,7 @@ const PartyJoinPage = () => {
       return;
     }
 
-    setLoading(true);
+    setLoading(!waitingApproval);
     setError('');
 
     try {
@@ -34,12 +36,23 @@ const PartyJoinPage = () => {
       });
 
       const data = await response.json();
+      if (response.status === 202 || data.status === 'pending') {
+        setWaitingApproval(true);
+        setPendingCode(data.code || normalizedCode);
+        setLoading(false);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.message || 'Could not join this party');
       }
 
+      setWaitingApproval(false);
+      setPendingCode('');
       navigate(`/watch/${data.party.watch_id}?party=${data.party.code}`, { replace: true });
     } catch (err) {
+      setWaitingApproval(false);
+      setPendingCode('');
       setError(err.message || 'Could not join this party');
       setLoading(false);
     }
@@ -51,6 +64,16 @@ const PartyJoinPage = () => {
       joinParty(partyCode);
     }
   }, [partyCode]);
+
+  useEffect(() => {
+    if (!waitingApproval || !pendingCode) return;
+
+    const intervalId = setInterval(() => {
+      joinParty(pendingCode);
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [waitingApproval, pendingCode]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -72,16 +95,25 @@ const PartyJoinPage = () => {
         <div className="partyJoinInputRow">
           <input
             value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase())}
+            onChange={(event) => {
+              setCode(event.target.value.toUpperCase());
+              setWaitingApproval(false);
+              setPendingCode('');
+            }}
             placeholder="PARTY CODE"
             maxLength={12}
             autoFocus={!partyCode}
           />
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={loading || waitingApproval}>
             <FaArrowRight />
           </button>
         </div>
         {loading && <div className="partyJoinStatus">Joining...</div>}
+        {waitingApproval && (
+          <div className="partyJoinStatus approval">
+            Waiting for the leader to approve your request...
+          </div>
+        )}
         {error && <div className="partyJoinError">{error}</div>}
       </form>
     </main>

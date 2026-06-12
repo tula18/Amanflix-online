@@ -77,6 +77,7 @@ const WatchPage = () => {
     const [lastPartyPlaybackAt, setLastPartyPlaybackAt] = useState(null);
     const [syncHealthTick, setSyncHealthTick] = useState(0);
     const [memberActionMenu, setMemberActionMenu] = useState(null);
+    const [leaderConfirmation, setLeaderConfirmation] = useState(null);
     const wsRef = useRef(null);
     const joinedPartyCodeRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
@@ -97,6 +98,7 @@ const WatchPage = () => {
     const pinnedChatMessagesRef = useRef(null);
     const pinnedChatDragRef = useRef(null);
     const pinnedChatResizeRef = useRef(null);
+    const pendingJoinRequestIdsRef = useRef(new Set());
     const partyPanelOpenRef = useRef(false);
     const partyPanelCollapsedRef = useRef(false);
     const partyCollapsedPreviewTimerRef = useRef(null);
@@ -265,6 +267,22 @@ const WatchPage = () => {
         setPartyToast(null);
     };
 
+    const openLeaderConfirmation = (confirmation) => {
+        setLeaderConfirmation(confirmation);
+    };
+
+    const closeLeaderConfirmation = () => {
+        setLeaderConfirmation(null);
+    };
+
+    const runLeaderConfirmation = () => {
+        const action = leaderConfirmation?.onConfirm;
+        setLeaderConfirmation(null);
+        if (action) {
+            action();
+        }
+    };
+
     const getCollapsedPreviewContent = (message) => {
         if (!message) return null;
 
@@ -353,6 +371,26 @@ const WatchPage = () => {
             updatePartyExpiry(nextParty.expires_in);
         }
         setParty(normalizedParty);
+    };
+
+    const trackPendingJoinRequests = (nextParty, notify = false) => {
+        if (!nextParty?.is_leader) {
+            pendingJoinRequestIdsRef.current = new Set();
+            return;
+        }
+
+        const requests = nextParty.pending_join_requests || [];
+        const previousIds = pendingJoinRequestIdsRef.current;
+        const nextIds = new Set(requests.map((joinRequest) => joinRequest.user_id));
+
+        if (notify) {
+            const newRequest = requests.find((joinRequest) => !previousIds.has(joinRequest.user_id));
+            if (newRequest) {
+                showPartyToast(`${newRequest.username} wants to join`, 'mention');
+            }
+        }
+
+        pendingJoinRequestIdsRef.current = nextIds;
     };
 
     const closePartySocket = (allowReconnect = false) => {
@@ -503,6 +541,7 @@ const WatchPage = () => {
         setLastPartyEventAt(Date.now());
 
         if (data.type === 'ready') {
+            trackPendingJoinRequests(data.party, false);
             updatePartyState(data.party);
             reconnectAttemptsRef.current = 0;
             setPartyStatus('connected');
@@ -529,6 +568,7 @@ const WatchPage = () => {
 
         if (data.type === 'party_state') {
             showCollapsedPartyStatePreview(data.party);
+            trackPendingJoinRequests(data.party, true);
             updatePartyState(data.party);
             if (data.party?.watch_id && data.party.watch_id !== watchIdRef.current) {
                 navigate(`/watch/${data.party.watch_id}?party=${data.party.code}`, { replace: true });
@@ -613,11 +653,13 @@ const WatchPage = () => {
             showPartyToast(message, 'warning');
             setParty(null);
             partyRef.current = null;
+            pendingJoinRequestIdsRef.current = new Set();
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
             setPartySettingsOpen(false);
             setPartySyncOpen(false);
             setMemberActionMenu(null);
+            setLeaderConfirmation(null);
             setPartyChatPinned(false);
             setPartyExpiryToastDismissed(false);
             markPartyChatRead();
@@ -637,11 +679,13 @@ const WatchPage = () => {
             showPartyToast(data.message || 'You were kicked from the party', 'error');
             setParty(null);
             partyRef.current = null;
+            pendingJoinRequestIdsRef.current = new Set();
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
             setPartySettingsOpen(false);
             setPartySyncOpen(false);
             setMemberActionMenu(null);
+            setLeaderConfirmation(null);
             setPartyChatPinned(false);
             setPartyExpiryToastDismissed(false);
             markPartyChatRead();
@@ -720,6 +764,13 @@ const WatchPage = () => {
             });
             const data = await response.json();
 
+            if (response.status === 202 || data.status === 'pending') {
+                setPartyStatus('joining');
+                setPartyError(data.message || 'Waiting for leader approval');
+                showPartyToast(data.message || 'Waiting for leader approval', 'info');
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error(data.message || 'Could not join this party');
             }
@@ -779,12 +830,14 @@ const WatchPage = () => {
         partyExpiryAtRef.current = null;
         setParty(null);
         setPartyStatus('idle');
+        pendingJoinRequestIdsRef.current = new Set();
         setPartyError('');
         setPartyNotice(null);
         setPartyExpiryRemaining(null);
         setPartySettingsOpen(false);
         setPartySyncOpen(false);
         setMemberActionMenu(null);
+        setLeaderConfirmation(null);
         setPartyChatPinned(false);
         setPartyExpiryToastDismissed(false);
         markPartyChatRead();
@@ -813,6 +866,20 @@ const WatchPage = () => {
         } finally {
             leaveWatchParty();
         }
+    };
+
+    const confirmEndWatchParty = () => {
+        if (!partyRef.current?.is_leader) {
+            leaveWatchParty();
+            return;
+        }
+        openLeaderConfirmation({
+            title: 'End party?',
+            message: 'This will close the party for everyone in the room.',
+            confirmLabel: 'End Party',
+            danger: true,
+            onConfirm: endWatchParty
+        });
     };
 
     const copyTextToClipboard = async (text) => {
@@ -998,6 +1065,17 @@ const WatchPage = () => {
         wsRef.current.send(JSON.stringify({ type: 'kick', target_user_id: member.id }));
     };
 
+    const confirmKickPartyMember = (member) => {
+        if (!member) return;
+        openLeaderConfirmation({
+            title: 'Kick member?',
+            message: `${member.username} will be removed from this party.`,
+            confirmLabel: 'Kick',
+            danger: true,
+            onConfirm: () => kickPartyMember(member)
+        });
+    };
+
     const handleChatScroll = () => {
         const el = chatLogRef.current;
         if (!el) return;
@@ -1070,6 +1148,30 @@ const WatchPage = () => {
         }));
     };
 
+    const confirmTransferPartyLeader = (member) => {
+        if (!member) return;
+        openLeaderConfirmation({
+            title: 'Make leader?',
+            message: `${member.username} will get full party control.`,
+            confirmLabel: 'Make Leader',
+            danger: false,
+            onConfirm: () => transferPartyLeader(member)
+        });
+    };
+
+    const respondToJoinRequest = (joinRequest, action) => {
+        if (!isPartyLeader || !joinRequest?.user_id) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            return;
+        }
+        wsRef.current.send(JSON.stringify({
+            type: 'join_request',
+            action,
+            target_user_id: joinRequest.user_id
+        }));
+    };
+
     const updatePartySetting = (key, value) => {
         if (!isPartyLeader || !partyRef.current) return;
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -1136,6 +1238,17 @@ const WatchPage = () => {
             action: 'delete_message',
             message_id: message.id
         }));
+    };
+
+    const confirmDeletePartyChatMessage = (message) => {
+        if (!message) return;
+        openLeaderConfirmation({
+            title: 'Delete message?',
+            message: 'This message will be removed from the party chat.',
+            confirmLabel: 'Delete',
+            danger: true,
+            onConfirm: () => deletePartyChatMessage(message)
+        });
     };
 
     const handlePartyPlayPause = (playing, position) => {
@@ -1308,6 +1421,7 @@ const WatchPage = () => {
                 closePartySocket(false);
                 joinedPartyCodeRef.current = null;
                 partyRef.current = null;
+                pendingJoinRequestIdsRef.current = new Set();
                 partyExpiryAtRef.current = null;
                 setParty(null);
                 setPartyStatus('idle');
@@ -1315,6 +1429,7 @@ const WatchPage = () => {
                 setPartySettingsOpen(false);
                 setPartySyncOpen(false);
                 setMemberActionMenu(null);
+                setLeaderConfirmation(null);
                 setPartyChatPinned(false);
                 setPartyExpiryToastDismissed(false);
                 markPartyChatRead();
@@ -1445,6 +1560,7 @@ const WatchPage = () => {
         if (!party?.is_leader) {
             setPartySettingsOpen(false);
             setMemberActionMenu(null);
+            setLeaderConfirmation(null);
         }
     }, [party?.is_leader]);
 
@@ -1942,6 +2058,7 @@ const WatchPage = () => {
     const disablePartyNavigation = isInParty && !isPartyLeader;
     const partyMembers = party?.members || [];
     const partyChat = party?.chat || [];
+    const pendingJoinRequests = party?.pending_join_requests || [];
     const pinnedChatLatestMessageId = partyChat[partyChat.length - 1]?.id || partyChat.length;
     const partySettings = { ...DEFAULT_PARTY_SETTINGS, ...(party?.settings || {}) };
     const currentPartyMember = partyMembers.find((member) => member.id === party?.current_user_id);
@@ -2151,7 +2268,7 @@ const WatchPage = () => {
                         <button
                             type="button"
                             className="watchPartyDeleteMessageButton"
-                            onClick={() => deletePartyChatMessage(message)}
+                            onClick={() => confirmDeletePartyChatMessage(message)}
                             title="Delete message"
                         >
                             <FaTrashAlt />
@@ -2309,7 +2426,7 @@ const WatchPage = () => {
                 <button
                     type="button"
                     disabled={!member.connected}
-                    onClick={() => runAction(() => transferPartyLeader(member))}
+                    onClick={() => runAction(() => confirmTransferPartyLeader(member))}
                 >
                     <FaCrown />
                     Make Leader
@@ -2324,7 +2441,7 @@ const WatchPage = () => {
                 <button
                     type="button"
                     className="danger"
-                    onClick={() => runAction(() => kickPartyMember(member))}
+                    onClick={() => runAction(() => confirmKickPartyMember(member))}
                 >
                     <FaBan />
                     Kick Member
@@ -2412,6 +2529,32 @@ const WatchPage = () => {
                     title="Resize chat"
                 />
             </aside>
+        );
+    };
+
+    const renderLeaderConfirmation = () => {
+        if (!leaderConfirmation) return null;
+
+        return (
+            <div className="watchPartyConfirmOverlay" role="dialog" aria-modal="true">
+                <div className={`watchPartyConfirmBox ${leaderConfirmation.danger ? 'danger' : ''}`}>
+                    <div className="watchPartyConfirmHeader">
+                        <strong>{leaderConfirmation.title}</strong>
+                        <button type="button" onClick={closeLeaderConfirmation} title="Close">
+                            <FaTimes />
+                        </button>
+                    </div>
+                    <p>{leaderConfirmation.message}</p>
+                    <div className="watchPartyConfirmActions">
+                        <button type="button" className="secondary" onClick={closeLeaderConfirmation}>
+                            Cancel
+                        </button>
+                        <button type="button" className="primary" onClick={runLeaderConfirmation}>
+                            {leaderConfirmation.confirmLabel || 'Confirm'}
+                        </button>
+                    </div>
+                </div>
+            </div>
         );
     };
 
@@ -2508,12 +2651,44 @@ const WatchPage = () => {
                                 </button>
                                 <button
                                     className={isPartyLeader ? 'watchPartyDangerButton' : 'watchPartySecondaryButton'}
-                                    onClick={isPartyLeader ? endWatchParty : leaveWatchParty}
+                                    onClick={isPartyLeader ? confirmEndWatchParty : leaveWatchParty}
                                 >
                                     <FaSignOutAlt />
                                     {isPartyLeader ? 'End' : 'Leave'}
                                 </button>
                             </div>
+
+                            {isPartyLeader && pendingJoinRequests.length > 0 && (
+                                <section className="watchPartySection watchPartyRequestsSection">
+                                    <div className="watchPartySectionTitle">Join Requests</div>
+                                    <div className="watchPartyJoinRequests">
+                                        {pendingJoinRequests.map((joinRequest) => (
+                                            <div className="watchPartyJoinRequest" key={joinRequest.user_id}>
+                                                <div>
+                                                    <strong>{joinRequest.username}</strong>
+                                                    <span>wants to join</span>
+                                                </div>
+                                                <div className="watchPartyJoinRequestActions">
+                                                    <button
+                                                        type="button"
+                                                        className="approve"
+                                                        onClick={() => respondToJoinRequest(joinRequest, 'approve')}
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="deny"
+                                                        onClick={() => respondToJoinRequest(joinRequest, 'deny')}
+                                                    >
+                                                        Deny
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
 
                             <section className="watchPartySection">
                                 <div className="watchPartySectionTitle">Members</div>
@@ -2670,6 +2845,7 @@ const WatchPage = () => {
             <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
             {renderWatchPartyPanel()}
             {renderMemberActionMenu()}
+            {renderLeaderConfirmation()}
             {renderPinnedPartyChat()}
             {renderPartyToast()}
             {floatingReactions.length > 0 && (

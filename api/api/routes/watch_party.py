@@ -22,6 +22,7 @@ MAX_CHAT_LENGTH = 500
 SPAM_WINDOW_SECONDS = 10
 SPAM_MAX_MESSAGES = 5
 SPAM_DUPLICATE_SECONDS = 8
+JOIN_REQUEST_TTL_SECONDS = 10 * 60
 PARTY_CODE_LENGTH = 6
 CODE_ALPHABET = ''.join(ch for ch in string.ascii_uppercase + string.digits if ch not in '0O1I')
 ALLOWED_REACTIONS = {'👍', '😂', '❤️', '😮', '🔥', '👏'}
@@ -151,6 +152,26 @@ def _serialize_member(member):
     }
 
 
+def _cleanup_join_requests_locked(party):
+    now = time.time()
+    join_requests = party.setdefault('join_requests', {})
+    expired_user_ids = [
+        user_id for user_id, join_request in join_requests.items()
+        if now - float(join_request.get('requested_at', now)) > JOIN_REQUEST_TTL_SECONDS
+    ]
+    for user_id in expired_user_ids:
+        join_requests.pop(user_id, None)
+
+
+def _serialize_join_request(join_request):
+    return {
+        'user_id': int(join_request['user_id']),
+        'username': join_request.get('username') or f"User {join_request['user_id']}",
+        'requested_at': join_request.get('requested_at'),
+        'status': join_request.get('status', 'pending'),
+    }
+
+
 def _party_expires_in_locked(party, now=None):
     timestamp = now if now is not None else time.time()
     return max(0, int(PARTY_TTL_SECONDS - (timestamp - party['last_activity'])))
@@ -158,6 +179,7 @@ def _party_expires_in_locked(party, now=None):
 
 def _serialize_party_locked(party, current_user_id=None):
     now = time.time()
+    _cleanup_join_requests_locked(party)
     playback = dict(party['playback'])
     playback['position'] = _current_position_locked(party, now)
     playback['updated_at'] = now
@@ -169,6 +191,16 @@ def _serialize_party_locked(party, current_user_id=None):
     )
 
     settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    pending_join_requests = []
+    if current_user_id is not None and int(current_user_id) == party['leader_id']:
+        pending_join_requests = sorted(
+            (
+                _serialize_join_request(join_request)
+                for join_request in party.get('join_requests', {}).values()
+                if join_request.get('status') == 'pending'
+            ),
+            key=lambda item: item.get('requested_at') or 0
+        )
 
     return {
         'code': party['code'],
@@ -179,6 +211,7 @@ def _serialize_party_locked(party, current_user_id=None):
         'members': members,
         'playback': playback,
         'chat': list(party['chat']),
+        'pending_join_requests': pending_join_requests,
         'settings': settings,
         'created_at': party['created_at_iso'],
         'last_activity': party['last_activity'],
@@ -401,6 +434,7 @@ def _create_party_for_user(user, watch_id):
             'members': {},
             'chat': [],
             'connections': {},
+            'join_requests': {},
             'settings': dict(DEFAULT_PARTY_SETTINGS),
             'playback': {
                 'position': 0.0,
@@ -424,10 +458,27 @@ def _join_party_for_user_with_error(user, code, announce=False):
         if not party:
             return None, 'Party not found or expired'
         _touch_party_locked(party)
+        _cleanup_join_requests_locked(party)
         was_member = int(user.id) in party['members']
         settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
         if settings.get('party_locked', False) and not was_member:
-            return None, 'Party is locked'
+            join_requests = party.setdefault('join_requests', {})
+            user_id = int(user.id)
+            join_request = join_requests.get(user_id)
+            if join_request and join_request.get('status') == 'approved':
+                join_requests.pop(user_id, None)
+            elif join_request and join_request.get('status') == 'denied':
+                return None, 'Join request denied'
+            elif join_request and join_request.get('status') == 'pending':
+                return None, 'Join request pending'
+            else:
+                join_requests[user_id] = {
+                    'user_id': user_id,
+                    'username': getattr(user, 'username', f'User {user_id}'),
+                    'requested_at': time.time(),
+                    'status': 'pending',
+                }
+                return None, 'Join request pending'
         _upsert_member_locked(party, user)
         if announce and not was_member:
             _append_system_message_locked(
@@ -458,9 +509,18 @@ def create_watch_party(current_user):
 @token_required
 def join_watch_party(current_user):
     data = request.get_json(silent=True) or {}
-    party, error = _join_party_for_user_with_error(current_user, data.get('code'), announce=True)
+    raw_code = data.get('code')
+    normalized_code = _normalize_code(raw_code)
+    party, error = _join_party_for_user_with_error(current_user, raw_code, announce=True)
     if not party:
-        return jsonify({'message': error}), 403 if error == 'Party is locked' else 404
+        if error == 'Join request pending':
+            _broadcast_party_state(normalized_code)
+            return jsonify({
+                'message': 'Waiting for leader approval',
+                'status': 'pending',
+                'code': normalized_code,
+            }), 202
+        return jsonify({'message': error}), 403 if error == 'Join request denied' else 404
     _broadcast_party_state(party['code'])
     return jsonify({'party': party}), 200
 
@@ -468,9 +528,17 @@ def join_watch_party(current_user):
 @watch_party_bp.route('/<string:code>', methods=['GET'])
 @token_required
 def get_watch_party(current_user, code):
+    normalized_code = _normalize_code(code)
     party, error = _join_party_for_user_with_error(current_user, code)
     if not party:
-        return jsonify({'message': error}), 403 if error == 'Party is locked' else 404
+        if error == 'Join request pending':
+            _broadcast_party_state(normalized_code)
+            return jsonify({
+                'message': 'Waiting for leader approval',
+                'status': 'pending',
+                'code': normalized_code,
+            }), 202
+        return jsonify({'message': error}), 403 if error == 'Join request denied' else 404
     return jsonify({'party': party}), 200
 
 
@@ -655,6 +723,33 @@ def _handle_leader_transfer_message(party, user, data):
     return None
 
 
+def _handle_join_request_message(party, user, data):
+    if int(user.id) != party['leader_id']:
+        return 'Only the party leader can manage join requests'
+
+    action = data.get('action')
+    if action not in {'approve', 'deny'}:
+        return 'Invalid join request action'
+
+    try:
+        target_user_id = int(data.get('target_user_id'))
+    except (TypeError, ValueError):
+        return 'Invalid join request'
+
+    _cleanup_join_requests_locked(party)
+    join_request = party.setdefault('join_requests', {}).get(target_user_id)
+    if not join_request or join_request.get('status') != 'pending':
+        return 'Join request not found'
+
+    join_request['status'] = 'approved' if action == 'approve' else 'denied'
+    join_request['requested_at'] = time.time()
+
+    username = join_request.get('username') or f'User {target_user_id}'
+    if action == 'deny':
+        _append_system_message_locked(party, f'{username} was not approved to join')
+    return None
+
+
 def _handle_playback_message(party, user, data):
     action = data.get('action')
     if action not in {'play', 'pause', 'seek', 'sync'}:
@@ -754,9 +849,14 @@ def register_watch_party_socket(sock):
                 was_member = int(user.id) in party['members']
                 settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
                 if settings.get('party_locked', False) and not was_member:
-                    ws.send(_json_message('error', message='Party is locked'))
-                    ws.close()
-                    return
+                    _cleanup_join_requests_locked(party)
+                    join_request = party.setdefault('join_requests', {}).get(int(user.id))
+                    if join_request and join_request.get('status') == 'approved':
+                        party['join_requests'].pop(int(user.id), None)
+                    else:
+                        ws.send(_json_message('error', message='Party is locked'))
+                        ws.close()
+                        return
 
                 _touch_party_locked(party)
                 _upsert_member_locked(party, user, connected=True)
@@ -849,6 +949,20 @@ def register_watch_party_socket(sock):
                             break
                         _touch_party_locked(party)
                         error = _handle_leader_transfer_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast_party_state(normalized_code)
+                    continue
+
+                if message_type == 'join_request':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        error = _handle_join_request_message(party, user, data)
                     if error:
                         ws.send(_json_message('error', message=error))
                     else:

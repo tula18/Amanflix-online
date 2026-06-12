@@ -233,7 +233,7 @@ class WatchPartyMemoryTests(unittest.TestCase):
         self.assertIsNone(playback)
         self.assertEqual(error, 'Only the party leader can control playback')
 
-    def test_party_lock_blocks_new_members_but_allows_existing_members(self):
+    def test_party_lock_requires_approval_for_new_members(self):
         leader = FakeUser(1, 'leader')
         member = FakeUser(2, 'member')
         stranger = FakeUser(3, 'stranger')
@@ -251,7 +251,54 @@ class WatchPartyMemoryTests(unittest.TestCase):
         self.assertIsNotNone(existing_member_party)
         self.assertIsNone(existing_error)
         self.assertIsNone(new_member_party)
-        self.assertEqual(new_member_error, 'Party is locked')
+        self.assertEqual(new_member_error, 'Join request pending')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            self.assertIn(3, party['join_requests'])
+            error = watch_party._handle_join_request_message(
+                party,
+                leader,
+                {'action': 'approve', 'target_user_id': 3}
+            )
+
+        self.assertIsNone(error)
+
+        approved_party, approved_error = watch_party._join_party_for_user_with_error(
+            stranger,
+            created['code'],
+            announce=True
+        )
+
+        self.assertIsNone(approved_error)
+        self.assertIsNotNone(approved_party)
+        self.assertEqual({item['id'] for item in approved_party['members']}, {1, 2, 3})
+
+    def test_party_lock_denied_join_request_is_rejected(self):
+        leader = FakeUser(1, 'leader')
+        stranger = FakeUser(3, 'stranger')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            watch_party._parties[created['code']]['settings']['party_locked'] = True
+
+        pending_party, pending_error = watch_party._join_party_for_user_with_error(stranger, created['code'])
+        self.assertIsNone(pending_party)
+        self.assertEqual(pending_error, 'Join request pending')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            error = watch_party._handle_join_request_message(
+                party,
+                leader,
+                {'action': 'deny', 'target_user_id': 3}
+            )
+
+        self.assertIsNone(error)
+
+        denied_party, denied_error = watch_party._join_party_for_user_with_error(stranger, created['code'])
+        self.assertIsNone(denied_party)
+        self.assertEqual(denied_error, 'Join request denied')
 
     def test_leader_can_change_watch_video(self):
         leader = FakeUser(1, 'leader')
