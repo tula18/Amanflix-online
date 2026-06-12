@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignal, FaSignOutAlt, FaSmile, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
+import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignal, FaSignOutAlt, FaSmile, FaSyncAlt, FaThumbtack, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -13,7 +13,10 @@ const DEFAULT_PARTY_SETTINGS = {
     members_can_control_playback: true,
     chat_enabled: true,
     reactions_enabled: true,
-    show_playback_feed: true
+    show_playback_feed: true,
+    party_locked: false,
+    profanity_filter_enabled: true,
+    spam_protection_enabled: true
 };
 
 const WatchPage = () => {
@@ -46,9 +49,16 @@ const WatchPage = () => {
     const [partyError, setPartyError] = useState('');
     const [partyNotice, setPartyNotice] = useState(null);
     const [partyToast, setPartyToast] = useState(null);
+    const [partyExpiryToastDismissed, setPartyExpiryToastDismissed] = useState(false);
     const [partyPanelOpen, setPartyPanelOpen] = useState(false);
     const [partyPanelCollapsed, setPartyPanelCollapsed] = useState(false);
     const [partyCollapsedPreview, setPartyCollapsedPreview] = useState(null);
+    const [partyChatPinned, setPartyChatPinned] = useState(false);
+    const [pinnedChatPosition, setPinnedChatPosition] = useState(null);
+    const [pinnedChatSize, setPinnedChatSize] = useState(null);
+    const [isPinnedChatDragging, setIsPinnedChatDragging] = useState(false);
+    const [isPinnedChatResizing, setIsPinnedChatResizing] = useState(false);
+    const [isPinnedChatHovered, setIsPinnedChatHovered] = useState(false);
     const [partySettingsOpen, setPartySettingsOpen] = useState(false);
     const [partySyncOpen, setPartySyncOpen] = useState(false);
     const [partyExpiryRemaining, setPartyExpiryRemaining] = useState(null);
@@ -57,6 +67,7 @@ const WatchPage = () => {
     const [showReactionBar, setShowReactionBar] = useState(false);
     const [typingUsers, setTypingUsers] = useState({});
     const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadDividerMessageId, setUnreadDividerMessageId] = useState(null);
     const [chatAtBottom, setChatAtBottom] = useState(true);
     const [floatingReactions, setFloatingReactions] = useState([]);
     const [mentionOpen, setMentionOpen] = useState(false);
@@ -78,8 +89,14 @@ const WatchPage = () => {
     const partyNoticeTimerRef = useRef(null);
     const partyToastTimerRef = useRef(null);
     const currentPartyUserIdRef = useRef(null);
+    const watchIdRef = useRef(watch_id);
     const chatLogRef = useRef(null);
     const chatTextareaRef = useRef(null);
+    const chatAtBottomRef = useRef(true);
+    const partyChatPinnedRef = useRef(false);
+    const pinnedChatMessagesRef = useRef(null);
+    const pinnedChatDragRef = useRef(null);
+    const pinnedChatResizeRef = useRef(null);
     const partyPanelOpenRef = useRef(false);
     const partyPanelCollapsedRef = useRef(false);
     const partyCollapsedPreviewTimerRef = useRef(null);
@@ -121,12 +138,39 @@ const WatchPage = () => {
         setPartyCollapsedPreview(null);
     };
 
+    const markPartyChatRead = () => {
+        setUnreadCount(0);
+        setUnreadDividerMessageId(null);
+    };
+
+    const isPartyChatReadable = () => (
+        partyChatPinnedRef.current ||
+        (partyPanelOpenRef.current && !partyPanelCollapsedRef.current && chatAtBottomRef.current)
+    );
+
+    const registerUnreadPartyMessages = (messages) => {
+        const incomingMessages = (messages || []).filter(Boolean);
+        if (incomingMessages.length === 0) return;
+
+        if (isPartyChatReadable()) {
+            markPartyChatRead();
+            return;
+        }
+
+        const firstUnreadMessage = incomingMessages.find((message) => message.id);
+        if (firstUnreadMessage) {
+            setUnreadDividerMessageId((current) => current || firstUnreadMessage.id);
+        }
+        chatAtBottomRef.current = false;
+        setChatAtBottom(false);
+        setUnreadCount((prev) => prev + incomingMessages.length);
+    };
+
     const openPartyPanel = () => {
         partyPanelOpenRef.current = true;
         partyPanelCollapsedRef.current = false;
         setPartyPanelOpen(true);
         setPartyPanelCollapsed(false);
-        setUnreadCount(0);
         clearPartyCollapsedPreview();
     };
 
@@ -194,6 +238,14 @@ const WatchPage = () => {
         }, 2600);
     };
 
+    const dismissPartyNotice = () => {
+        if (partyNoticeTimerRef.current) {
+            clearTimeout(partyNoticeTimerRef.current);
+            partyNoticeTimerRef.current = null;
+        }
+        setPartyNotice(null);
+    };
+
     const showPartyToast = (message, type = 'info') => {
         if (partyToastTimerRef.current) {
             clearTimeout(partyToastTimerRef.current);
@@ -203,6 +255,14 @@ const WatchPage = () => {
             setPartyToast(null);
             partyToastTimerRef.current = null;
         }, 5200);
+    };
+
+    const dismissPartyToast = () => {
+        if (partyToastTimerRef.current) {
+            clearTimeout(partyToastTimerRef.current);
+            partyToastTimerRef.current = null;
+        }
+        setPartyToast(null);
     };
 
     const getCollapsedPreviewContent = (message) => {
@@ -275,6 +335,7 @@ const WatchPage = () => {
         const newMessages = nextMessages.filter((message) => message?.id && !previousIds.has(message.id));
         if (newMessages.length > 0) {
             showCollapsedChatPreview(newMessages[newMessages.length - 1]);
+            registerUnreadPartyMessages(newMessages);
         }
     };
 
@@ -417,6 +478,11 @@ const WatchPage = () => {
             setPartyError('');
             openPartyPanel();
 
+            if (data.party?.watch_id && data.party.watch_id !== watchIdRef.current) {
+                navigate(`/watch/${data.party.watch_id}?party=${data.party.code}`, { replace: true });
+                return;
+            }
+
             if (data.party?.is_leader && videoRef.current) {
                 setTimeout(() => {
                     const video = videoRef.current;
@@ -433,6 +499,9 @@ const WatchPage = () => {
         if (data.type === 'party_state') {
             showCollapsedPartyStatePreview(data.party);
             updatePartyState(data.party);
+            if (data.party?.watch_id && data.party.watch_id !== watchIdRef.current) {
+                navigate(`/watch/${data.party.watch_id}?party=${data.party.code}`, { replace: true });
+            }
             return;
         }
 
@@ -482,6 +551,7 @@ const WatchPage = () => {
 
         if (data.type === 'chat_message') {
             showCollapsedChatPreview(data.message);
+            registerUnreadPartyMessages([data.message]);
             setParty((previousParty) => {
                 if (!previousParty) return previousParty;
                 const nextChat = [...(previousParty.chat || []), data.message].slice(-100);
@@ -489,9 +559,6 @@ const WatchPage = () => {
                 partyRef.current = nextParty;
                 return nextParty;
             });
-            if (!partyPanelOpenRef.current) {
-                setUnreadCount((prev) => prev + 1);
-            }
             if (data.message?.type === 'reaction') {
                 const emoji = data.message.reaction || data.message.message;
                 const reactionId = Date.now() + Math.random();
@@ -517,6 +584,11 @@ const WatchPage = () => {
             setPartySettingsOpen(false);
             setPartySyncOpen(false);
             setMemberActionMenu(null);
+            setPartyChatPinned(false);
+            setPartyExpiryToastDismissed(false);
+            markPartyChatRead();
+            chatAtBottomRef.current = true;
+            setChatAtBottom(true);
             setLastPartyEventAt(null);
             setLastPartyPlaybackAt(null);
             clearPartyCollapsedPreview();
@@ -536,10 +608,15 @@ const WatchPage = () => {
             setPartySettingsOpen(false);
             setPartySyncOpen(false);
             setMemberActionMenu(null);
+            setPartyChatPinned(false);
+            setPartyExpiryToastDismissed(false);
+            markPartyChatRead();
+            chatAtBottomRef.current = true;
+            setChatAtBottom(true);
             setLastPartyEventAt(null);
             setLastPartyPlaybackAt(null);
             clearPartyCollapsedPreview();
-            navigate(`/watch/${watch_id}`, { replace: true });
+            navigate(`/watch/${watchIdRef.current}`, { replace: true });
             return;
         }
 
@@ -674,10 +751,15 @@ const WatchPage = () => {
         setPartySettingsOpen(false);
         setPartySyncOpen(false);
         setMemberActionMenu(null);
+        setPartyChatPinned(false);
+        setPartyExpiryToastDismissed(false);
+        markPartyChatRead();
+        chatAtBottomRef.current = true;
+        setChatAtBottom(true);
         setLastPartyEventAt(null);
         setLastPartyPlaybackAt(null);
         clearPartyCollapsedPreview();
-        navigate(`/watch/${watch_id}`, { replace: true });
+        navigate(`/watch/${watchIdRef.current}`, { replace: true });
     };
 
     const endWatchParty = async () => {
@@ -885,14 +967,21 @@ const WatchPage = () => {
     const handleChatScroll = () => {
         const el = chatLogRef.current;
         if (!el) return;
-        setChatAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        chatAtBottomRef.current = atBottom;
+        setChatAtBottom(atBottom);
+        if (atBottom) {
+            markPartyChatRead();
+        }
     };
 
     const scrollChatToBottom = () => {
         if (chatLogRef.current) {
             chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
         }
+        chatAtBottomRef.current = true;
         setChatAtBottom(true);
+        markPartyChatRead();
     };
 
     const insertMention = (username) => {
@@ -1024,6 +1113,159 @@ const WatchPage = () => {
         sendPartyPlayback('seek', position, videoRef.current ? !videoRef.current.paused : false);
     };
 
+    const followPartyLeader = () => {
+        const activeParty = partyRef.current;
+        if (!activeParty?.code) return;
+
+        if (activeParty.watch_id && activeParty.watch_id !== watchIdRef.current) {
+            navigate(`/watch/${activeParty.watch_id}?party=${activeParty.code}`, { replace: true });
+            showPartyNotice('Following leader video', 'success');
+            return;
+        }
+
+        if (activeParty.playback) {
+            applyRemotePlayback(activeParty.playback);
+            setLastPartyPlaybackAt(Date.now());
+        }
+        showPartyNotice('Synced with leader', 'success');
+    };
+
+    const togglePartyChatPinned = () => {
+        const nextPinned = !partyChatPinnedRef.current;
+        partyChatPinnedRef.current = nextPinned;
+        setPartyChatPinned(nextPinned);
+        if (nextPinned) {
+            markPartyChatRead();
+        } else {
+            pinnedChatDragRef.current = null;
+            pinnedChatResizeRef.current = null;
+            setIsPinnedChatDragging(false);
+            setIsPinnedChatResizing(false);
+            setIsPinnedChatHovered(false);
+        }
+    };
+
+    const clampPinnedChatPosition = (x, y, width, height) => {
+        const margin = 10;
+        const maxX = Math.max(margin, window.innerWidth - width - margin);
+        const maxY = Math.max(margin, window.innerHeight - height - margin);
+        return {
+            x: Math.min(Math.max(margin, x), maxX),
+            y: Math.min(Math.max(margin, y), maxY)
+        };
+    };
+
+    const clampPinnedChatSize = (width, height, left, top) => {
+        const margin = 10;
+        const minWidth = Math.min(250, window.innerWidth - margin * 2);
+        const minHeight = Math.min(132, window.innerHeight - margin * 2);
+        const maxWidth = Math.max(minWidth, window.innerWidth - left - margin);
+        const maxHeight = Math.max(minHeight, window.innerHeight - top - margin);
+        return {
+            width: Math.min(Math.max(minWidth, width), maxWidth),
+            height: Math.min(Math.max(minHeight, height), maxHeight)
+        };
+    };
+
+    const startPinnedChatDrag = (event) => {
+        if (event.target.closest?.('button')) return;
+        if (event.target.closest?.('.watchPartyPinnedChatResizeHandle')) return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        const panel = event.currentTarget.closest('.watchPartyPinnedChat');
+        if (!panel) return;
+
+        const rect = panel.getBoundingClientRect();
+        pinnedChatDragRef.current = {
+            pointerId: event.pointerId,
+            offsetX: event.clientX - rect.left,
+            offsetY: event.clientY - rect.top,
+            width: rect.width,
+            height: rect.height
+        };
+        setPinnedChatPosition({ x: rect.left, y: rect.top });
+        setIsPinnedChatDragging(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+    };
+
+    const dragPinnedChat = (event) => {
+        const dragState = pinnedChatDragRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+        const nextPosition = clampPinnedChatPosition(
+            event.clientX - dragState.offsetX,
+            event.clientY - dragState.offsetY,
+            dragState.width,
+            dragState.height
+        );
+        setPinnedChatPosition(nextPosition);
+        event.preventDefault();
+    };
+
+    const stopPinnedChatDrag = (event) => {
+        const dragState = pinnedChatDragRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+        pinnedChatDragRef.current = null;
+        setIsPinnedChatDragging(false);
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+    };
+
+    const startPinnedChatResize = (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        const panel = event.currentTarget.closest('.watchPartyPinnedChat');
+        if (!panel) return;
+
+        const rect = panel.getBoundingClientRect();
+        pinnedChatResizeRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height
+        };
+        setPinnedChatPosition({ x: rect.left, y: rect.top });
+        setPinnedChatSize({ width: rect.width, height: rect.height });
+        setIsPinnedChatResizing(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        event.stopPropagation();
+        event.preventDefault();
+    };
+
+    const resizePinnedChat = (event) => {
+        const resizeState = pinnedChatResizeRef.current;
+        if (!resizeState || resizeState.pointerId !== event.pointerId) return;
+
+        setPinnedChatSize(
+            clampPinnedChatSize(
+                resizeState.width + event.clientX - resizeState.startX,
+                resizeState.height + event.clientY - resizeState.startY,
+                resizeState.left,
+                resizeState.top
+            )
+        );
+        event.stopPropagation();
+        event.preventDefault();
+    };
+
+    const stopPinnedChatResize = (event) => {
+        const resizeState = pinnedChatResizeRef.current;
+        if (!resizeState || resizeState.pointerId !== event.pointerId) return;
+
+        pinnedChatResizeRef.current = null;
+        setIsPinnedChatResizing(false);
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        event.stopPropagation();
+    };
+
+    useEffect(() => {
+        watchIdRef.current = watch_id;
+    }, [watch_id]);
+
     useEffect(() => {
         const code = getPartyCodeFromUrl();
 
@@ -1039,6 +1281,11 @@ const WatchPage = () => {
                 setPartySettingsOpen(false);
                 setPartySyncOpen(false);
                 setMemberActionMenu(null);
+                setPartyChatPinned(false);
+                setPartyExpiryToastDismissed(false);
+                markPartyChatRead();
+                chatAtBottomRef.current = true;
+                setChatAtBottom(true);
                 setLastPartyEventAt(null);
                 setLastPartyPlaybackAt(null);
                 clearPartyCollapsedPreview();
@@ -1111,6 +1358,44 @@ const WatchPage = () => {
             chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
         }
     }, [party?.chat?.length]);
+
+    useEffect(() => {
+        setPartyExpiryToastDismissed(false);
+    }, [party?.code]);
+
+    useEffect(() => {
+        partyChatPinnedRef.current = partyChatPinned;
+        if (partyChatPinned) {
+            markPartyChatRead();
+        }
+    }, [partyChatPinned]);
+
+    useEffect(() => {
+        if (!partyPanelOpen || partyPanelCollapsed || !unreadDividerMessageId) {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            const divider = chatLogRef.current?.querySelector('.watchPartyUnreadDivider');
+            if (divider) {
+                divider.scrollIntoView({ block: 'center' });
+            }
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
+    }, [partyPanelOpen, partyPanelCollapsed, unreadDividerMessageId, party?.chat?.length]);
+
+    useEffect(() => {
+        if (!party?.code || party.watch_id !== watch_id || !party.playback) {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            applyRemotePlayback(party.playback);
+        }, 450);
+
+        return () => clearTimeout(timeoutId);
+    }, [watch_id, party?.code, party?.watch_id]);
 
     useEffect(() => {
         if (!partySyncOpen || !party?.code) {
@@ -1552,11 +1837,45 @@ const WatchPage = () => {
         }
         
         ErrorHandler("video_error", navigate);
-    };    const handleNextEpisode = () => {
+    };
+
+    const requestPartyWatchChange = (nextWatchId) => {
+        const activeParty = partyRef.current;
+        if (!activeParty?.code) {
+            return false;
+        }
+
+        if (!activeParty.is_leader) {
+            showPartyNotice('Only the party leader can change the video', 'warning');
+            return true;
+        }
+
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            showPartyToast('Reconnect before changing the party video', 'warning');
+            return true;
+        }
+
+        if (videoRef.current && videoRef.current.currentTime > 0) {
+            saveWatchHistory();
+        }
+
+        wsRef.current.send(JSON.stringify({
+            type: 'watch_change',
+            watch_id: nextWatchId,
+            playing: videoRef.current ? !videoRef.current.paused : false
+        }));
+        return true;
+    };
+
+    const handleNextEpisode = () => {
         if (mediaDataNext && mediaDataNext.nextContentId && mediaDataNext.nextSeasonNumber && mediaDataNext.nextEpisodeNumber) {
             const { nextContentId, nextSeasonNumber, nextEpisodeNumber } = mediaDataNext;
             const nextWatchId = `t-${nextContentId}-${nextSeasonNumber}-${nextEpisodeNumber}`;
             console.log(`Navigating to next episode: /watch/${nextWatchId}`); // DEBUGGING
+            if (requestPartyWatchChange(nextWatchId)) {
+                return;
+            }
             navigate(`/watch/${nextWatchId}`, { replace: true });
         } else {
             console.log("No next episode data available to navigate."); // DEBUGGING
@@ -1567,6 +1886,10 @@ const WatchPage = () => {
         // Don't navigate if it's the current episode
         if (isCurrentEpisode) {
             console.log('Already watching this episode');
+            return;
+        }
+
+        if (requestPartyWatchChange(episodeId)) {
             return;
         }
         
@@ -1585,6 +1908,7 @@ const WatchPage = () => {
     const disablePartyNavigation = isInParty && !isPartyLeader;
     const partyMembers = party?.members || [];
     const partyChat = party?.chat || [];
+    const pinnedChatLatestMessageId = partyChat[partyChat.length - 1]?.id || partyChat.length;
     const partySettings = { ...DEFAULT_PARTY_SETTINGS, ...(party?.settings || {}) };
     const currentPartyMember = partyMembers.find((member) => member.id === party?.current_user_id);
     const disablePartyPlayPause = isInParty && !isPartyLeader && !partySettings.members_can_control_playback;
@@ -1621,6 +1945,32 @@ const WatchPage = () => {
                     : partyStatus === 'error'
                         ? 'Offline'
                         : 'Idle';
+
+    useEffect(() => {
+        if (
+            !partyChatPinned ||
+            isPinnedChatHovered ||
+            isPinnedChatDragging ||
+            isPinnedChatResizing
+        ) {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            const chatEl = pinnedChatMessagesRef.current;
+            if (chatEl) {
+                chatEl.scrollTop = chatEl.scrollHeight;
+            }
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
+    }, [
+        partyChatPinned,
+        pinnedChatLatestMessageId,
+        isPinnedChatHovered,
+        isPinnedChatDragging,
+        isPinnedChatResizing
+    ]);
 
     const formatPartyRemaining = (seconds) => {
         const safeSeconds = Math.max(0, Number(seconds) || 0);
@@ -1716,8 +2066,21 @@ const WatchPage = () => {
     };
 
     const renderPartyChatMessage = (message) => {
-        if (message.type === 'system') {
+        const withUnreadDivider = (node) => {
+            if (!message?.id || message.id !== unreadDividerMessageId) {
+                return node;
+            }
+
             return (
+                <React.Fragment key={`unread-${message.id}`}>
+                    <div className="watchPartyUnreadDivider">New messages</div>
+                    {node}
+                </React.Fragment>
+            );
+        };
+
+        if (message.type === 'system') {
+            return withUnreadDivider(
                 <div className="watchPartyChatMessage system" key={message.id}>
                     <span>{message.message}</span>
                 </div>
@@ -1725,7 +2088,7 @@ const WatchPage = () => {
         }
 
         if (message.type === 'playback_action') {
-            return (
+            return withUnreadDivider(
                 <div className="watchPartyChatMessage playbackAction" key={message.id}>
                     <span>{message.message}</span>
                 </div>
@@ -1735,7 +2098,7 @@ const WatchPage = () => {
         const isOwnMessage = message.user_id === party?.current_user_id;
         const isReaction = message.type === 'reaction';
 
-        return (
+        return withUnreadDivider(
             <div
                 className={`watchPartyChatMessage ${isOwnMessage ? 'own' : ''} ${isReaction ? 'reaction' : ''}`}
                 key={message.id}
@@ -1772,18 +2135,32 @@ const WatchPage = () => {
                 <div className={`watchPartyToast ${partyToast.type}`}>
                     <span>{partyToast.message}</span>
                     {party && (
-                        <button onClick={openPartyPanel}>Open</button>
+                        <button className="watchPartyToastActionButton" onClick={openPartyPanel}>Open</button>
                     )}
+                    <button
+                        className="watchPartyToastCloseButton"
+                        onClick={dismissPartyToast}
+                        title="Dismiss"
+                    >
+                        <FaTimes />
+                    </button>
                 </div>
             );
         }
 
-        if (!showExpiryWarning) return null;
+        if (!showExpiryWarning || partyExpiryToastDismissed) return null;
 
         return (
             <div className="watchPartyToast warning">
                 <span>Party expires in {formatPartyRemaining(partyExpiryRemaining)}</span>
-                <button onClick={openPartyPanel}>Open</button>
+                <button className="watchPartyToastActionButton" onClick={openPartyPanel}>Open</button>
+                <button
+                    className="watchPartyToastCloseButton"
+                    onClick={() => setPartyExpiryToastDismissed(true)}
+                    title="Dismiss"
+                >
+                    <FaTimes />
+                </button>
             </div>
         );
     };
@@ -1793,7 +2170,10 @@ const WatchPage = () => {
             ['members_can_control_playback', 'Members can play/pause'],
             ['chat_enabled', 'Chat enabled'],
             ['reactions_enabled', 'Reactions enabled'],
-            ['show_playback_feed', 'Playback feed in chat']
+            ['show_playback_feed', 'Playback feed in chat'],
+            ['party_locked', 'Party lock'],
+            ['profanity_filter_enabled', 'Profanity filter'],
+            ['spam_protection_enabled', 'Spam protection']
         ];
 
         return (
@@ -1919,6 +2299,88 @@ const WatchPage = () => {
         );
     };
 
+    const getPinnedChatParts = (message) => {
+        if (!message) return { author: '', body: '' };
+        if (message.type === 'reaction') {
+            return {
+                author: message.username || 'Someone',
+                body: message.reaction || message.message || ''
+            };
+        }
+        if (message.type === 'message') {
+            return {
+                author: message.username || 'Someone',
+                body: message.message || ''
+            };
+        }
+        return { author: '', body: message.message || '' };
+    };
+
+    const renderPinnedPartyChat = () => {
+        if (!partyChatPinned || !party) return null;
+
+        const visibleMessages = partyChat.slice(-6);
+        const pinnedChatStyle = {};
+        if (pinnedChatPosition) {
+            Object.assign(pinnedChatStyle, {
+                left: `${pinnedChatPosition.x}px`,
+                top: `${pinnedChatPosition.y}px`,
+                right: 'auto'
+            });
+        }
+        if (pinnedChatSize) {
+            pinnedChatStyle.width = `${pinnedChatSize.width}px`;
+            pinnedChatStyle.height = `${pinnedChatSize.height}px`;
+        }
+
+        return (
+            <aside
+                className={`watchPartyPinnedChat ${isPinnedChatDragging ? 'dragging' : ''} ${isPinnedChatResizing ? 'resizing' : ''}`}
+                style={pinnedChatStyle}
+                onMouseEnter={() => setIsPinnedChatHovered(true)}
+                onMouseLeave={() => setIsPinnedChatHovered(false)}
+            >
+                <div
+                    className="watchPartyPinnedChatHeader"
+                    onPointerDown={startPinnedChatDrag}
+                    onPointerMove={dragPinnedChat}
+                    onPointerUp={stopPinnedChatDrag}
+                    onPointerCancel={stopPinnedChatDrag}
+                >
+                    <strong>Party Chat</strong>
+                    <button type="button" onClick={togglePartyChatPinned} title="Unpin chat">
+                        <FaTimes />
+                    </button>
+                </div>
+                <div className="watchPartyPinnedChatMessages" ref={pinnedChatMessagesRef}>
+                    {visibleMessages.length === 0 && (
+                        <div className="watchPartyPinnedChatEmpty">No messages yet</div>
+                    )}
+                    {visibleMessages.map((message) => {
+                        const pinnedMessage = getPinnedChatParts(message);
+                        return (
+                            <div
+                                key={message.id}
+                                className={`watchPartyPinnedChatMessage ${message.type || 'message'}`}
+                            >
+                                {pinnedMessage.author && <strong>{pinnedMessage.author}</strong>}
+                                <span>{pinnedMessage.body}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+                <div
+                    className="watchPartyPinnedChatResizeHandle"
+                    onPointerDown={startPinnedChatResize}
+                    onPointerMove={resizePinnedChat}
+                    onPointerUp={stopPinnedChatResize}
+                    onPointerCancel={stopPinnedChatResize}
+                    title="Resize chat"
+                />
+            </aside>
+        );
+    };
+
     const renderWatchPartyPanel = () => (
         <aside className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''}`}>
             <div className="watchPartyPanelHeader">
@@ -1943,6 +2405,15 @@ const WatchPage = () => {
                             title="Sync health"
                         >
                             <FaSignal />
+                        </button>
+                    )}
+                    {party && (
+                        <button
+                            className="watchPartyIconButton"
+                            onClick={followPartyLeader}
+                            title="Follow leader"
+                        >
+                            <FaSyncAlt />
                         </button>
                     )}
                     <button
@@ -2048,7 +2519,17 @@ const WatchPage = () => {
                             </section>
 
                             <section className="watchPartySection watchPartyChatSection">
-                                <div className="watchPartySectionTitle">Chat</div>
+                                <div className="watchPartyChatHeader">
+                                    <div className="watchPartySectionTitle">Chat</div>
+                                    <button
+                                        type="button"
+                                        className={`watchPartyPinChatButton ${partyChatPinned ? 'active' : ''}`}
+                                        onClick={togglePartyChatPinned}
+                                        title={partyChatPinned ? 'Unpin chat' : 'Pin chat'}
+                                    >
+                                        <FaThumbtack />
+                                    </button>
+                                </div>
                                 <div className="watchPartyChatLogWrapper">
                                     <div className="watchPartyChatLog" ref={chatLogRef} onScroll={handleChatScroll}>
                                         {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
@@ -2135,7 +2616,14 @@ const WatchPage = () => {
                     Party expires in {formatPartyRemaining(partyExpiryRemaining)}
                 </div>
             )}
-            {partyNotice && <div className={`watchPartyNotice ${partyNotice.type}`}>{partyNotice.message}</div>}
+            {partyNotice && (
+                <div className={`watchPartyNotice ${partyNotice.type}`}>
+                    <span>{partyNotice.message}</span>
+                    <button type="button" onClick={dismissPartyNotice} title="Dismiss">
+                        <FaTimes />
+                    </button>
+                </div>
+            )}
             {partyError && <div className="watchPartyError">{partyError}</div>}
         </aside>
     );
@@ -2148,6 +2636,7 @@ const WatchPage = () => {
             <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
             {renderWatchPartyPanel()}
             {renderMemberActionMenu()}
+            {renderPinnedPartyChat()}
             {renderPartyToast()}
             {floatingReactions.length > 0 && (
                 <div className="watchPartyFloatingReactions" aria-hidden="true">

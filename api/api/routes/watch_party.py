@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 import json
 import random
+import re
 import string
 import threading
 import time
@@ -18,14 +19,29 @@ watch_party_bp = Blueprint('watch_party', __name__, url_prefix='/api/watch-party
 PARTY_TTL_SECONDS = 2 * 60 * 60
 MAX_CHAT_MESSAGES = 100
 MAX_CHAT_LENGTH = 500
+SPAM_WINDOW_SECONDS = 10
+SPAM_MAX_MESSAGES = 5
+SPAM_DUPLICATE_SECONDS = 8
 PARTY_CODE_LENGTH = 6
 CODE_ALPHABET = ''.join(ch for ch in string.ascii_uppercase + string.digits if ch not in '0O1I')
 ALLOWED_REACTIONS = {'👍', '😂', '❤️', '😮', '🔥', '👏'}
+PROFANITY_PATTERNS = (
+    r'\bf+u+c+k+\b',
+    r'\bs+h+i+t+\b',
+    r'\bb+i+t+c+h+\b',
+    r'\ba+s+s+h+o+l+e+\b',
+    r'\bc+u+n+t+\b',
+    r'\bd+i+c+k+\b',
+    r'\bp+u+s+s+y+\b',
+)
 DEFAULT_PARTY_SETTINGS = {
     'members_can_control_playback': True,
     'chat_enabled': True,
     'reactions_enabled': True,
     'show_playback_feed': True,
+    'party_locked': False,
+    'profanity_filter_enabled': True,
+    'spam_protection_enabled': True,
 }
 
 _party_lock = threading.RLock()
@@ -294,6 +310,58 @@ def _append_playback_action_locked(party, user, action, position):
     })
 
 
+def _normalize_chat_control_text(text):
+    return re.sub(r'\s+', ' ', (text or '').strip().lower())
+
+
+def _contains_profanity(text):
+    normalized = _normalize_chat_control_text(text)
+    return any(re.search(pattern, normalized) for pattern in PROFANITY_PATTERNS)
+
+
+def _check_chat_controls_locked(party, user, content, check_duplicate=True):
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    member = party['members'].get(int(user.id))
+    if not member:
+        return None
+
+    is_leader = int(user.id) == party['leader_id']
+    if (
+        not is_leader and
+        settings.get('profanity_filter_enabled', True) and
+        _contains_profanity(content)
+    ):
+        return 'Message blocked by profanity filter'
+
+    if is_leader or not settings.get('spam_protection_enabled', True):
+        return None
+
+    now = time.time()
+    timestamps = [
+        timestamp for timestamp in member.get('chat_timestamps', [])
+        if now - float(timestamp) <= SPAM_WINDOW_SECONDS
+    ]
+    if len(timestamps) >= SPAM_MAX_MESSAGES:
+        member['chat_timestamps'] = timestamps
+        return 'Slow down before sending another message'
+
+    normalized = _normalize_chat_control_text(content)
+    if (
+        check_duplicate and
+        normalized and
+        member.get('last_chat_text') == normalized and
+        now - float(member.get('last_chat_at', 0)) <= SPAM_DUPLICATE_SECONDS
+    ):
+        member['chat_timestamps'] = timestamps
+        return 'Duplicate message blocked'
+
+    timestamps.append(now)
+    member['chat_timestamps'] = timestamps
+    member['last_chat_text'] = normalized
+    member['last_chat_at'] = now
+    return None
+
+
 def _decode_user_from_token(raw_token):
     token = (raw_token or '').strip()
     if token.startswith('Bearer '):
@@ -348,22 +416,30 @@ def _create_party_for_user(user, watch_id):
         return _serialize_party_locked(party, user.id)
 
 
-def _join_party_for_user(user, code, announce=False):
+def _join_party_for_user_with_error(user, code, announce=False):
     normalized_code = _normalize_code(code)
     with _party_lock:
         _cleanup_expired_locked()
         party = _parties.get(normalized_code)
         if not party:
-            return None
+            return None, 'Party not found or expired'
         _touch_party_locked(party)
         was_member = int(user.id) in party['members']
+        settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+        if settings.get('party_locked', False) and not was_member:
+            return None, 'Party is locked'
         _upsert_member_locked(party, user)
         if announce and not was_member:
             _append_system_message_locked(
                 party,
                 f"{getattr(user, 'username', f'User {user.id}')} joined the party"
             )
-        return _serialize_party_locked(party, user.id)
+        return _serialize_party_locked(party, user.id), None
+
+
+def _join_party_for_user(user, code, announce=False):
+    party, _ = _join_party_for_user_with_error(user, code, announce)
+    return party
 
 
 @watch_party_bp.route('/create', methods=['POST'])
@@ -382,9 +458,9 @@ def create_watch_party(current_user):
 @token_required
 def join_watch_party(current_user):
     data = request.get_json(silent=True) or {}
-    party = _join_party_for_user(current_user, data.get('code'), announce=True)
+    party, error = _join_party_for_user_with_error(current_user, data.get('code'), announce=True)
     if not party:
-        return jsonify({'message': 'Party not found or expired'}), 404
+        return jsonify({'message': error}), 403 if error == 'Party is locked' else 404
     _broadcast_party_state(party['code'])
     return jsonify({'party': party}), 200
 
@@ -392,9 +468,9 @@ def join_watch_party(current_user):
 @watch_party_bp.route('/<string:code>', methods=['GET'])
 @token_required
 def get_watch_party(current_user, code):
-    party = _join_party_for_user(current_user, code)
+    party, error = _join_party_for_user_with_error(current_user, code)
     if not party:
-        return jsonify({'message': 'Party not found or expired'}), 404
+        return jsonify({'message': error}), 403 if error == 'Party is locked' else 404
     return jsonify({'party': party}), 200
 
 
@@ -433,6 +509,10 @@ def _handle_chat_message(party, user, data):
     if len(message_text) > MAX_CHAT_LENGTH:
         message_text = message_text[:MAX_CHAT_LENGTH]
 
+    control_error = _check_chat_controls_locked(party, user, message_text)
+    if control_error:
+        return None, control_error
+
     message = {
         'id': uuid.uuid4().hex[:12],
         'type': 'message',
@@ -457,6 +537,10 @@ def _handle_reaction_message(party, user, data):
     reaction = data.get('reaction')
     if reaction not in ALLOWED_REACTIONS:
         return None, 'Invalid reaction'
+
+    control_error = _check_chat_controls_locked(party, user, f'reaction:{reaction}', check_duplicate=False)
+    if control_error:
+        return None, control_error
 
     message = {
         'id': uuid.uuid4().hex[:12],
@@ -607,6 +691,32 @@ def _handle_playback_message(party, user, data):
     return dict(party['playback'], position=_current_position_locked(party, now), updated_at=now), None
 
 
+def _handle_watch_change_message(party, user, data):
+    if int(user.id) != party['leader_id']:
+        return 'Only the party leader can change the video'
+
+    watch_id = (data.get('watch_id') or '').strip()
+    if not _valid_watch_id(watch_id):
+        return 'Invalid watch_id'
+    if watch_id == party.get('watch_id'):
+        return None
+
+    now = time.time()
+    party['watch_id'] = watch_id
+    party['playback'].update({
+        'position': 0.0,
+        'playing': bool(data.get('playing', False)),
+        'updated_at': now,
+        'version': int(party['playback'].get('version', 0)) + 1,
+        'last_action': 'watch_change',
+    })
+    _append_system_message_locked(
+        party,
+        f"{getattr(user, 'username', f'User {user.id}')} changed the video"
+    )
+    return None
+
+
 def register_watch_party_socket(sock):
     global _socket_route_registered
     if _socket_route_registered:
@@ -638,6 +748,13 @@ def register_watch_party_socket(sock):
                 party = _parties.get(normalized_code)
                 if not party:
                     ws.send(_json_message('party_expired', code=normalized_code))
+                    ws.close()
+                    return
+
+                was_member = int(user.id) in party['members']
+                settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+                if settings.get('party_locked', False) and not was_member:
+                    ws.send(_json_message('error', message='Party is locked'))
                     ws.close()
                     return
 
@@ -746,6 +863,20 @@ def register_watch_party_socket(sock):
                             break
                         _touch_party_locked(party)
                         error = _handle_settings_update_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast_party_state(normalized_code)
+                    continue
+
+                if message_type == 'watch_change':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        error = _handle_watch_change_message(party, user, data)
                     if error:
                         ws.send(_json_message('error', message=error))
                     else:

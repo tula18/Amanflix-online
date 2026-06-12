@@ -233,6 +233,98 @@ class WatchPartyMemoryTests(unittest.TestCase):
         self.assertIsNone(playback)
         self.assertEqual(error, 'Only the party leader can control playback')
 
+    def test_party_lock_blocks_new_members_but_allows_existing_members(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        stranger = FakeUser(3, 'stranger')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        joined = watch_party._join_party_for_user(member, created['code'])
+        self.assertIsNotNone(joined)
+
+        with watch_party._party_lock:
+            watch_party._parties[created['code']]['settings']['party_locked'] = True
+
+        existing_member_party, existing_error = watch_party._join_party_for_user_with_error(member, created['code'])
+        new_member_party, new_member_error = watch_party._join_party_for_user_with_error(stranger, created['code'])
+
+        self.assertIsNotNone(existing_member_party)
+        self.assertIsNone(existing_error)
+        self.assertIsNone(new_member_party)
+        self.assertEqual(new_member_error, 'Party is locked')
+
+    def test_leader_can_change_watch_video(self):
+        leader = FakeUser(1, 'leader')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            party['playback']['position'] = 42.0
+            party['playback']['playing'] = False
+            error = watch_party._handle_watch_change_message(
+                party,
+                leader,
+                {'watch_id': 't-456-1-2', 'playing': True}
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(party['watch_id'], 't-456-1-2')
+        self.assertEqual(party['playback']['position'], 0.0)
+        self.assertTrue(party['playback']['playing'])
+        self.assertEqual(party['playback']['last_action'], 'watch_change')
+        self.assertEqual(party['chat'][-1]['type'], 'system')
+
+    def test_non_leader_cannot_change_watch_video(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            watch_party._upsert_member_locked(party, member)
+            error = watch_party._handle_watch_change_message(
+                party,
+                member,
+                {'watch_id': 't-456-1-2'}
+            )
+
+        self.assertEqual(error, 'Only the party leader can change the video')
+        self.assertEqual(party['watch_id'], 'm-123')
+
+    def test_chat_controls_block_member_profanity_and_spam(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            watch_party._upsert_member_locked(party, member)
+            message, profanity_error = watch_party._handle_chat_message(
+                party,
+                member,
+                {'message': 'this is shit'}
+            )
+            self.assertIsNone(message)
+            self.assertEqual(profanity_error, 'Message blocked by profanity filter')
+
+            for index in range(watch_party.SPAM_MAX_MESSAGES):
+                message, error = watch_party._handle_chat_message(
+                    party,
+                    member,
+                    {'message': f'ok message {index}'}
+                )
+                self.assertIsNone(error)
+                self.assertIsNotNone(message)
+
+            message, spam_error = watch_party._handle_chat_message(
+                party,
+                member,
+                {'message': 'one more message'}
+            )
+
+        self.assertIsNone(message)
+        self.assertEqual(spam_error, 'Slow down before sending another message')
+
     def test_playback_action_feed_skips_sync(self):
         leader = FakeUser(1, 'leader')
         created = watch_party._create_party_for_user(leader, 'm-123')
