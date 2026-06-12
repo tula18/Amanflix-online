@@ -42,6 +42,7 @@ const WatchPage = () => {
     const [partyToast, setPartyToast] = useState(null);
     const [partyPanelOpen, setPartyPanelOpen] = useState(false);
     const [partyPanelCollapsed, setPartyPanelCollapsed] = useState(false);
+    const [partyCollapsedPreview, setPartyCollapsedPreview] = useState(null);
     const [partyExpiryRemaining, setPartyExpiryRemaining] = useState(null);
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [chatDraft, setChatDraft] = useState('');
@@ -68,6 +69,8 @@ const WatchPage = () => {
     const chatLogRef = useRef(null);
     const chatTextareaRef = useRef(null);
     const partyPanelOpenRef = useRef(false);
+    const partyPanelCollapsedRef = useRef(false);
+    const partyCollapsedPreviewTimerRef = useRef(null);
     const typingTimeoutsRef = useRef({});
     const typingDebounceRef = useRef(null);
     const isTypingRef = useRef(false);
@@ -98,21 +101,38 @@ const WatchPage = () => {
         };
     };
 
+    const clearPartyCollapsedPreview = () => {
+        if (partyCollapsedPreviewTimerRef.current) {
+            clearTimeout(partyCollapsedPreviewTimerRef.current);
+            partyCollapsedPreviewTimerRef.current = null;
+        }
+        setPartyCollapsedPreview(null);
+    };
+
     const openPartyPanel = () => {
         partyPanelOpenRef.current = true;
+        partyPanelCollapsedRef.current = false;
         setPartyPanelOpen(true);
         setPartyPanelCollapsed(false);
         setUnreadCount(0);
+        clearPartyCollapsedPreview();
     };
 
     const closePartyPanel = () => {
         partyPanelOpenRef.current = false;
+        partyPanelCollapsedRef.current = false;
         setPartyPanelOpen(false);
         setPartyPanelCollapsed(false);
+        clearPartyCollapsedPreview();
     };
 
     const togglePartyPanelCollapsed = () => {
-        setPartyPanelCollapsed((collapsed) => !collapsed);
+        const nextCollapsed = !partyPanelCollapsedRef.current;
+        partyPanelCollapsedRef.current = nextCollapsed;
+        setPartyPanelCollapsed(nextCollapsed);
+        if (!nextCollapsed) {
+            clearPartyCollapsedPreview();
+        }
     };
 
     const updatePartyExpiry = (expiresIn) => {
@@ -143,6 +163,70 @@ const WatchPage = () => {
             setPartyToast(null);
             partyToastTimerRef.current = null;
         }, 5200);
+    };
+
+    const getCollapsedPreviewContent = (message) => {
+        if (!message) return null;
+
+        if (message.type === 'system') {
+            return {
+                kind: 'system',
+                label: 'Party update',
+                title: 'Watch Party',
+                body: message.message || ''
+            };
+        }
+
+        if (message.type === 'reaction') {
+            return {
+                kind: 'reaction',
+                label: 'Reaction',
+                title: message.username || 'Someone',
+                body: message.reaction || message.message || ''
+            };
+        }
+
+        return {
+            kind: 'message',
+            label: 'New message',
+            title: message.username || 'Someone',
+            body: message.message || ''
+        };
+    };
+
+    const showCollapsedChatPreview = (message) => {
+        if (!partyPanelOpenRef.current || !partyPanelCollapsedRef.current) {
+            return;
+        }
+
+        const preview = getCollapsedPreviewContent(message);
+        if (!preview || !preview.body) {
+            return;
+        }
+
+        if (partyCollapsedPreviewTimerRef.current) {
+            clearTimeout(partyCollapsedPreviewTimerRef.current);
+        }
+
+        setPartyCollapsedPreview(preview);
+        partyCollapsedPreviewTimerRef.current = setTimeout(() => {
+            setPartyCollapsedPreview(null);
+            partyCollapsedPreviewTimerRef.current = null;
+        }, 3500);
+    };
+
+    const showCollapsedPartyStatePreview = (nextParty) => {
+        const previousMessages = partyRef.current?.chat || [];
+        const nextMessages = nextParty?.chat || [];
+        if (nextMessages.length <= previousMessages.length) {
+            return;
+        }
+
+        const previousIds = new Set(previousMessages.map((message) => message.id));
+        const newMessages = nextMessages.filter((message) => message?.id && !previousIds.has(message.id));
+        if (newMessages.length > 0) {
+            showCollapsedChatPreview(newMessages[newMessages.length - 1]);
+        }
     };
 
     const updatePartyState = (nextParty) => {
@@ -265,6 +349,7 @@ const WatchPage = () => {
         }
 
         if (data.type === 'party_state') {
+            showCollapsedPartyStatePreview(data.party);
             updatePartyState(data.party);
             return;
         }
@@ -313,6 +398,7 @@ const WatchPage = () => {
         }
 
         if (data.type === 'chat_message') {
+            showCollapsedChatPreview(data.message);
             setParty((previousParty) => {
                 if (!previousParty) return previousParty;
                 const nextChat = [...(previousParty.chat || []), data.message].slice(-100);
@@ -345,6 +431,7 @@ const WatchPage = () => {
             partyRef.current = null;
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
+            clearPartyCollapsedPreview();
             return;
         }
 
@@ -358,6 +445,7 @@ const WatchPage = () => {
             partyRef.current = null;
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
+            clearPartyCollapsedPreview();
             navigate(`/watch/${watch_id}`, { replace: true });
             return;
         }
@@ -489,6 +577,7 @@ const WatchPage = () => {
         setPartyError('');
         setPartyNotice(null);
         setPartyExpiryRemaining(null);
+        clearPartyCollapsedPreview();
         navigate(`/watch/${watch_id}`, { replace: true });
     };
 
@@ -712,6 +801,7 @@ const WatchPage = () => {
                 setParty(null);
                 setPartyStatus('idle');
                 setPartyExpiryRemaining(null);
+                clearPartyCollapsedPreview();
             }
             return;
         }
@@ -735,6 +825,9 @@ const WatchPage = () => {
             }
             if (partyToastTimerRef.current) {
                 clearTimeout(partyToastTimerRef.current);
+            }
+            if (partyCollapsedPreviewTimerRef.current) {
+                clearTimeout(partyCollapsedPreviewTimerRef.current);
             }
             if (typingDebounceRef.current) {
                 clearTimeout(typingDebounceRef.current);
@@ -1337,6 +1430,16 @@ const WatchPage = () => {
                 <span />
                 {partyStatusLabel}
             </div>
+
+            {partyPanelCollapsed && partyCollapsedPreview && (
+                <div className={`watchPartyCollapsedPreview ${partyCollapsedPreview.kind || 'message'}`}>
+                    <div className="watchPartyCollapsedPreviewMeta">
+                        <span>{partyCollapsedPreview.label}</span>
+                        <strong>{partyCollapsedPreview.title}</strong>
+                    </div>
+                    <div className="watchPartyCollapsedPreviewBody">{partyCollapsedPreview.body}</div>
+                </div>
+            )}
 
             {!partyPanelCollapsed && (
                 <>
