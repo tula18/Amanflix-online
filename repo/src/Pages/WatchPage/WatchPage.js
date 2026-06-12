@@ -461,6 +461,37 @@ const WatchPage = () => {
         return '';
     };
 
+    const escapeMentionRegex = (value) => {
+        return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    const getMentionCandidates = (username) => {
+        const normalizedUsername = String(username || '').trim();
+        const compactUsername = normalizedUsername.replace(/\s+/g, '');
+        return Array.from(new Set([normalizedUsername, compactUsername].filter(Boolean)));
+    };
+
+    const messageMentionsCurrentUser = (message) => {
+        if (!message || message.type !== 'message') return false;
+        if (message.user_id === currentPartyUserIdRef.current) return false;
+
+        const currentMember = getCurrentPartyMember();
+        const messageText = String(message.message || '');
+        if (!currentMember?.username || !messageText.includes('@')) return false;
+
+        return getMentionCandidates(currentMember.username).some((candidate) => {
+            const pattern = new RegExp(`(^|\\s)@${escapeMentionRegex(candidate)}(?=$|\\s|[.,!?;:)\\]}])`, 'i');
+            return pattern.test(messageText);
+        });
+    };
+
+    const showMentionNotification = (message) => {
+        const rawText = String(message.message || '').trim();
+        const preview = rawText.length > 88 ? `${rawText.slice(0, 85)}...` : rawText;
+        const sender = message.username || 'Someone';
+        showPartyToast(`${sender} mentioned you: ${preview}`, 'mention');
+    };
+
     const handlePartySocketMessage = (event) => {
         let data;
         try {
@@ -552,6 +583,9 @@ const WatchPage = () => {
         if (data.type === 'chat_message') {
             showCollapsedChatPreview(data.message);
             registerUnreadPartyMessages([data.message]);
+            if (messageMentionsCurrentUser(data.message) && !isPartyChatReadable()) {
+                showMentionNotification(data.message);
+            }
             setParty((previousParty) => {
                 if (!previousParty) return previousParty;
                 const nextChat = [...(previousParty.chat || []), data.message].slice(-100);

@@ -489,6 +489,11 @@
     border-color: rgba(255, 93, 93, 0.44);
 }
 
+.watchPartyToast.mention {
+    border-color: rgba(138, 180, 255, 0.5);
+    background: rgba(12, 18, 30, 0.94);
+}
+
 .watchPartyToast button {
     height: 28px;
     border: none;
