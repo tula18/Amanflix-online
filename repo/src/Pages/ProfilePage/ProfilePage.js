@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { FaEye, FaEyeSlash } from 'react-icons/fa6';
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { MdExpandMore } from 'react-icons/md';
 import { API_URL } from '../../config';
 import './ProfilePage.css'
 import PasswordFormGroup from "../AdminPanel/Components/FormGroup/PasswordFormGroup";
+import MovieModal from "../../Components/Model/Model";
 
 const DeleteAccount = ({onClose}) => {
-    const [passwordVisible, setPasswordVisible] = useState(false);
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -80,15 +80,350 @@ const DeleteAccount = ({onClose}) => {
     )
 }
 
+const HISTORY_PAGE_SIZE = 12;
+
+const getHistoryProgress = (item) => {
+    if (!item.watch_history || item.watch_history.is_completed) return 0;
+    return item.watch_history.progress_percentage || 0;
+};
+
+const getHistoryTypeLabel = (item) => {
+    const mediaType = item.media_type || item.content_type;
+    return mediaType === 'tv' ? 'TV Show' : 'Movie';
+};
+
+const isTvHistoryItem = (item) => {
+    const mediaType = item.media_type || item.content_type;
+    return mediaType === 'tv';
+};
+
+const getHistoryItemKey = (item) => {
+    const mediaType = item.media_type || item.content_type || item.watch_history?.content_type;
+    const contentId = item.id || item.show_id || item.movie_id || item.watch_history?.content_id;
+    return `${mediaType}-${contentId}`;
+};
+
+const getWatchedEpisodes = (item) => {
+    return Array.isArray(item.watched_episodes) ? item.watched_episodes : [];
+};
+
+const formatHistoryDate = (dateTime) => {
+    const date = new Date(dateTime);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    });
+};
+
+const getHistoryStatus = (item) => {
+    const progress = Math.round(item.watch_history?.progress_percentage || 0);
+
+    if (item.watch_history?.is_completed) {
+        return 'Watched';
+    }
+
+    if (progress > 0) {
+        return `${progress}% watched`;
+    }
+
+    return 'Started';
+};
+
+const getHistoryDetail = (item) => {
+    const mediaType = item.media_type || item.content_type;
+
+    if (mediaType !== 'tv' || !item.watch_history) {
+        return 'Movie';
+    }
+
+    return 'TV Show';
+};
+
+const getLastWatchedPoint = (item) => {
+    const mediaType = item.media_type || item.content_type;
+
+    if (mediaType !== 'tv' || !item.watch_history) {
+        return null;
+    }
+
+    if (item.watch_history.season_number == null || item.watch_history.episode_number == null) {
+        return null;
+    }
+
+    return `Last watched S${item.watch_history.season_number} E${item.watch_history.episode_number}`;
+};
+
+const formatEpisodeTitle = (episodeHistory) => {
+    const episodeTitle = episodeHistory.episode_details?.title;
+    const base = `S${episodeHistory.season_number} E${episodeHistory.episode_number}`;
+    return episodeTitle ? `${base} - ${episodeTitle}` : base;
+};
+
+const getHistoryImageSrc = (item) => {
+    const path = item.backdrop_path || item.poster_path;
+
+    if (!path) {
+        return `${API_URL}/cdn/images/unkwon_image.jpg`;
+    }
+
+    return `${API_URL}/cdn/images${path.startsWith('/') ? path : `/${path}`}`;
+};
+
+const WatchHistorySection = ({ token }) => {
+    const [historyItems, setHistoryItems] = useState([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [error, setError] = useState('');
+    const [selectedMovie, setSelectedMovie] = useState(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [expandedShows, setExpandedShows] = useState({});
+
+    const fetchHistory = useCallback(async (nextPage = 1) => {
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            if (nextPage === 1) {
+                setIsLoading(true);
+            } else {
+                setIsLoadingMore(true);
+            }
+
+            setError('');
+
+            const response = await fetch(`${API_URL}/api/watch-history/history?page=${nextPage}&per_page=${HISTORY_PAGE_SIZE}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to load watch history');
+            }
+
+            setHistoryItems(prevItems => nextPage === 1 ? data.items : [...prevItems, ...data.items]);
+            setHasMore(Boolean(data.has_more));
+            setPage(data.page || nextPage);
+        } catch (err) {
+            setError(err.message || 'Failed to load watch history');
+        } finally {
+            setIsLoading(false);
+            setIsLoadingMore(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        fetchHistory(1);
+    }, [fetchHistory]);
+
+    const handleMovieClick = (movie, event) => {
+        if (event) {
+            event.stopPropagation();
+        }
+
+        setSelectedMovie(movie);
+        setShowHistoryModal(true);
+
+        const navbar = document.getElementsByClassName('navbar');
+        if (navbar[0]) {
+            navbar[0].classList.add('navbar_hide');
+        }
+    };
+
+    const handleModalClose = () => {
+        setSelectedMovie(null);
+        setShowHistoryModal(false);
+
+        const navbar = document.getElementsByClassName('navbar');
+        if (navbar[0]) {
+            navbar[0].classList.remove('navbar_hide');
+        }
+    };
+
+    const handleHistoryImageError = (event) => {
+        event.currentTarget.src = `${API_URL}/cdn/images/unkwon_image.jpg`;
+    };
+
+    const handleToggleEpisodes = (item, event) => {
+        event.stopPropagation();
+        const itemKey = getHistoryItemKey(item);
+
+        setExpandedShows(prevState => ({
+            ...prevState,
+            [itemKey]: !prevState[itemKey]
+        }));
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showHistoryModal && (event.target.classList.contains('modal') || event.key === 'Escape')) {
+                handleModalClose();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleClickOutside);
+        };
+    }, [showHistoryModal]);
+
+    useEffect(() => {
+        if (showHistoryModal) {
+            document.body.classList.add('no-scroll');
+        } else {
+            document.body.classList.remove('no-scroll');
+        }
+
+        return () => {
+            document.body.classList.remove('no-scroll');
+        };
+    }, [showHistoryModal]);
+
+    return (
+        <section className="watch-history-section" aria-labelledby="watch-history-title">
+            <div className="watch-history-header">
+                <h2 id="watch-history-title">Watch History</h2>
+                {!isLoading && historyItems.length > 0 && (
+                    <span className="watch-history-count">{historyItems.length} shown</span>
+                )}
+            </div>
+
+            {isLoading ? (
+                <div className="watch-history-state">Loading...</div>
+            ) : error ? (
+                <div className="watch-history-state watch-history-error">{error}</div>
+            ) : historyItems.length === 0 ? (
+                <div className="watch-history-state">No watch history yet.</div>
+            ) : (
+                <>
+                    <ul className="watch-history-list">
+                        {historyItems.map((item) => {
+                            const progress = getHistoryProgress(item);
+                            const lastWatchedPoint = getLastWatchedPoint(item);
+                            const itemKey = getHistoryItemKey(item);
+                            const watchedEpisodes = getWatchedEpisodes(item);
+                            const isTv = isTvHistoryItem(item);
+                            const isExpanded = Boolean(expandedShows[itemKey]);
+
+                            return (
+                                <li className={`watch-history-item${isExpanded ? ' watch-history-item--expanded' : ''}`} key={itemKey}>
+                                    <div className="watch-history-row">
+                                        <button className="watch-history-main-button" onClick={(event) => handleMovieClick(item, event)}>
+                                            <span className="watch-history-thumb">
+                                                <img
+                                                    src={getHistoryImageSrc(item)}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    draggable="false"
+                                                    onError={handleHistoryImageError}
+                                                />
+                                            </span>
+                                            <span className="watch-history-copy">
+                                                <span className="watch-history-title">{item.title || item.name || 'Title not available'}</span>
+                                                <span className="watch-history-detail">
+                                                    {getHistoryDetail(item)}
+                                                    {isTv && watchedEpisodes.length > 0 ? ` - ${watchedEpisodes.length} watched episode${watchedEpisodes.length === 1 ? '' : 's'}` : ''}
+                                                    {lastWatchedPoint ? ` - ${lastWatchedPoint}` : ''}
+                                                </span>
+                                                <span className="watch-history-date">
+                                                    {getHistoryStatus(item)} - {formatHistoryDate(item.watch_history.last_watched)}
+                                                </span>
+                                                {progress > 0 && (
+                                                    <span className="watch-history-progress" aria-label={`${Math.round(progress)} percent watched`}>
+                                                        <span style={{ width: `${progress}%` }} />
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </button>
+                                        <span className="watch-history-actions">
+                                            <span className="watch-history-type">{getHistoryTypeLabel(item)}</span>
+                                            {isTv && watchedEpisodes.length > 0 && (
+                                                <button
+                                                    className="watch-history-expand"
+                                                    type="button"
+                                                    onClick={(event) => handleToggleEpisodes(item, event)}
+                                                    aria-expanded={isExpanded}
+                                                    aria-label={`${isExpanded ? 'Hide' : 'Show'} watched episodes for ${item.title || item.name || 'this show'}`}
+                                                >
+                                                    <MdExpandMore />
+                                                </button>
+                                            )}
+                                        </span>
+                                    </div>
+                                    {isTv && isExpanded && (
+                                        <ul className="watch-history-episodes">
+                                            {watchedEpisodes.map((episodeHistory) => {
+                                                const episodeProgress = episodeHistory.is_completed ? 0 : episodeHistory.progress_percentage || 0;
+
+                                                return (
+                                                    <li className="watch-history-episode" key={episodeHistory.id}>
+                                                        <span className="watch-history-episode-title">{formatEpisodeTitle(episodeHistory)}</span>
+                                                        <span className="watch-history-episode-meta">
+                                                            {getHistoryStatus({ watch_history: episodeHistory })} - {formatHistoryDate(episodeHistory.last_watched)}
+                                                        </span>
+                                                        {episodeProgress > 0 && (
+                                                            <span className="watch-history-progress watch-history-episode-progress" aria-label={`${Math.round(episodeProgress)} percent watched`}>
+                                                                <span style={{ width: `${episodeProgress}%` }} />
+                                                            </span>
+                                                        )}
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    {hasMore && (
+                        <button
+                            className="watch-history-load-more"
+                            onClick={() => fetchHistory(page + 1)}
+                            disabled={isLoadingMore}
+                        >
+                            {isLoadingMore ? 'Loading...' : 'Load More'}
+                        </button>
+                    )}
+                </>
+            )}
+
+            {showHistoryModal && selectedMovie && (
+                <MovieModal
+                    movie={selectedMovie}
+                    onClose={handleModalClose}
+                    handleMovieClick={handleMovieClick}
+                />
+            )}
+        </section>
+    );
+};
+
 const ProfilePage = () => {
     const token = localStorage.getItem('token')
     const [user, setUser] = useState({});
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [passwordVisible, setPasswordVisible] = useState('')
     const [newPassword, setNewPassword] = useState('')
-    const [newPasswordVisible, setNewPasswordVisible] = useState(false);
     const [message, setMessage] = useState('');
     const [saveLoading, setSaveLoading] = useState(false)
     const [showModal, setShowModal] = useState(false)
@@ -201,12 +536,16 @@ const ProfilePage = () => {
 
     function formatDateTime(dateTime) {
         const date = new Date(dateTime);
+
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
     
-    const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });
-    const monthName = date.toLocaleString('en-US', { month: 'long' });
-    const day = date.getDate();
+        const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });
+        const monthName = date.toLocaleString('en-US', { month: 'long' });
+        const day = date.getDate();
     
-    return `${dayOfWeek}, ${day} ${monthName} ${date.getFullYear()}`;
+        return `${dayOfWeek}, ${day} ${monthName} ${date.getFullYear()}`;
     }
 
     return (
@@ -298,6 +637,7 @@ const ProfilePage = () => {
                 onClose={handleModalClose}
                 />
             )}
+            <WatchHistorySection token={token} />
         </div>
     )
 }

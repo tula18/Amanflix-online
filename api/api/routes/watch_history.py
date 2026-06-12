@@ -225,6 +225,125 @@ def get_continue_watching(current_user):
     
     return jsonify(result), 200
 
+def build_tv_episode_history(item):
+    """Return a serialized TV episode watch history entry with episode metadata."""
+    episode_history = item.serialize()
+    episode_history['episode_id'] = create_watch_id(
+        'tv',
+        item.content_id,
+        item.season_number,
+        item.episode_number
+    )
+
+    season = Season.query.filter_by(
+        tvshow_id=item.content_id,
+        season_number=item.season_number
+    ).first()
+
+    if season:
+        episode = Episode.query.filter_by(
+            season_id=season.id,
+            episode_number=item.episode_number
+        ).first()
+
+        if episode:
+            episode_history['episode_details'] = episode.serialize
+
+    return episode_history
+
+def build_watch_history_content(item, watched_episodes=None):
+    """Return content metadata with the watch history entry attached."""
+    content = None
+
+    if item.content_type == 'movie':
+        movie = Movie.query.filter_by(movie_id=item.content_id).first()
+        if not movie:
+            return None
+
+        content = movie.serialize
+        content['source'] = 'database'
+        content['watch_id'] = create_watch_id('movie', item.content_id)
+
+    elif item.content_type == 'tv':
+        tv_show = TVShow.query.filter_by(show_id=item.content_id).first()
+        if not tv_show:
+            return None
+
+        latest_episode = build_tv_episode_history(item)
+        content = tv_show.serialize
+        content['source'] = 'database'
+        content['watch_id'] = latest_episode['episode_id']
+
+        if latest_episode.get('episode_details'):
+            content['episode_details'] = latest_episode['episode_details']
+
+        content['watched_episodes'] = [
+            build_tv_episode_history(episode_item)
+            for episode_item in (watched_episodes or [item])
+        ]
+
+    if content is None:
+        return None
+
+    watch_history = item.serialize()
+    watch_history['episode_id'] = content['watch_id']
+    content['watch_history'] = watch_history
+    return content
+
+@watch_history_bp.route('/history', methods=['GET'])
+@token_required
+def get_history(current_user):
+    """Get the user's recent watch history, including completed titles."""
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = request.args.get('per_page', 24, type=int)
+    per_page = min(max(per_page, 1), 50)
+    content_type = request.args.get('content_type')
+
+    query = WatchHistory.query.filter_by(user_id=current_user.id)
+
+    if content_type:
+        if content_type not in ['movie', 'tv']:
+            return jsonify({'message': 'Invalid content_type. Must be "movie" or "tv"'}), 400
+        query = query.filter_by(content_type=content_type)
+
+    raw_history = query.order_by(desc(WatchHistory.last_watched)).all()
+    grouped_history = []
+    seen_content = set()
+
+    grouped_episodes = {}
+
+    for item in raw_history:
+        key = (item.content_type, item.content_id)
+
+        if item.content_type == 'tv':
+            grouped_episodes.setdefault(key, []).append(item)
+
+        if key in seen_content:
+            continue
+
+        seen_content.add(key)
+        grouped_history.append(item)
+
+    total = len(grouped_history)
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    history = grouped_history[start_idx:end_idx]
+
+    result = []
+    for item in history:
+        key = (item.content_type, item.content_id)
+        content = build_watch_history_content(item, grouped_episodes.get(key))
+        if content:
+            result.append(content)
+
+    return jsonify({
+        'items': result,
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'has_more': page * per_page < total
+    }), 200
+
 def get_next_episode_info(current_user, watch_history):
     """Helper function to get information about the next episode to watch"""
     content_id = watch_history.content_id
