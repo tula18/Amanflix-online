@@ -261,6 +261,16 @@ export const Controls = styled.div.attrs<IControlsProps>(props => ({
         opacity: 1;
         transform: translateZ(0) scale(1.15);
       }
+
+      &.control-disabled {
+        cursor: not-allowed;
+        opacity: 0.35;
+
+        &:hover {
+          opacity: 0.45;
+          transform: translateZ(0);
+        }
+      }
     }
   }
 

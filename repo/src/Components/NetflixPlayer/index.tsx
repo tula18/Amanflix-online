@@ -20,6 +20,7 @@ import {
   FaExternalLinkAlt,
   FaUsers,
   FaComments,
+  FaBan,
 } from 'react-icons/fa';
 import { FiX } from 'react-icons/fi';
 import {
@@ -130,6 +131,7 @@ export interface IProps {
   onEnded?: () => void;
   onErrorVideo?: (errorInfo?: any) => void;
   onPlayPause?: (playing: boolean, position: number) => void;
+  onPlayPauseBlocked?: () => void;
   onSeek?: (position: number) => void;
   onWatchPartyClick?: () => void;
   watchPartyActive?: boolean;
@@ -152,6 +154,7 @@ export interface IProps {
   disablePreview?: boolean;
   disableBufferPreview?: boolean;
   disableSeeking?: boolean;
+  disablePlayPause?: boolean;
   disableNextControls?: boolean;
   disableReproductionList?: boolean;
   videoRef?: React.MutableRefObject<HTMLVideoElement | null>;
@@ -176,6 +179,7 @@ export default function ReactNetflixPlayer({
   onEnded = undefined,
   onErrorVideo = undefined,
   onPlayPause = undefined,
+  onPlayPauseBlocked = undefined,
   onSeek = undefined,
   onWatchPartyClick = undefined,
   watchPartyActive = false,
@@ -201,6 +205,7 @@ export default function ReactNetflixPlayer({
   disablePreview = true,
   disableBufferPreview = false,
   disableSeeking = false,
+  disablePlayPause = false,
   disableNextControls = false,
   disableReproductionList = false,
   videoRef,
@@ -360,22 +365,36 @@ export default function ReactNetflixPlayer({
     }, 1000);
   };
 
-  const togglePlayPause = async () => {
+  const togglePlayPause = async (options: { allowBlockedAutoplay?: boolean } = {}) => {
     const video = videoComponent.current;
     if (!video) return;
+
+    const isAutoplayRecovery = Boolean(
+      options.allowBlockedAutoplay &&
+      requiresInteraction &&
+      video.paused
+    );
+
+    if (disablePlayPause && !isAutoplayRecovery) {
+      showOperationOverlay(<FaBan />, 'Leader controls playback');
+      if (onPlayPauseBlocked) {
+        onPlayPauseBlocked();
+      }
+      return;
+    }
 
     try {
       if (video.paused) {
         await video.play();
         setRequiresInteraction(false);
         showOperationOverlay(<FaPlay />, 'Play');
-        if (onPlayPause) {
+        if (onPlayPause && !isAutoplayRecovery) {
           onPlayPause(true, video.currentTime);
         }
       } else {
         video.pause();
         showOperationOverlay(<FaPause />, 'Pause');
-        if (onPlayPause) {
+        if (onPlayPause && !isAutoplayRecovery) {
           onPlayPause(false, video.currentTime);
         }
       }
@@ -869,7 +888,7 @@ export default function ReactNetflixPlayer({
         $show={requiresInteraction}
         onClick={(e) => {
           e.stopPropagation();
-          togglePlayPause();
+          togglePlayPause({ allowBlockedAutoplay: true });
         }}
       >
         {(title || titleMedia || subTitle) && (
@@ -1167,8 +1186,20 @@ export default function ReactNetflixPlayer({
           <div className="controls">
             <div className="start">
               <div className="item-control">
-                {(!playing || (videoComponent.current && videoComponent.current.paused)) && <FaPlay onClick={togglePlayPause} />}
-                {(playing && videoComponent.current && !videoComponent.current.paused) && <FaPause onClick={togglePlayPause} />}
+                {(!playing || (videoComponent.current && videoComponent.current.paused)) && (
+                  <FaPlay
+                    className={disablePlayPause ? 'control-disabled' : ''}
+                    onClick={() => togglePlayPause()}
+                    title={disablePlayPause ? 'Leader controls playback' : 'Play'}
+                  />
+                )}
+                {(playing && videoComponent.current && !videoComponent.current.paused) && (
+                  <FaPause
+                    className={disablePlayPause ? 'control-disabled' : ''}
+                    onClick={() => togglePlayPause()}
+                    title={disablePlayPause ? 'Leader controls playback' : 'Pause'}
+                  />
+                )}
               </div>
 
               {!disableSeeking && (

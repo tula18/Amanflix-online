@@ -21,6 +21,12 @@ MAX_CHAT_LENGTH = 500
 PARTY_CODE_LENGTH = 6
 CODE_ALPHABET = ''.join(ch for ch in string.ascii_uppercase + string.digits if ch not in '0O1I')
 ALLOWED_REACTIONS = {'👍', '😂', '❤️', '😮', '🔥', '👏'}
+DEFAULT_PARTY_SETTINGS = {
+    'members_can_control_playback': True,
+    'chat_enabled': True,
+    'reactions_enabled': True,
+    'show_playback_feed': True,
+}
 
 _party_lock = threading.RLock()
 _parties = {}
@@ -110,6 +116,8 @@ def _upsert_member_locked(party, user, connected=None):
         member['connected'] = bool(connected)
     elif 'connected' not in member:
         member['connected'] = False
+    if 'chat_muted' not in member:
+        member['chat_muted'] = False
     party['members'][user_id] = member
     return member
 
@@ -123,6 +131,7 @@ def _serialize_member(member):
         'connected': connected,
         'connection_status': 'online' if connected else 'offline',
         'last_seen': member.get('last_seen'),
+        'chat_muted': bool(member.get('chat_muted')),
     }
 
 
@@ -143,6 +152,8 @@ def _serialize_party_locked(party, current_user_id=None):
         key=lambda item: (not item['is_leader'], item['username'].lower())
     )
 
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+
     return {
         'code': party['code'],
         'watch_id': party['watch_id'],
@@ -152,6 +163,7 @@ def _serialize_party_locked(party, current_user_id=None):
         'members': members,
         'playback': playback,
         'chat': list(party['chat']),
+        'settings': settings,
         'created_at': party['created_at_iso'],
         'last_activity': party['last_activity'],
         'expires_in': _party_expires_in_locked(party, now),
@@ -246,6 +258,42 @@ def _append_system_message_locked(party, message):
     })
 
 
+def _format_playback_position(seconds):
+    safe_seconds = max(0, int(seconds or 0))
+    hours = safe_seconds // 3600
+    minutes = (safe_seconds % 3600) // 60
+    remaining_seconds = safe_seconds % 60
+    if hours:
+        return f'{hours}:{minutes:02d}:{remaining_seconds:02d}'
+    return f'{minutes}:{remaining_seconds:02d}'
+
+
+def _append_playback_action_locked(party, user, action, position):
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    if not settings.get('show_playback_feed', True):
+        return None
+    if action not in {'play', 'pause', 'seek'}:
+        return None
+
+    username = getattr(user, 'username', f'User {user.id}')
+    action_text = {
+        'play': 'played',
+        'pause': 'paused',
+        'seek': 'seeked to',
+    }[action]
+    position_label = _format_playback_position(position)
+    return _append_chat_item_locked(party, {
+        'id': uuid.uuid4().hex[:12],
+        'type': 'playback_action',
+        'user_id': int(user.id),
+        'username': username,
+        'action': action,
+        'position': max(0.0, float(position or 0.0)),
+        'message': f'{username} {action_text} {position_label}',
+        'created_at': _utc_now_iso(),
+    })
+
+
 def _decode_user_from_token(raw_token):
     token = (raw_token or '').strip()
     if token.startswith('Bearer '):
@@ -285,6 +333,7 @@ def _create_party_for_user(user, watch_id):
             'members': {},
             'chat': [],
             'connections': {},
+            'settings': dict(DEFAULT_PARTY_SETTINGS),
             'playback': {
                 'position': 0.0,
                 'playing': False,
@@ -368,6 +417,13 @@ def end_watch_party(current_user, code):
 
 
 def _handle_chat_message(party, user, data):
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    if not settings.get('chat_enabled', True):
+        return None, 'Chat is disabled for this party'
+    member = party['members'].get(int(user.id))
+    if member and member.get('chat_muted'):
+        return None, 'You are muted in this party'
+
     raw_message = data.get('message')
     if not isinstance(raw_message, str):
         return None, 'Message is required'
@@ -389,6 +445,15 @@ def _handle_chat_message(party, user, data):
 
 
 def _handle_reaction_message(party, user, data):
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    if not settings.get('chat_enabled', True):
+        return None, 'Chat is disabled for this party'
+    if not settings.get('reactions_enabled', True):
+        return None, 'Reactions are disabled for this party'
+    member = party['members'].get(int(user.id))
+    if member and member.get('chat_muted'):
+        return None, 'You are muted in this party'
+
     reaction = data.get('reaction')
     if reaction not in ALLOWED_REACTIONS:
         return None, 'Invalid reaction'
@@ -403,6 +468,78 @@ def _handle_reaction_message(party, user, data):
         'created_at': _utc_now_iso(),
     }
     return _append_chat_item_locked(party, message), None
+
+
+def _handle_settings_update_message(party, user, data):
+    if int(user.id) != party['leader_id']:
+        return 'Only the party leader can update settings'
+
+    incoming_settings = data.get('settings')
+    if not isinstance(incoming_settings, dict):
+        return 'Settings are required'
+
+    allowed_keys = set(DEFAULT_PARTY_SETTINGS)
+    next_settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    changed_keys = []
+    for key, value in incoming_settings.items():
+        if key not in allowed_keys:
+            continue
+        bool_value = bool(value)
+        if next_settings.get(key) != bool_value:
+            next_settings[key] = bool_value
+            changed_keys.append(key)
+
+    if not changed_keys:
+        return 'No setting changes'
+
+    party['settings'] = next_settings
+    _append_system_message_locked(party, 'Party settings updated')
+    return None
+
+
+def _handle_moderation_message(party, user, data):
+    if int(user.id) != party['leader_id']:
+        return 'Only the party leader can moderate chat'
+
+    action = data.get('action')
+    if action not in {'mute', 'unmute', 'delete_message'}:
+        return 'Invalid moderation action'
+
+    if action in {'mute', 'unmute'}:
+        try:
+            target_user_id = int(data.get('target_user_id'))
+        except (TypeError, ValueError):
+            return 'Invalid member'
+
+        target_member = party['members'].get(target_user_id)
+        if not target_member:
+            return 'Member not found'
+        if target_user_id == party['leader_id']:
+            return 'Cannot mute the leader'
+
+        target_member['chat_muted'] = action == 'mute'
+        target_name = target_member.get('username') or f'User {target_user_id}'
+        verb = 'muted' if action == 'mute' else 'unmuted'
+        _append_system_message_locked(party, f'{target_name} was {verb} in chat')
+        return None
+
+    message_id = (data.get('message_id') or '').strip()
+    if not message_id:
+        return 'Message is required'
+
+    before_count = len(party['chat'])
+    party['chat'] = [
+        item for item in party['chat']
+        if not (
+            item.get('id') == message_id and
+            item.get('type') in {'message', 'reaction'}
+        )
+    ]
+    if len(party['chat']) == before_count:
+        return 'Message not found'
+
+    _append_system_message_locked(party, 'A chat message was removed')
+    return None
 
 
 def _handle_leader_transfer_message(party, user, data):
@@ -442,6 +579,9 @@ def _handle_playback_message(party, user, data):
     is_leader = int(user.id) == party['leader_id']
     if action in {'seek', 'sync'} and not is_leader:
         return None, 'Only the party leader can seek or sync playback'
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    if action in {'play', 'pause'} and not is_leader and not settings.get('members_can_control_playback', True):
+        return None, 'Only the party leader can control playback'
 
     now = time.time()
     current_position = _current_position_locked(party, now)
@@ -598,7 +738,22 @@ def register_watch_party_socket(sock):
                         _broadcast_party_state(normalized_code)
                     continue
 
+                if message_type == 'party_settings':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        error = _handle_settings_update_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast_party_state(normalized_code)
+                    continue
+
                 if message_type == 'playback':
+                    feed_item = None
                     with _party_lock:
                         party = _parties.get(normalized_code)
                         if not party:
@@ -607,6 +762,13 @@ def register_watch_party_socket(sock):
                         _touch_party_locked(party)
                         _upsert_member_locked(party, user)
                         playback, error = _handle_playback_message(party, user, data)
+                        if not error:
+                            feed_item = _append_playback_action_locked(
+                                party,
+                                user,
+                                data.get('action'),
+                                playback.get('position', 0.0)
+                            )
                     if error:
                         ws.send(_json_message('error', message=error))
                     else:
@@ -617,6 +779,22 @@ def register_watch_party_socket(sock):
                             action=data.get('action'),
                             source_user_id=int(user.id)
                         )
+                        if feed_item:
+                            _broadcast(normalized_code, 'chat_message', message=feed_item)
+                    continue
+
+                if message_type == 'moderation':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        error = _handle_moderation_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast_party_state(normalized_code)
                     continue
 
                 if message_type == 'kick':

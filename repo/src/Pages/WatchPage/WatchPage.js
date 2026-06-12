@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaArrowDown, FaBan, FaCopy, FaCrown, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignOutAlt, FaSmile, FaTimes } from 'react-icons/fa';
+import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignal, FaSignOutAlt, FaSmile, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -9,6 +9,12 @@ import ReactNetflixPlayer from '../../Components/NetflixPlayer/index.tsx';
 
 const PARTY_REACTIONS = ['👍', '😂', '❤️', '😮', '🔥', '👏'];
 const PARTY_EXPIRY_WARNING_SECONDS = 10 * 60;
+const DEFAULT_PARTY_SETTINGS = {
+    members_can_control_playback: true,
+    chat_enabled: true,
+    reactions_enabled: true,
+    show_playback_feed: true
+};
 
 const WatchPage = () => {
     const { watch_id } = useParams();
@@ -43,6 +49,8 @@ const WatchPage = () => {
     const [partyPanelOpen, setPartyPanelOpen] = useState(false);
     const [partyPanelCollapsed, setPartyPanelCollapsed] = useState(false);
     const [partyCollapsedPreview, setPartyCollapsedPreview] = useState(null);
+    const [partySettingsOpen, setPartySettingsOpen] = useState(false);
+    const [partySyncOpen, setPartySyncOpen] = useState(false);
     const [partyExpiryRemaining, setPartyExpiryRemaining] = useState(null);
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [chatDraft, setChatDraft] = useState('');
@@ -54,6 +62,10 @@ const WatchPage = () => {
     const [mentionOpen, setMentionOpen] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionIndex, setMentionIndex] = useState(0);
+    const [lastPartyEventAt, setLastPartyEventAt] = useState(null);
+    const [lastPartyPlaybackAt, setLastPartyPlaybackAt] = useState(null);
+    const [syncHealthTick, setSyncHealthTick] = useState(0);
+    const [memberActionMenu, setMemberActionMenu] = useState(null);
     const wsRef = useRef(null);
     const joinedPartyCodeRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
@@ -123,6 +135,9 @@ const WatchPage = () => {
         partyPanelCollapsedRef.current = false;
         setPartyPanelOpen(false);
         setPartyPanelCollapsed(false);
+        setPartySettingsOpen(false);
+        setPartySyncOpen(false);
+        setMemberActionMenu(null);
         clearPartyCollapsedPreview();
     };
 
@@ -130,9 +145,34 @@ const WatchPage = () => {
         const nextCollapsed = !partyPanelCollapsedRef.current;
         partyPanelCollapsedRef.current = nextCollapsed;
         setPartyPanelCollapsed(nextCollapsed);
+        setPartySettingsOpen(false);
+        setPartySyncOpen(false);
+        setMemberActionMenu(null);
         if (!nextCollapsed) {
             clearPartyCollapsedPreview();
         }
+    };
+
+    const togglePartySettingsPopup = () => {
+        if (partyPanelCollapsedRef.current) {
+            partyPanelCollapsedRef.current = false;
+            setPartyPanelCollapsed(false);
+            clearPartyCollapsedPreview();
+        }
+        setPartySyncOpen(false);
+        setMemberActionMenu(null);
+        setPartySettingsOpen((open) => !open);
+    };
+
+    const togglePartySyncPopup = () => {
+        if (partyPanelCollapsedRef.current) {
+            partyPanelCollapsedRef.current = false;
+            setPartyPanelCollapsed(false);
+            clearPartyCollapsedPreview();
+        }
+        setPartySettingsOpen(false);
+        setMemberActionMenu(null);
+        setPartySyncOpen((open) => !open);
     };
 
     const updatePartyExpiry = (expiresIn) => {
@@ -186,6 +226,15 @@ const WatchPage = () => {
             };
         }
 
+        if (message.type === 'playback_action') {
+            return {
+                kind: 'playbackAction',
+                label: 'Playback',
+                title: message.username || 'Someone',
+                body: message.message || ''
+            };
+        }
+
         return {
             kind: 'message',
             label: 'New message',
@@ -231,14 +280,18 @@ const WatchPage = () => {
 
     const updatePartyState = (nextParty) => {
         if (!nextParty) return;
-        partyRef.current = nextParty;
+        const normalizedParty = {
+            ...nextParty,
+            settings: { ...DEFAULT_PARTY_SETTINGS, ...(nextParty.settings || {}) }
+        };
+        partyRef.current = normalizedParty;
         if (nextParty.current_user_id) {
             currentPartyUserIdRef.current = nextParty.current_user_id;
         }
         if (typeof nextParty.expires_in === 'number') {
             updatePartyExpiry(nextParty.expires_in);
         }
-        setParty(nextParty);
+        setParty(normalizedParty);
     };
 
     const closePartySocket = (allowReconnect = false) => {
@@ -319,6 +372,34 @@ const WatchPage = () => {
         }));
     };
 
+    const getCurrentPartySettings = () => ({
+        ...DEFAULT_PARTY_SETTINGS,
+        ...(partyRef.current?.settings || {})
+    });
+
+    const getCurrentPartyMember = () => {
+        const activeParty = partyRef.current;
+        if (!activeParty?.current_user_id) return null;
+        const members = Array.isArray(activeParty.members)
+            ? activeParty.members
+            : Object.values(activeParty.members || {});
+        return members.find((member) => member.id === activeParty.current_user_id) || null;
+    };
+
+    const getPartyChatDisabledReason = () => {
+        if (!partyRef.current || partyStatus !== 'connected') {
+            return 'Watch party is not connected';
+        }
+        const settings = getCurrentPartySettings();
+        if (!settings.chat_enabled) {
+            return 'Chat is disabled by the leader';
+        }
+        if (getCurrentPartyMember()?.chat_muted) {
+            return 'You are muted in this party';
+        }
+        return '';
+    };
+
     const handlePartySocketMessage = (event) => {
         let data;
         try {
@@ -327,6 +408,7 @@ const WatchPage = () => {
             console.debug('Invalid watch party message:', error);
             return;
         }
+        setLastPartyEventAt(Date.now());
 
         if (data.type === 'ready') {
             updatePartyState(data.party);
@@ -384,6 +466,7 @@ const WatchPage = () => {
         }
 
         if (data.type === 'playback') {
+            setLastPartyPlaybackAt(Date.now());
             setParty((previousParty) => {
                 if (!previousParty) return previousParty;
                 const nextParty = { ...previousParty, playback: data.playback };
@@ -431,6 +514,11 @@ const WatchPage = () => {
             partyRef.current = null;
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
+            setPartySettingsOpen(false);
+            setPartySyncOpen(false);
+            setMemberActionMenu(null);
+            setLastPartyEventAt(null);
+            setLastPartyPlaybackAt(null);
             clearPartyCollapsedPreview();
             return;
         }
@@ -445,6 +533,11 @@ const WatchPage = () => {
             partyRef.current = null;
             partyExpiryAtRef.current = null;
             setPartyExpiryRemaining(null);
+            setPartySettingsOpen(false);
+            setPartySyncOpen(false);
+            setMemberActionMenu(null);
+            setLastPartyEventAt(null);
+            setLastPartyPlaybackAt(null);
             clearPartyCollapsedPreview();
             navigate(`/watch/${watch_id}`, { replace: true });
             return;
@@ -468,6 +561,7 @@ const WatchPage = () => {
         wsRef.current = socket;
 
         socket.onopen = () => {
+            setLastPartyEventAt(Date.now());
             socket.send(JSON.stringify({ type: 'auth', token }));
             if (heartbeatIntervalRef.current) {
                 clearInterval(heartbeatIntervalRef.current);
@@ -577,6 +671,11 @@ const WatchPage = () => {
         setPartyError('');
         setPartyNotice(null);
         setPartyExpiryRemaining(null);
+        setPartySettingsOpen(false);
+        setPartySyncOpen(false);
+        setMemberActionMenu(null);
+        setLastPartyEventAt(null);
+        setLastPartyPlaybackAt(null);
         clearPartyCollapsedPreview();
         navigate(`/watch/${watch_id}`, { replace: true });
     };
@@ -600,23 +699,70 @@ const WatchPage = () => {
         }
     };
 
+    const copyTextToClipboard = async (text) => {
+        if (!text) return false;
+
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                console.debug('Secure clipboard copy failed, using fallback:', error);
+            }
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-1000px';
+        textarea.style.left = '-1000px';
+        textarea.style.opacity = '0';
+        textarea.style.fontSize = '16px';
+
+        const selection = document.getSelection();
+        const selectedRange = selection && selection.rangeCount > 0
+            ? selection.getRangeAt(0)
+            : null;
+
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, text.length);
+
+        let copied = false;
+        try {
+            copied = document.execCommand('copy');
+        } catch (error) {
+            console.debug('Fallback clipboard copy failed:', error);
+        }
+
+        document.body.removeChild(textarea);
+        if (selection && selectedRange) {
+            selection.removeAllRanges();
+            selection.addRange(selectedRange);
+        }
+
+        return copied;
+    };
+
     const copyPartyInvite = async () => {
         if (!party?.code) return;
         const inviteLink = `${window.location.origin}/party/${party.code}`;
-        try {
-            await navigator.clipboard.writeText(inviteLink);
+        const copied = await copyTextToClipboard(inviteLink);
+        if (copied) {
             showPartyNotice('Invite link copied', 'success');
-        } catch (error) {
+        } else {
             showPartyNotice(inviteLink, 'info');
         }
     };
 
     const copyPartyCode = async () => {
         if (!party?.code) return;
-        try {
-            await navigator.clipboard.writeText(party.code);
+        const copied = await copyTextToClipboard(party.code);
+        if (copied) {
             showPartyNotice('Party code copied', 'success');
-        } catch (error) {
+        } else {
             showPartyNotice(party.code, 'info');
         }
     };
@@ -625,6 +771,11 @@ const WatchPage = () => {
         event.preventDefault();
         const message = chatDraft.trim();
         if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        const disabledReason = getPartyChatDisabledReason();
+        if (disabledReason) {
+            setPartyError(disabledReason);
+            return;
+        }
 
         wsRef.current.send(JSON.stringify({ type: 'chat', message }));
         setChatDraft('');
@@ -676,6 +827,11 @@ const WatchPage = () => {
             }
             const message = chatDraft.trim();
             if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+            const disabledReason = getPartyChatDisabledReason();
+            if (disabledReason) {
+                setPartyError(disabledReason);
+                return;
+            }
             wsRef.current.send(JSON.stringify({ type: 'chat', message }));
             setChatDraft('');
             setMentionOpen(false);
@@ -699,12 +855,22 @@ const WatchPage = () => {
             setPartyError('Watch party is not connected');
             return;
         }
+        const disabledReason = getPartyChatDisabledReason();
+        if (disabledReason) {
+            setPartyError(disabledReason);
+            return;
+        }
+        if (!getCurrentPartySettings().reactions_enabled) {
+            setPartyError('Reactions are disabled by the leader');
+            return;
+        }
         wsRef.current.send(JSON.stringify({ type: 'reaction', reaction }));
         setShowReactionBar(false);
     };
 
     const sendTypingIndicator = (typing) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !partyRef.current) return;
+        if (typing && getPartyChatDisabledReason()) return;
         if (isTypingRef.current === typing) return;
         isTypingRef.current = typing;
         wsRef.current.send(JSON.stringify({ type: 'typing', typing }));
@@ -746,7 +912,8 @@ const WatchPage = () => {
     const handleChatChange = (event) => {
         const value = event.target.value;
         setChatDraft(value);
-        if (value.trim() && partyRef.current) {
+        const chatDisabled = getPartyChatDisabledReason();
+        if (value.trim() && partyRef.current && !chatDisabled) {
             sendTypingIndicator(true);
             if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
             typingDebounceRef.current = setTimeout(() => sendTypingIndicator(false), 2000);
@@ -780,6 +947,74 @@ const WatchPage = () => {
         }));
     };
 
+    const updatePartySetting = (key, value) => {
+        if (!isPartyLeader || !partyRef.current) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            return;
+        }
+        wsRef.current.send(JSON.stringify({
+            type: 'party_settings',
+            settings: { [key]: value }
+        }));
+    };
+
+    const moderatePartyMember = (member, action) => {
+        if (!isPartyLeader || !member?.id || member.id === party?.current_user_id) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            return;
+        }
+        wsRef.current.send(JSON.stringify({
+            type: 'moderation',
+            action,
+            target_user_id: member.id
+        }));
+    };
+
+    const openMemberActionMenu = (event, member) => {
+        event.stopPropagation();
+        if (!member?.id || !isPartyLeader || member.is_leader || member.id === party?.current_user_id) {
+            return;
+        }
+
+        if (memberActionMenu?.memberId === member.id) {
+            setMemberActionMenu(null);
+            return;
+        }
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        const menuWidth = 176;
+        const menuHeight = 132;
+        const left = Math.min(
+            Math.max(12, rect.right - menuWidth),
+            Math.max(12, window.innerWidth - menuWidth - 12)
+        );
+        const top = Math.min(
+            rect.bottom + 8,
+            Math.max(12, window.innerHeight - menuHeight - 12)
+        );
+
+        setMemberActionMenu({ memberId: member.id, top, left });
+    };
+
+    const closeMemberActionMenu = () => {
+        setMemberActionMenu(null);
+    };
+
+    const deletePartyChatMessage = (message) => {
+        if (!isPartyLeader || !message?.id) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            setPartyError('Watch party is not connected');
+            return;
+        }
+        wsRef.current.send(JSON.stringify({
+            type: 'moderation',
+            action: 'delete_message',
+            message_id: message.id
+        }));
+    };
+
     const handlePartyPlayPause = (playing, position) => {
         sendPartyPlayback(playing ? 'play' : 'pause', position, playing);
     };
@@ -801,6 +1036,11 @@ const WatchPage = () => {
                 setParty(null);
                 setPartyStatus('idle');
                 setPartyExpiryRemaining(null);
+                setPartySettingsOpen(false);
+                setPartySyncOpen(false);
+                setMemberActionMenu(null);
+                setLastPartyEventAt(null);
+                setLastPartyPlaybackAt(null);
                 clearPartyCollapsedPreview();
             }
             return;
@@ -871,6 +1111,68 @@ const WatchPage = () => {
             chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
         }
     }, [party?.chat?.length]);
+
+    useEffect(() => {
+        if (!partySyncOpen || !party?.code) {
+            return;
+        }
+        const intervalId = setInterval(() => {
+            setSyncHealthTick((tick) => tick + 1);
+        }, 1000);
+        return () => clearInterval(intervalId);
+    }, [partySyncOpen, party?.code]);
+
+    useEffect(() => {
+        if (!party?.is_leader) {
+            setPartySettingsOpen(false);
+            setMemberActionMenu(null);
+        }
+    }, [party?.is_leader]);
+
+    useEffect(() => {
+        if (!partySettingsOpen && !partySyncOpen) {
+            return;
+        }
+
+        const handleOutsideClick = (event) => {
+            const target = event.target;
+            if (
+                target.closest?.('.watchPartyPopover') ||
+                target.closest?.('.watchPartyPopoverToggle')
+            ) {
+                return;
+            }
+            setPartySettingsOpen(false);
+            setPartySyncOpen(false);
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        document.addEventListener('touchstart', handleOutsideClick);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+            document.removeEventListener('touchstart', handleOutsideClick);
+        };
+    }, [partySettingsOpen, partySyncOpen]);
+
+    useEffect(() => {
+        if (!memberActionMenu) {
+            return;
+        }
+
+        const handleOutsideClick = (event) => {
+            const target = event.target;
+            if (
+                target.closest?.('.watchPartyMemberMenu') ||
+                target.closest?.('.watchPartyMemberMenuButton')
+            ) {
+                return;
+            }
+            setMemberActionMenu(null);
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, [memberActionMenu]);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {
@@ -1283,6 +1585,20 @@ const WatchPage = () => {
     const disablePartyNavigation = isInParty && !isPartyLeader;
     const partyMembers = party?.members || [];
     const partyChat = party?.chat || [];
+    const partySettings = { ...DEFAULT_PARTY_SETTINGS, ...(party?.settings || {}) };
+    const currentPartyMember = partyMembers.find((member) => member.id === party?.current_user_id);
+    const disablePartyPlayPause = isInParty && !isPartyLeader && !partySettings.members_can_control_playback;
+    const chatDisabledReason = !isInParty
+        ? ''
+        : partyStatus !== 'connected'
+            ? 'Watch party is not connected'
+            : !partySettings.chat_enabled
+                ? 'Chat is disabled by the leader'
+                : currentPartyMember?.chat_muted
+                    ? 'You are muted in this party'
+                    : '';
+    const canUsePartyChat = isInParty && !chatDisabledReason;
+    const canUsePartyReactions = canUsePartyChat && partySettings.reactions_enabled;
     const partyOnlineCount = partyMembers.filter((member) => member.connected).length;
     const filteredMentionMembers = mentionOpen
         ? partyMembers
@@ -1336,6 +1652,55 @@ const WatchPage = () => {
         return `Last seen ${formatMemberLastSeen(member.last_seen)}`;
     };
 
+    const formatSecondsAgo = (timestamp) => {
+        if (!timestamp) return 'No contact yet';
+        const secondsAgo = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+        if (secondsAgo < 2) return 'Just now';
+        if (secondsAgo < 60) return `${secondsAgo}s ago`;
+        const minutesAgo = Math.floor(secondsAgo / 60);
+        if (minutesAgo < 60) return `${minutesAgo}m ago`;
+        return `${Math.floor(minutesAgo / 60)}h ago`;
+    };
+
+    const getSyncHealth = () => {
+        const nowMs = Date.now() + syncHealthTick * 0;
+        const playback = party?.playback;
+        const video = videoRef.current;
+        let drift = null;
+
+        if (playback && video) {
+            const nowSeconds = nowMs / 1000;
+            const updatedAt = Number(playback.updated_at) || nowSeconds;
+            const elapsed = playback.playing ? Math.max(0, nowSeconds - updatedAt) : 0;
+            const targetTime = Math.max(0, Number(playback.position || 0) + elapsed);
+            drift = Math.abs((video.currentTime || 0) - targetTime);
+        }
+
+        const healthClass = drift === null
+            ? 'unknown'
+            : drift <= 1.25
+                ? 'good'
+                : drift <= 3
+                    ? 'warning'
+                    : 'bad';
+        const label = healthClass === 'good'
+            ? 'In sync'
+            : healthClass === 'warning'
+                ? 'Minor drift'
+                : healthClass === 'bad'
+                    ? 'Needs correction'
+                    : 'Waiting for video';
+
+        return {
+            drift,
+            healthClass,
+            label,
+            lastServerContact: formatSecondsAgo(lastPartyEventAt),
+            lastPlaybackUpdate: formatSecondsAgo(lastPartyPlaybackAt),
+            reconnectAttempts: reconnectAttemptsRef.current,
+        };
+    };
+
     const renderMessageWithMentions = (text) => {
         if (!text || !text.includes('@')) return text;
         const selfMember = partyMembers.find(m => m.id === party?.current_user_id);
@@ -1359,6 +1724,14 @@ const WatchPage = () => {
             );
         }
 
+        if (message.type === 'playback_action') {
+            return (
+                <div className="watchPartyChatMessage playbackAction" key={message.id}>
+                    <span>{message.message}</span>
+                </div>
+            );
+        }
+
         const isOwnMessage = message.user_id === party?.current_user_id;
         const isReaction = message.type === 'reaction';
 
@@ -1376,6 +1749,16 @@ const WatchPage = () => {
                                 minute: '2-digit'
                             })}
                         </time>
+                    )}
+                    {isPartyLeader && (
+                        <button
+                            type="button"
+                            className="watchPartyDeleteMessageButton"
+                            onClick={() => deletePartyChatMessage(message)}
+                            title="Delete message"
+                        >
+                            <FaTrashAlt />
+                        </button>
                     )}
                 </div>
                 <span>{isReaction ? message.reaction || message.message : renderMessageWithMentions(message.message)}</span>
@@ -1405,6 +1788,137 @@ const WatchPage = () => {
         );
     };
 
+    const renderPartySettingsPopup = () => {
+        const settingRows = [
+            ['members_can_control_playback', 'Members can play/pause'],
+            ['chat_enabled', 'Chat enabled'],
+            ['reactions_enabled', 'Reactions enabled'],
+            ['show_playback_feed', 'Playback feed in chat']
+        ];
+
+        return (
+            <div className="watchPartyPopover watchPartySettingsPopover">
+                <div className="watchPartyPopoverHeader">
+                    <strong>Party Settings</strong>
+                    <button type="button" onClick={() => setPartySettingsOpen(false)} title="Close settings">
+                        <FaTimes />
+                    </button>
+                </div>
+                <div className="watchPartyToggleRows">
+                    {settingRows.map(([key, label]) => {
+                        const enabled = Boolean(partySettings[key]);
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                className={`watchPartyToggleRow ${enabled ? 'enabled' : ''}`}
+                                onClick={() => updatePartySetting(key, !enabled)}
+                                disabled={partyStatus !== 'connected'}
+                            >
+                                <span>{label}</span>
+                                <span className="watchPartySwitch" aria-hidden="true"><span /></span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    const renderSyncHealthPopup = () => {
+        const syncHealth = getSyncHealth();
+        return (
+            <div className="watchPartyPopover watchPartySyncPopover">
+                <div className="watchPartyPopoverHeader">
+                    <strong>Sync Health</strong>
+                    <button type="button" onClick={() => setPartySyncOpen(false)} title="Close sync health">
+                        <FaTimes />
+                    </button>
+                </div>
+                <div className={`watchPartySyncSummary ${syncHealth.healthClass}`}>
+                    <span />
+                    <div>
+                        <strong>{syncHealth.label}</strong>
+                        <small>
+                            {syncHealth.drift === null
+                                ? 'Drift unavailable'
+                                : `${syncHealth.drift.toFixed(1)}s drift`}
+                        </small>
+                    </div>
+                </div>
+                <div className="watchPartyHealthGrid">
+                    <div>
+                        <span>Status</span>
+                        <strong>{partyStatusLabel}</strong>
+                    </div>
+                    <div>
+                        <span>Role</span>
+                        <strong>{isPartyLeader ? 'Leader' : 'Member'}</strong>
+                    </div>
+                    <div>
+                        <span>Server contact</span>
+                        <strong>{syncHealth.lastServerContact}</strong>
+                    </div>
+                    <div>
+                        <span>Playback update</span>
+                        <strong>{syncHealth.lastPlaybackUpdate}</strong>
+                    </div>
+                    <div>
+                        <span>Reconnects</span>
+                        <strong>{syncHealth.reconnectAttempts}</strong>
+                    </div>
+                    <div>
+                        <span>Expires</span>
+                        <strong>{formatPartyRemaining(partyExpiryRemaining || 0)}</strong>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderMemberActionMenu = () => {
+        if (!memberActionMenu || !party || !isPartyLeader) return null;
+
+        const member = partyMembers.find((item) => item.id === memberActionMenu.memberId);
+        if (!member || member.is_leader || member.id === party.current_user_id) return null;
+
+        const runAction = (action) => {
+            action();
+            closeMemberActionMenu();
+        };
+
+        return (
+            <div
+                className="watchPartyMemberMenu"
+                style={{ top: `${memberActionMenu.top}px`, left: `${memberActionMenu.left}px` }}
+            >
+                <button
+                    type="button"
+                    disabled={!member.connected}
+                    onClick={() => runAction(() => transferPartyLeader(member))}
+                >
+                    <FaCrown />
+                    Make Leader
+                </button>
+                <button
+                    type="button"
+                    onClick={() => runAction(() => moderatePartyMember(member, member.chat_muted ? 'unmute' : 'mute'))}
+                >
+                    {member.chat_muted ? <FaVolumeUp /> : <FaVolumeMute />}
+                    {member.chat_muted ? 'Unmute Chat' : 'Mute Chat'}
+                </button>
+                <button
+                    type="button"
+                    className="danger"
+                    onClick={() => runAction(() => kickPartyMember(member))}
+                >
+                    <FaBan />
+                    Kick Member
+                </button>
+            </div>
+        );
+    };
+
     const renderWatchPartyPanel = () => (
         <aside className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''}`}>
             <div className="watchPartyPanelHeader">
@@ -1413,6 +1927,24 @@ const WatchPage = () => {
                     <div className="watchPartyTitle">{party?.code || 'Start a party'}</div>
                 </div>
                 <div className="watchPartyHeaderButtons">
+                    {party && isPartyLeader && (
+                        <button
+                            className={`watchPartyIconButton watchPartyPopoverToggle ${partySettingsOpen ? 'active' : ''}`}
+                            onClick={togglePartySettingsPopup}
+                            title="Party settings"
+                        >
+                            <FaCog />
+                        </button>
+                    )}
+                    {party && (
+                        <button
+                            className={`watchPartyIconButton watchPartyPopoverToggle ${partySyncOpen ? 'active' : ''}`}
+                            onClick={togglePartySyncPopup}
+                            title="Sync health"
+                        >
+                            <FaSignal />
+                        </button>
+                    )}
                     <button
                         className="watchPartyIconButton"
                         onClick={togglePartyPanelCollapsed}
@@ -1425,6 +1957,9 @@ const WatchPage = () => {
                     </button>
                 </div>
             </div>
+
+            {partySettingsOpen && party && isPartyLeader && !partyPanelCollapsed && renderPartySettingsPopup()}
+            {partySyncOpen && party && !partyPanelCollapsed && renderSyncHealthPopup()}
 
             <div className={`watchPartyStatus ${partyStatus}`}>
                 <span />
@@ -1492,21 +2027,18 @@ const WatchPage = () => {
                                                         <FaCrown />
                                                     </span>
                                                 )}
-                                                {isPartyLeader && !member.is_leader && member.connected && member.id !== party.current_user_id && (
-                                                    <button
-                                                        className="watchPartyMakeLeaderButton"
-                                                        onClick={() => transferPartyLeader(member)}
-                                                    >
-                                                        Make Leader
-                                                    </button>
+                                                {member.chat_muted && (
+                                                    <span className="watchPartyMutedBadge" title="Muted in chat">
+                                                        <FaVolumeMute />
+                                                    </span>
                                                 )}
                                                 {isPartyLeader && !member.is_leader && member.id !== party.current_user_id && (
                                                     <button
-                                                        className="watchPartyKickButton"
-                                                        onClick={() => kickPartyMember(member)}
-                                                        title={`Kick ${member.username}`}
+                                                        className={`watchPartyMemberMenuButton ${memberActionMenu?.memberId === member.id ? 'active' : ''}`}
+                                                        onClick={(event) => openMemberActionMenu(event, member)}
+                                                        title={`Actions for ${member.username}`}
                                                     >
-                                                        <FaBan />
+                                                        <FaEllipsisV />
                                                     </button>
                                                 )}
                                             </div>
@@ -1534,6 +2066,9 @@ const WatchPage = () => {
                                         {typingUsernames.join(', ')} {typingUsernames.length === 1 ? 'is' : 'are'} typing
                                     </div>
                                 )}
+                                {chatDisabledReason && (
+                                    <div className="watchPartyChatDisabled">{chatDisabledReason}</div>
+                                )}
                                 {showReactionBar && (
                                     <div className="watchPartyReactionBar" aria-label="Chat reactions">
                                         {PARTY_REACTIONS.map((reaction) => (
@@ -1541,7 +2076,7 @@ const WatchPage = () => {
                                                 key={reaction}
                                                 type="button"
                                                 onClick={() => sendPartyReaction(reaction)}
-                                                disabled={partyStatus !== 'connected'}
+                                                disabled={!canUsePartyReactions}
                                             >
                                                 {reaction}
                                             </button>
@@ -1571,7 +2106,8 @@ const WatchPage = () => {
                                         onKeyDown={handleChatKeyDown}
                                         onBlur={() => setTimeout(() => setMentionOpen(false), 200)}
                                         maxLength={500}
-                                        placeholder="Message"
+                                        placeholder={chatDisabledReason || 'Message'}
+                                        disabled={!canUsePartyChat}
                                         rows={1}
                                     />
                                     <button
@@ -1579,10 +2115,11 @@ const WatchPage = () => {
                                         className={`watchPartyEmojiToggle${showReactionBar ? ' active' : ''}`}
                                         onClick={() => setShowReactionBar(v => !v)}
                                         title="Reactions"
+                                        disabled={!canUsePartyReactions}
                                     >
                                         <FaSmile />
                                     </button>
-                                    <button type="submit" disabled={!chatDraft.trim()} title="Send">
+                                    <button type="submit" disabled={!chatDraft.trim() || !canUsePartyChat} title="Send">
                                         <FaPaperPlane />
                                     </button>
                                 </form>
@@ -1608,8 +2145,9 @@ const WatchPage = () => {
     }
 
     return (
-        <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
+            <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
             {renderWatchPartyPanel()}
+            {renderMemberActionMenu()}
             {renderPartyToast()}
             {floatingReactions.length > 0 && (
                 <div className="watchPartyFloatingReactions" aria-hidden="true">
@@ -1660,11 +2198,13 @@ const WatchPage = () => {
                     onClickItemListReproduction={handleEpisodeClick}
                     videoRef={videoRef}
                     onPlayPause={handlePartyPlayPause}
+                    onPlayPauseBlocked={() => showPartyNotice('Only the party leader can control playback', 'warning')}
                     onSeek={handlePartySeek}
                     onWatchPartyClick={openPartyPanel}
                     watchPartyActive={isInParty}
                     watchPartyLabel={isInParty ? `Party ${party.code}` : 'Watch Party'}
                     watchPartyUnreadCount={unreadCount}
+                    disablePlayPause={disablePartyPlayPause}
                     disableSeeking={disablePartyNavigation}
                     disableNextControls={disablePartyNavigation}
                     disableReproductionList={disablePartyNavigation}
