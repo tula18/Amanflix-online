@@ -181,6 +181,9 @@ const Signup = () => {
             <div className='login__signup'>
               Already a user? <Link className='signup__link' to='/signin'>Sign in now.</Link>
             </div>
+            <div className='login__help-link'>
+              Need help? <Link className='signup__link' to='/help'>Open Help Center.</Link>
+            </div>
             {callErr && <Alert message={callErrMsg} type="error" closable onClose={closeAlert} />}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import './ServiceDownPage.css'
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { API_URL } from '../../../config';
 import ErrorHandler from '../../../Utils/ErrorHandler';
 
@@ -92,6 +92,9 @@ const ServiceDownPage = () => {
     
     return (
         <div className="error-page">
+            <Link className="error-help-button" to="/help" aria-label="Open Help Center" title="Help Center">
+                ?
+            </Link>
             <div className="error_modal-content">
                 <h4 className="error_modal-title">{error.title}</h4>
                 <p>{error.message}</p>

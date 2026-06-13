@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { API_URL } from '../../../config';
 import './MaintenancePage.css';
 
@@ -54,6 +54,9 @@ const MaintenancePage = () => {
 
     return (
         <div className="maintenance-page">
+            <Link className="maintenance-help-button" to="/help" aria-label="Open Help Center" title="Help Center">
+                ?
+            </Link>
             <div className="maintenance-container">
                 <div className="maintenance-icon">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

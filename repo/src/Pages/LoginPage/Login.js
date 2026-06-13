@@ -99,6 +99,9 @@ const Login = () => {
             <div className='login__signup'>
               New to Amanflix? <Link className='signup__link' to='/signup'>Sign up now.</Link>
             </div>
+            <div className='login__help-link'>
+              Need help? <Link className='signup__link' to='/help'>Open Help Center.</Link>
+            </div>
             {callErr && <Alert message={callErrMsg} type="error" closable onClose={closeAlert} />}
           </div>
         </div>

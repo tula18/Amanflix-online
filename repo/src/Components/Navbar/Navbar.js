@@ -526,12 +526,12 @@ function Navbar() {
             <FaCaretDown className='profile_arrow' style={{fontSize:15, cursor: 'pointer', fontWeight: 100, paddingRight:'5px', display: 'flex', alignItems: 'center' }}/>
             <ul className="dropdown-options">
               <div className='dropdown-arrow'></div>
-              <div className={`dropdown-item ${location.pathname === '/profile' ? 'highlighted' : ''}`} onClick={() => navigate('profile')}>
+              <div className={`dropdown-item ${location.pathname === '/profile' ? 'highlighted' : ''}`} onClick={() => navigate('/profile')}>
                 <img loading={'lazy'} alt='User Avarar' className='profile-tiny-image' src={`${API_URL}/cdn/images/profile.png`} />
                 <span className='item-text'>{user.username}</span>
               </div>
               <div className='middle-line'></div>
-              <div className={`dropdown-item ${location.pathname === '/help' ? 'highlighted' : ''}`} onClick={() => navigate('help')}>
+              <div className={`dropdown-item ${location.pathname === '/help' ? 'highlighted' : ''}`} onClick={() => navigate('/help')}>
                 <IoHelpCircleOutline style={{fontSize:22, cursor: 'pointer', fontWeight: 100, display: 'flex', alignItems: 'center' }}/>
                 <span className='item-text'>Help Center</span>
               </div>
@@ -540,7 +540,7 @@ function Navbar() {
                 <span className='item-text'>Report a Bug</span>
               </div>
               {admin_token && (
-                <div className={`dropdown-item ${location.pathname === '/admin' ? 'highlighted' : ''}`} onClick={() => navigate('admin')}>
+                <div className={`dropdown-item ${location.pathname === '/admin' ? 'highlighted' : ''}`} onClick={() => navigate('/admin')}>
                   <CrownOutlined style={{fontSize:22, cursor: 'pointer', fontWeight: 100, display: 'flex', alignItems: 'center' }}/>
                   <span className='item-text'>Admin Panel</span>
                 </div>
@@ -592,6 +592,7 @@ function Navbar() {
 
         <div className='profile_menu_options'>
           <span className={`route_mobile ${location.pathname === '/profile' ? 'cur_route' : ''}`}><Link className='link_mobile' to="/profile">Manage Account</Link></span>
+          <span className={`route_mobile ${location.pathname === '/help' ? 'cur_route' : ''}`}><Link className='link_mobile' to="/help">Help Center</Link></span>
           <span className={`route_mobile ${location.pathname === '/profile' ? 'cur_route' : ''}`}><button className='link_mobile' onClick={handleLogOut}>Sign Out of Amanflix</button></span>
         </div>
       </div>
