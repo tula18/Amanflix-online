@@ -197,7 +197,7 @@ const ErrorHandler = (error, navigate, json={}) => {
                         onClick: "refreshPage",
                     }, {
                         text: "Go Home",
-                        type: "default",
+                        type: "secondery",
                         onClick: "redirectHome",
                     }]
                 }}});

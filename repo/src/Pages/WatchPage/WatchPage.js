@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignal, FaSignOutAlt, FaSmile, FaSyncAlt, FaThumbtack, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
@@ -114,6 +114,7 @@ const WatchPage = () => {
     const [mediaDataNext, setMediaDataNext] = useState(null);
     const [mediaReproductionList, setMediaReproductionList] = useState([]);
     const [isLoadingMediaData, setIsLoadingMediaData] = useState(true);
+    const [isCheckingVideoAvailability, setIsCheckingVideoAvailability] = useState(true);
 
     const getPartyCodeFromUrl = () => {
         const queryParams = new URLSearchParams(location.search);
@@ -131,6 +132,23 @@ const WatchPage = () => {
             'Authorization': token ? `Bearer ${token}` : ''
         };
     };
+
+    const handleVideoAvailabilityResponse = useCallback(async (response) => {
+        if (response.status === 503) {
+            const data = await response.json();
+            if (data.reason === 'processing') {
+                ErrorHandler('video_processing', navigate);
+                return false;
+            }
+        }
+
+        if (response.status === 404) {
+            ErrorHandler('video_not_found', navigate);
+            return false;
+        }
+
+        return true;
+    }, [navigate]);
 
     const clearPartyCollapsedPreview = () => {
         if (partyCollapsedPreviewTimerRef.current) {
@@ -1644,6 +1662,47 @@ const WatchPage = () => {
         }
     }, [watch_id, navigate, location.search]);
 
+    // Check stream availability before mounting the player. The stream endpoint
+    // blocks while a file is re-encoding, which otherwise leaves the player buffering.
+    useEffect(() => {
+        let isActive = true;
+
+        const checkVideoAvailability = async () => {
+            if (!watch_id) return;
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                ErrorHandler("token_missing", navigate);
+                setIsCheckingVideoAvailability(false);
+                return;
+            }
+
+            setIsCheckingVideoAvailability(true);
+
+            try {
+                const response = await fetch(`${API_URL}/api/stream/can-watch/${watch_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const canWatch = await handleVideoAvailabilityResponse(response);
+                if (isActive && canWatch) {
+                    setIsCheckingVideoAvailability(false);
+                }
+            } catch (error) {
+                console.error('Failed to check video availability:', error);
+                if (isActive) {
+                    setIsCheckingVideoAvailability(false);
+                }
+            }
+        };
+
+        checkVideoAvailability();
+
+        return () => {
+            isActive = false;
+        };
+    }, [watch_id, navigate, handleVideoAvailabilityResponse]);
+
     // Fetch media details
     useEffect(() => {
         const fetchMediaData = async () => {
@@ -1950,16 +2009,13 @@ const WatchPage = () => {
             try {
                 const token = localStorage.getItem('token');
                 if (token) {
-                    const response = await fetch(`${API_URL}/api/can-watch/${watch_id}`, {
+                    const response = await fetch(`${API_URL}/api/stream/can-watch/${watch_id}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    
-                    if (response.status === 503) {
-                        const data = await response.json();
-                        if (data.reason === 'processing') {
-                            ErrorHandler('video_processing', navigate);
-                            return;
-                        }
+
+                    const canWatch = await handleVideoAvailabilityResponse(response);
+                    if (!canWatch) {
+                        return;
                     }
                 }
             } catch (err) {
@@ -1971,18 +2027,30 @@ const WatchPage = () => {
         if (errorInfo && errorInfo.code === 3) {
             const token = localStorage.getItem('token');
             if (token) {
-                fetch(`${API_URL}/api/report-error`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        watch_id: watch_id,
-                        error_code: errorInfo.code,
-                        error_message: errorInfo.message || ''
-                    })
-                }).catch(err => console.error('Failed to report video error:', err));
+                try {
+                    const response = await fetch(`${API_URL}/api/stream/report-error`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            watch_id: watch_id,
+                            error_code: errorInfo.code,
+                            error_message: errorInfo.message || ''
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.action === 'reencode_started' || data.action === 'in_progress') {
+                            ErrorHandler('video_processing', navigate);
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to report video error:', err);
+                }
             }
         }
         
@@ -2837,7 +2905,7 @@ const WatchPage = () => {
         </aside>
     );
 
-    if (isLoadingMediaData && !useOldPlayer) {
+    if (isCheckingVideoAvailability || (isLoadingMediaData && !useOldPlayer)) {
         return <div className="watchPageLoading">Loading player data...</div>; // Or a proper loading spinner
     }
 
