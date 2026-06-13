@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Collapse, Button, Table, Form, Input, InputNumber, DatePicker, Space, Tabs, Select, Tag, Tooltip, Popconfirm, Empty } from 'antd';
 import { DeleteOutlined, PlusOutlined, CaretRightOutlined, ArrowUpOutlined, ArrowDownOutlined, CopyOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import TextArea from "antd/es/input/TextArea";
 import './SeasonEpisodeEditor.css'; // We'll create this CSS file next
 
 const { Panel } = Collapse;
 const { TabPane } = Tabs;
 const { Option } = Select;
+const { TextArea } = Input;
 
 const SeasonEpisodeEditor = ({ value, onChange }) => {
   const [seasons, setSeasons] = useState(Array.isArray(value) ? value : []);

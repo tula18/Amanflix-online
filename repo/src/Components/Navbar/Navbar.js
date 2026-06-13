@@ -7,8 +7,7 @@ import { FaTimes } from 'react-icons/fa';
 import { IoHelpCircleOutline } from 'react-icons/io5'
 import { API_URL, DEV_IP, ENV_TYPE } from '../../config';
 import { BugOutlined, CrownOutlined } from '@ant-design/icons';
-import Alert from 'antd/es/alert/Alert';
-import { Button, message, notification } from 'antd';
+import { Alert, Button, message, notification } from 'antd';
 import FormGroup from '../../Pages/AdminPanel/Components/FormGroup/FormGroup';
 import TextareaFormGroup from '../../Pages/AdminPanel/Components/FormGroup/TextareaFormGroup';
 import NotificationsDropdown from '../NotificationsDropdown/NotificationsDropdown';

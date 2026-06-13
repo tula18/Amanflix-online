@@ -12,6 +12,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [currentUploadData, setCurrentUploadData] = useState(null);
     const [currentUploadType, setCurrentUploadType] = useState(null); // 'movie' or 'tv_show'
+    const [currentUploadMode, setCurrentUploadMode] = useState('new'); // 'new' or 'merge'
     const [currentOriginalItem, setCurrentOriginalItem] = useState(null); // Store the original parsed item
     const navigate = useNavigate();
 
@@ -25,6 +26,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
         const transformedMovieData = transformMovieDataForModal(movie);
         setCurrentUploadData(transformedMovieData);
         setCurrentUploadType('movie');
+        setCurrentUploadMode('new');
         setCurrentOriginalItem(movie);
         setShowUploadModal(true);
     };
@@ -33,6 +35,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
         const transformedShowData = transformShowDataForModal(show);
         setCurrentUploadData(transformedShowData);
         setCurrentUploadType('tv_show');
+        setCurrentUploadMode(show.upload_mode === 'merge' || show.validation?.mode === 'merge' ? 'merge' : 'new');
         setCurrentOriginalItem(show);
         setShowUploadModal(true);
     };
@@ -71,59 +74,39 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
 
     // Transform parsed show data to TvShowEditModal format
     const transformShowDataForModal = (show) => {
-        // Transform episodes data to the expected format
-        
-        let transformedSeasons;
-        
-        // Prioritize CDN seasons data if available
-        if (show.cdn_data?.seasons && Array.isArray(show.cdn_data.seasons)) {
-            transformedSeasons = show.cdn_data.seasons.map(season => ({
-                seasonNumber: season.season_number,
-                episodes: season.episodes?.map(episode => {
-                    // Find corresponding filename from GuessIt data
-                    const guessItEpisode = show.episodes?.[season.season_number]?.find(
-                        ep => ep.episode === episode.episode_number
-                    );
-                    
-                    // Find the actual file object for this episode
-                    const episodeFile = guessItEpisode?.filename ? findFileByName(guessItEpisode.filename) : null;
-                    
-                    return {
-                        episodeNumber: episode.episode_number,
-                        title: episode.name || `Episode ${episode.episode_number}`,
-                        overview: episode.overview || '',
-                        has_subtitles: guessItEpisode?.has_subtitles || false,
-                        videoFile: episodeFile, // Automatically set the matched file
-                        filename: guessItEpisode?.filename || '',
-                        // Additional CDN episode data
-                        air_date: episode.air_date,
-                        runtime: episode.runtime,
-                        still_path: episode.still_path,
-                        vote_average: episode.vote_average,
-                        episode_type: episode.episode_type,
-                        production_code: episode.production_code
-                    };
-                }) || []
-            }));
-        } else {
-            // Fallback to GuessIt data if CDN seasons are not available
-            transformedSeasons = Object.entries(show.episodes || {}).map(([seasonNumber, episodes]) => ({
-                seasonNumber: parseInt(seasonNumber),
-                episodes: episodes.map(episode => {
-                    // Find the actual file object for this episode
-                    const episodeFile = episode.filename ? findFileByName(episode.filename) : null;
-                    
-                    return {
-                        episodeNumber: episode.episode,
-                        title: episode.title || `Episode ${episode.episode}`,
-                        overview: episode.overview || '',
-                        has_subtitles: episode.has_subtitles || false,
-                        videoFile: episodeFile, // Automatically set the matched file
-                        filename: episode.filename
-                    };
-                })
-            }));
-        }
+        const findCdnEpisode = (seasonNumber, episodeNumber) => {
+            const cdnSeason = show.cdn_data?.seasons?.find(
+                season => season.season_number === parseInt(seasonNumber)
+            );
+            return cdnSeason?.episodes?.find(
+                episode => episode.episode_number === parseInt(episodeNumber)
+            );
+        };
+
+        const transformedSeasons = Object.entries(show.episodes || {}).map(([seasonNumber, episodes]) => ({
+            seasonNumber: parseInt(seasonNumber),
+            episodes: episodes.map(episode => {
+                const episodeFile = episode.filename ? findFileByName(episode.filename) : null;
+                const cdnEpisode = findCdnEpisode(seasonNumber, episode.episode);
+
+                return {
+                    episodeNumber: episode.episode,
+                    title: cdnEpisode?.name || episode.title || `Episode ${episode.episode}`,
+                    overview: cdnEpisode?.overview || episode.overview || '',
+                    has_subtitles: episode.has_subtitles || false,
+                    force: false,
+                    videoFile: episodeFile,
+                    filename: episode.filename || '',
+                    episode_number_end: episode.episode_end,
+                    air_date: cdnEpisode?.air_date,
+                    runtime: cdnEpisode?.runtime,
+                    still_path: cdnEpisode?.still_path,
+                    vote_average: cdnEpisode?.vote_average,
+                    episode_type: cdnEpisode?.episode_type,
+                    production_code: cdnEpisode?.production_code
+                };
+            })
+        })).sort((a, b) => a.seasonNumber - b.seasonNumber);
 
         return {
             show_id: show.cdn_data?.id || '',
@@ -143,6 +126,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
             networks: show.cdn_data?.networks || '',
             status: show.cdn_data?.status || '',
             seasons: transformedSeasons,
+            upload_mode: show.upload_mode || show.validation?.mode || 'new',
             // Add episode files for reference
             episodeFiles: show.episodes || {}
         };
@@ -152,6 +136,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
         setShowUploadModal(false);
         setCurrentUploadData(null);
         setCurrentUploadType(null);
+        setCurrentUploadMode('new');
         setCurrentOriginalItem(null);
     };
 
@@ -275,7 +260,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
                     className="upload-btn"
                     onClick={() => handleTVShowUpload(show)}
                 >
-                    Upload Show
+                    {show.upload_mode === 'merge' || show.validation?.mode === 'merge' ? 'Merge Episodes' : 'Upload Show'}
                 </Button>
                 <Button 
                     icon={<EditOutlined />}
@@ -352,6 +337,7 @@ const PrefilledUpload = ({ parsedData, selectedFiles, onUploadComplete, onItemUp
                     onSuccess={handleUploadSuccess}
                     type={currentUploadType}
                     prefilledData={currentUploadData}
+                    uploadMode={currentUploadMode}
                 />
             )}
         </div>

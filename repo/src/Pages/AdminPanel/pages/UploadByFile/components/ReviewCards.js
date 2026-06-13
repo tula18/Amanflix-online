@@ -78,13 +78,14 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
         validateAllContent();
     }, [localData]);
 
-    const validateContent = async (contentType, contentId, episodes = null, contentData = null) => {
+    const validateContent = async (contentType, contentId, episodes = null, contentData = null, mode = 'new') => {
         try {
             const token = localStorage.getItem('admin_token');
             const payload = {
                 content_type: contentType,
                 content_id: contentId,
-                validation_type: 'review'
+                validation_type: 'review',
+                mode
             };
             
             if (episodes) {
@@ -182,7 +183,7 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                             estimated_file_size: getMovieFileSize(movie)
                         };
                         
-                        const result = await validateContent('movie', movie.cdn_data.id, null, movieContentData);
+                        const result = await validateContent('movie', movie.cdn_data.id, null, movieContentData, 'new');
                         results[`movie_${movie.cdn_data.id}`] = result;
                         completedItems++;
                         setValidationProgress((completedItems / totalItems) * 100);
@@ -221,7 +222,7 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                             episodes: episodes
                         };
                         
-                        const result = await validateContent('tv', show.cdn_data.id, episodes, showContentData);
+                        const result = await validateContent('tv', show.cdn_data.id, episodes, showContentData, 'auto');
                         results[`tv_${show.cdn_data.id}`] = result;
                         completedItems++;
                         setValidationProgress((completedItems / totalItems) * 100);
@@ -392,6 +393,65 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                         )}
                     </div>
                 </div>
+            </div>
+        );
+    };
+
+    const getMergeStatusColor = (status) => {
+        switch (status) {
+            case 'new_season':
+            case 'new_episode':
+                return 'green';
+            case 'missing_video':
+                return 'blue';
+            case 'force_overwrite':
+                return 'orange';
+            case 'skipped_existing':
+                return 'default';
+            default:
+                return 'default';
+        }
+    };
+
+    const getMergeStatusLabel = (status) => {
+        switch (status) {
+            case 'new_season':
+                return 'New season';
+            case 'new_episode':
+                return 'New episode';
+            case 'missing_video':
+                return 'Missing video';
+            case 'force_overwrite':
+                return 'Overwrite';
+            case 'skipped_existing':
+                return 'Skip existing';
+            default:
+                return status;
+        }
+    };
+
+    const renderEpisodeMergeStatus = (show) => {
+        const key = getValidationKey(show, 'tv');
+        const validation = validationResults[key];
+        const statuses = validation?.episode_merge_status || [];
+
+        if (!statuses.length) {
+            return null;
+        }
+
+        return (
+            <div className="files-list" style={{ marginTop: '12px' }}>
+                <div className="files-title">Merge Status</div>
+                {statuses.map((episodeStatus) => (
+                    <Tag
+                        key={`${episodeStatus.season_number}-${episodeStatus.episode_number}`}
+                        color={getMergeStatusColor(episodeStatus.status)}
+                        className="file-tag"
+                        style={{ marginBottom: '4px', display: 'block' }}
+                    >
+                        S{episodeStatus.season_number}E{episodeStatus.episode_number}: {getMergeStatusLabel(episodeStatus.status)}
+                    </Tag>
+                ))}
             </div>
         );
     };
@@ -599,6 +659,7 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
                     ))}
                 </div>
                 
+                {renderEpisodeMergeStatus(show)}
                 {renderValidationStatus(show, 'tv')}
             </div>
         </Card>
@@ -635,10 +696,19 @@ const ReviewCards = ({ parsedData, onReviewComplete, onBack }) => {
     const uploadableCount = uploadableItems.movies.length + uploadableItems.tv_shows.length;
 
     const handleContinueToUpload = () => {
+        const attachValidation = (items, type) => (items || []).map(item => {
+            const validation = validationResults[getValidationKey(item, type)];
+            return {
+                ...item,
+                validation,
+                upload_mode: validation?.mode === 'merge' ? 'merge' : 'new'
+            };
+        });
+
         const filteredData = {
             ...localData,
-            movies: uploadableItems.movies,
-            tv_shows: uploadableItems.tv_shows
+            movies: attachValidation(uploadableItems.movies, 'movie'),
+            tv_shows: attachValidation(uploadableItems.tv_shows, 'tv')
         };
         onReviewComplete(filteredData);
     };

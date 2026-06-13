@@ -7,7 +7,6 @@ import { API_URL } from "../../../../../config";
 import './UnifiedUploadModal.css';
 import FormGroup from "../../../Components/FormGroup/FormGroup";
 import TextareaFormGroup from "../../../Components/FormGroup/TextareaFormGroup";
-import axios from 'axios';
 
 const UnifiedUploadModal = ({ 
     isVisible, 
@@ -18,6 +17,7 @@ const UnifiedUploadModal = ({
     // New props for edit mode (to replace MovieEditModal and TvShowEditModal)
     contentId,      // movieID or ShowID
     fetchType = 'new', // 'new', 'api', 'cdn'
+    uploadMode = 'new', // 'new' or 'merge'
     openDelForm,    // Delete form callback
     refresh         // Refresh callback
 }) => {
@@ -26,6 +26,7 @@ const UnifiedUploadModal = ({
     
     // Determine if we're in edit mode
     const isEdit = contentId !== undefined && fetchType !== 'cdn' && fetchType !== 'new';
+    const isMerge = type === 'tv_show' && uploadMode === 'merge';
     
     const token = localStorage.getItem('admin_token');
     const [saveLoading, setSaveLoading] = useState(false);
@@ -53,13 +54,14 @@ const UnifiedUploadModal = ({
     const [loadingSearch, setLoadingSearch] = useState(false);
 
     // Validation function for upload pre-check
-    const validateUpload = async (contentType, contentId, episodes = null, contentData = null) => {
+    const validateUpload = async (contentType, contentId, episodes = null, contentData = null, mode = 'new') => {
         try {
             const token = localStorage.getItem('admin_token');
             const payload = {
                 content_type: contentType,
                 content_id: contentId,
-                validation_type: 'upload'
+                validation_type: 'upload',
+                mode
             };
             
             if (episodes) {
@@ -216,10 +218,10 @@ const UnifiedUploadModal = ({
 
     // Check episodes existence for shows
     useEffect(() => {
-        if (type === 'tv_show' && showData.show_id && fetchType !== 'new') {
+        if (type === 'tv_show' && showData.show_id && (fetchType !== 'new' || isMerge)) {
             checkEpisodesExist();
         }
-    }, [showData.show_id, fetchType, type]);
+    }, [showData.show_id, fetchType, type, isMerge]);
 
     // Fetch movie details for edit mode
     const fetchMovieDetails = async () => {
@@ -596,6 +598,7 @@ const UnifiedUploadModal = ({
                         has_subtitles: episode.has_subtitles || false,
                         force: episode.force || false,
                         videoFile: episode.videoFile || null,
+                        episode_number_end: episode.episode_number_end || null,
                         filename: episode.filename || '' // Add filename reference
                     };
                 })
@@ -621,6 +624,7 @@ const UnifiedUploadModal = ({
                         has_subtitles: ep.has_subtitles || false,
                         force: false,
                         videoFile: ep.videoFile || null, // Handle pre-filled video files
+                        episode_number_end: ep.episode_end || ep.episode_number_end || null,
                         filename: ep.filename || '' // Store filename for reference
                     }))
                 };
@@ -644,6 +648,7 @@ const UnifiedUploadModal = ({
                     has_subtitles: ep.has_subtitles || false,
                     force: false,
                     videoFile: ep.file || null,
+                    episode_number_end: ep.episode_end || ep.episode_number_end || null,
                     filename: ep.filename || ''
                 });
             });
@@ -947,7 +952,7 @@ const UnifiedUploadModal = ({
 
                 // Pre-upload validation (only for new uploads)
                 if (!isEdit) {
-                    const validationResult = await validateUpload('movie', movieData.id, null, movieData);
+                    const validationResult = await validateUpload('movie', movieData.id, null, movieData, 'new');
                     if (validationResult && !validationResult.can_upload) {
                         const errorMessages = validationResult.errors.map(error => error.message).join('\n');
                         notification.error({
@@ -1070,6 +1075,7 @@ const UnifiedUploadModal = ({
                         overview: episode.overview,
                         has_subtitles: episode.has_subtitles,
                         force: episode.force,
+                        episode_number_end: episode.episode_number_end,
                         filename: episode.filename // Include filename for pre-filled data
                     }))
                 }));
@@ -1089,7 +1095,7 @@ const UnifiedUploadModal = ({
                             }
                         });
                     });
-                    const validationResult = await validateUpload('tv', showData.show_id, episodes, showData);
+                    const validationResult = await validateUpload('tv', showData.show_id, episodes, showData, isMerge ? 'merge' : 'new');
                     
                     if (validationResult && !validationResult.can_upload) {
                         const errorMessages = validationResult.errors.map(error => error.message).join('\n');
@@ -1111,8 +1117,10 @@ const UnifiedUploadModal = ({
                 }
 
                 // Use XHR for better progress tracking
-                const method = isEdit ? 'PUT' : 'POST';
-                const url = isEdit ? `${API_URL}/api/upload/show/${showData.show_id}` : `${API_URL}/api/upload/show`;
+                const method = isMerge ? 'PATCH' : (isEdit ? 'PUT' : 'POST');
+                const url = isMerge
+                    ? `${API_URL}/api/upload/show/${showData.show_id}/episodes`
+                    : (isEdit ? `${API_URL}/api/upload/show/${showData.show_id}` : `${API_URL}/api/upload/show`);
 
                 const xhr = new XMLHttpRequest();
                 xhr.open(method, url, true);
@@ -1188,7 +1196,7 @@ const UnifiedUploadModal = ({
         <div className={`modal`} id="unifiedModal">
             <div className={`modal-content`} id="modal-content" ref={modalContentRef}>
                 <div className='header' style={{ width: '100%', backgroundSize: 'cover', backgroundPosition: 'center', minHeight: '50px', marginBottom: 10, marginTop: 10 }}>
-                    <h1 style={{paddingBottom: 10, paddingLeft: 10}}>{isEdit ? "Edit" : "Upload"} {type === 'movie' ? 'Movie' : 'TV Show'}</h1>
+                    <h1 style={{paddingBottom: 10, paddingLeft: 10}}>{isMerge ? "Merge Episodes Into" : (isEdit ? "Edit" : "Upload")} {type === 'movie' ? 'Movie' : 'TV Show'}</h1>
                     {/* Play button for edit mode when video exists */}
                     {type === 'movie' && vidExist.exist && isEdit && (
                         <button className='banner_play_button' style={{marginBottom: 12, marginLeft: 10}} onClick={navigateToContent}>

@@ -3,11 +3,12 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
-from api.utils import ensure_upload_folder_exists, save_with_progress, validate_title_data, validate_episode_data, admin_token_required
+from api.utils import ensure_upload_folder_exists, save_with_progress, validate_title_data, validate_episode_data, admin_token_required, clear_episode_cache
 from models import Movie, TVShow, Season, Episode
 import os
 import subprocess
 import json
+import uuid
 from tqdm import tqdm
 from pprint import pprint
 from utils.logger import log_success, log_error, log_warning, log_info
@@ -264,8 +265,117 @@ def validate_video_file(file):
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed_extensions:
         return False, f"File type not allowed. Allowed types: {', '.join(allowed_extensions)}"
-    
+
     return True, None
+
+def coerce_bool(value, default=False):
+    """Parse common form/JSON boolean values."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+    return bool(value)
+
+def get_episode_video_id(show_id, season_number, episode_number):
+    """Canonical padded video id: show id + 2-digit season + 3-digit episode."""
+    return int(f'{int(show_id)}{int(season_number):02d}{int(episode_number):03d}')
+
+def get_episode_video_path(show_id, season_number, episode_number, episode=None):
+    """Return the best known video id/path for an episode."""
+    video_id = episode.video_id if episode and episode.video_id else get_episode_video_id(show_id, season_number, episode_number)
+    return video_id, os.path.join(UPLOADS_DIR, f'{video_id}.mp4')
+
+def find_episode_for_show(show_id, season_number, episode_number):
+    """Find a season and episode by public numbering."""
+    season = Season.query.filter_by(
+        tvshow_id=show_id,
+        season_number=season_number
+    ).first()
+    if not season:
+        return None, None
+
+    episode = Episode.query.filter_by(
+        season_id=season.id,
+        episode_number=episode_number
+    ).first()
+    return season, episode
+
+def build_episode_merge_status(show_id, season_number, episode_number, force=False):
+    """Describe how Add By File would handle one TV episode."""
+    season, episode = find_episode_for_show(show_id, season_number, episode_number)
+    video_id, video_path = get_episode_video_path(show_id, season_number, episode_number, episode)
+    file_exists = os.path.exists(video_path)
+
+    if episode and file_exists:
+        status = 'force_overwrite' if force else 'skipped_existing'
+        message = (
+            f"S{season_number}E{episode_number} will overwrite the existing video"
+            if force else
+            f"S{season_number}E{episode_number} already exists and will be skipped"
+        )
+    elif episode:
+        status = 'missing_video'
+        message = f"S{season_number}E{episode_number} exists in the database but has no video file"
+    elif season:
+        status = 'new_episode'
+        message = f"S{season_number}E{episode_number} will be added to an existing season"
+    else:
+        status = 'new_season'
+        message = f"S{season_number}E{episode_number} will be added with a new season"
+
+    return {
+        'season_number': season_number,
+        'episode_number': episode_number,
+        'status': status,
+        'exists_in_database': episode is not None,
+        'file_exists': file_exists,
+        'video_id': video_id,
+        'message': message
+    }
+
+def parse_seasons_payload(raw_seasons):
+    """Parse and lightly validate a seasons multipart field."""
+    if not raw_seasons:
+        return None, jsonify(message='No seasons data provided.'), 400
+
+    try:
+        seasons_data = json.loads(raw_seasons)
+    except (TypeError, json.JSONDecodeError):
+        return None, jsonify(message='Invalid seasons JSON.'), 400
+
+    if not isinstance(seasons_data, list):
+        return None, jsonify(message='Invalid seasons data format.'), 400
+
+    for season in seasons_data:
+        if not isinstance(season, dict) or 'season_number' not in season or 'episodes' not in season:
+            return None, jsonify(message='Invalid seasons data format.'), 400
+        if not isinstance(season.get('episodes'), list):
+            return None, jsonify(message='Invalid episodes data format.'), 400
+
+    return seasons_data, None, None
+
+def restore_backups(backups):
+    """Restore overwritten video files after a failed merge."""
+    for original_path, backup_path in reversed(backups):
+        try:
+            if os.path.exists(original_path):
+                os.remove(original_path)
+            if os.path.exists(backup_path):
+                os.replace(backup_path, original_path)
+        except Exception as e:
+            log_error(f"Error restoring backup {backup_path}: {str(e)}")
+
+def cleanup_merge_files(created_files, backups):
+    """Clean up only files created by the merge request."""
+    for path in created_files:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception as e:
+                log_error(f"Error removing merge-created file {path}: {str(e)}")
+    restore_backups(backups)
 
 @upload_bp.route('/progress/<id>', methods=['GET'])
 @admin_token_required('moderator')
@@ -845,13 +955,192 @@ def check_show_episodes(current_admin, show_id):
             episode_num = episode.episode_number
             print(episode.video_id)
             video_path = os.path.join(UPLOADS_DIR, f"{episode.video_id}.mp4")
-            
+
             result["episodes"][season_num][episode_num] = {
                 "exists": os.path.exists(video_path),
                 "message": f"Video for S{season_num}E{episode_num} exists" if os.path.exists(video_path) else f"No video found for S{season_num}E{episode_num}"
             }
-    
+
     return jsonify(result)
+
+@upload_bp.route('/show/<int:show_id>/episodes', methods=['PATCH'])
+@admin_token_required('moderator')
+def merge_tvshow_episodes(current_admin, show_id):
+    from models import db, TVShow, Season, Episode
+
+    show = TVShow.query.filter_by(show_id=show_id).first()
+    if not show:
+        return jsonify(message=f"TV show with id {show_id} not found."), 404
+
+    seasons_data, error_response, error_status = parse_seasons_payload(request.form.get('seasons'))
+    if error_response:
+        return error_response, error_status
+
+    ensure_upload_folder_exists()
+
+    created_files = []
+    backups = []
+    result = {
+        'show_id': show_id,
+        'title': show.title,
+        'added': [],
+        'filled_missing': [],
+        'overwritten': [],
+        'skipped_existing': [],
+        'created_seasons': []
+    }
+
+    try:
+        for season_data in seasons_data:
+            try:
+                season_number = int(season_data['season_number'])
+            except (TypeError, ValueError):
+                raise ValueError('Invalid season number.')
+
+            season = Season.query.filter_by(
+                tvshow_id=show_id,
+                season_number=season_number
+            ).first()
+
+            if not season:
+                season = Season(
+                    id=int(f'{show_id}{season_number:02d}'),
+                    season_number=season_number,
+                    tvshow_id=show_id,
+                    episode=[]
+                )
+                db.session.add(season)
+                db.session.flush()
+                result['created_seasons'].append(season_number)
+
+            for episode_data in season_data.get('episodes', []):
+                try:
+                    episode_number = int(episode_data.get('episode_number'))
+                except (TypeError, ValueError):
+                    raise ValueError(f'Invalid episode number for season {season_number}.')
+
+                force = coerce_bool(episode_data.get('force'), False)
+                episode = Episode.query.filter_by(
+                    season_id=season.id,
+                    episode_number=episode_number
+                ).first()
+                video_id, video_path = get_episode_video_path(
+                    show_id,
+                    season_number,
+                    episode_number,
+                    episode
+                )
+                had_file = os.path.exists(video_path)
+
+                status_payload = {
+                    'season_number': season_number,
+                    'episode_number': episode_number,
+                    'video_id': video_id,
+                    'title': episode_data.get('title') or f'Episode {episode_number}'
+                }
+                episode_created = episode is None
+
+                if episode and had_file and not force:
+                    result['skipped_existing'].append({
+                        **status_payload,
+                        'message': f'S{season_number}E{episode_number} already has a video and was skipped'
+                    })
+                    continue
+
+                video_key = f'video_season_{season_number}_episode_{episode_number}'
+                video_file = request.files.get(video_key)
+                if not video_file:
+                    raise ValueError(f'Video file is required for season {season_number}, episode {episode_number}.')
+
+                is_valid, error_msg = validate_video_file(video_file)
+                if not is_valid:
+                    raise ValueError(f"Season {season_number}, Episode {episode_number}: {error_msg}")
+
+                if not episode:
+                    episode = Episode(
+                        id=video_id,
+                        episode_number=episode_number,
+                        title=episode_data.get('title') or f'Episode {episode_number}',
+                        overview=episode_data.get('overview') or '',
+                        has_subtitles=coerce_bool(episode_data.get('has_subtitles'), False),
+                        video_id=video_id,
+                        runtime=episode_data.get('runtime', 0),
+                        episode_number_end=episode_data.get('episode_number_end')
+                    )
+                    episode.season_id = season.id
+                    db.session.add(episode)
+                else:
+                    episode.title = episode_data.get('title') or episode.title
+                    episode.overview = episode_data.get('overview', episode.overview)
+                    episode.has_subtitles = coerce_bool(episode_data.get('has_subtitles'), episode.has_subtitles)
+                    if 'episode_number_end' in episode_data:
+                        episode.episode_number_end = episode_data.get('episode_number_end')
+
+                if had_file and force:
+                    backup_path = f'{video_path}.merge-backup-{uuid.uuid4().hex}'
+                    os.replace(video_path, backup_path)
+                    backups.append((video_path, backup_path))
+
+                save_with_progress(video_file, video_path)
+                if not had_file:
+                    created_files.append(video_path)
+
+                detected_runtime = get_video_duration_in_minutes(video_path)
+                if detected_runtime:
+                    episode.runtime = detected_runtime
+                else:
+                    episode.runtime = episode_data.get('runtime', episode.runtime or 0)
+
+                if had_file and force:
+                    result['overwritten'].append({
+                        **status_payload,
+                        'message': f'S{season_number}E{episode_number} was overwritten'
+                    })
+                elif episode_created:
+                    result['added'].append({
+                        **status_payload,
+                        'message': f'S{season_number}E{episode_number} was added'
+                    })
+                else:
+                    result['filled_missing'].append({
+                        **status_payload,
+                        'message': f'S{season_number}E{episode_number} missing video was filled'
+                    })
+
+        db.session.commit()
+
+        for _, backup_path in backups:
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+
+        invalidate_show_cache()
+        clear_episode_cache()
+
+        total_changed = len(result['added']) + len(result['filled_missing']) + len(result['overwritten'])
+        total_skipped = len(result['skipped_existing'])
+        log_success(
+            f"Admin {current_admin.username} merged episodes into TV show {show.title} "
+            f"(ID: {show_id}): {total_changed} changed, {total_skipped} skipped"
+        )
+
+        return jsonify({
+            'message': (
+                f"TV Show {show.title} merge complete: "
+                f"{total_changed} episode(s) uploaded, {total_skipped} skipped."
+            ),
+            'result': result
+        }), 200
+
+    except ValueError as e:
+        db.session.rollback()
+        cleanup_merge_files(created_files, backups)
+        return jsonify(message=str(e)), 400
+
+    except Exception as e:
+        db.session.rollback()
+        cleanup_merge_files(created_files, backups)
+        log_error(f"Error merging episodes into TV show ID {show_id}: {e}")
+        return jsonify(message=f"An error occurred while merging TV show episodes: {str(e)}"), 500
 
 @upload_bp.route('/show/<int:show_id>', methods=['PUT'])
 @admin_token_required('moderator')
@@ -1071,7 +1360,7 @@ def validate_upload(current_admin):
         content_id = data.get('content_id')
         content_data = data.get('content_data', {})  # Additional content metadata for validation
         validation_type = data.get('validation_type', 'review')  # default to 'review' if not provided
-        validation_type = data.get('validation_type')  # default to 'review' if not provided
+        mode = data.get('mode') or data.get('upload_mode') or 'new'
 
         if validation_type not in ['review', 'upload']:
             log_warning(f"❌ Invalid validation_type: {validation_type}")
@@ -1112,6 +1401,7 @@ def validate_upload(current_admin):
             'info': [],
             'content_type': content_type,
             'content_id': content_id,
+            'mode': mode,
             'system_checks': {
                 'disk_space': None,
                 'existing_content': None,
@@ -1389,23 +1679,70 @@ def validate_upload(current_admin):
             log_info(f"📺 Validating TV show ID {content_id}")
             # Check if TV show already exists in database
             existing_show = TVShow.query.filter_by(show_id=content_id).first()
+            episodes_data = data.get('episodes', [])
+            auto_merge_mode = mode in ['auto', 'merge']
+
             if existing_show:
                 log_warning(f"📺 TV show ID {content_id} already exists: {existing_show.title}")
-                validation_result['can_upload'] = False
-                validation_result['errors'].append({
-                    'type': 'duplicate_database',
-                    'message': f"TV Show '{existing_show.title}' (ID: {content_id}) already exists in database",
-                    'suggestion': "Try editing the existing show from the Manage Shows page or enable Force Overwrite",
-                    'details': {
-                        'existing_title': existing_show.title,
-                        'existing_year': existing_show.first_air_date.year if existing_show.first_air_date else None
+                if auto_merge_mode:
+                    validation_result['mode'] = 'merge'
+                    validation_result['merge_target'] = {
+                        'show_id': existing_show.show_id,
+                        'title': existing_show.title,
+                        'first_air_year': existing_show.first_air_date.year if existing_show.first_air_date else None
                     }
-                })
+                    validation_result['info'].append({
+                        'type': 'existing_show_merge',
+                        'message': f"TV Show '{existing_show.title}' already exists and will be updated by merging selected episodes",
+                        'suggestion': "Only selected new/missing episodes will be uploaded"
+                    })
+
+                    episode_statuses = []
+                    merge_summary = {
+                        'new_season': 0,
+                        'new_episode': 0,
+                        'missing_video': 0,
+                        'skipped_existing': 0,
+                        'force_overwrite': 0
+                    }
+
+                    for episode_data in episodes_data:
+                        season_num = episode_data.get('season_number')
+                        episode_num = episode_data.get('episode_number')
+                        if season_num and episode_num:
+                            status = build_episode_merge_status(
+                                content_id,
+                                int(season_num),
+                                int(episode_num),
+                                coerce_bool(episode_data.get('force'), False)
+                            )
+                            episode_statuses.append(status)
+                            merge_summary[status['status']] = merge_summary.get(status['status'], 0) + 1
+
+                    validation_result['episode_merge_status'] = episode_statuses
+                    validation_result['merge_summary'] = merge_summary
+
+                    if episode_statuses and merge_summary.get('skipped_existing', 0) == len(episode_statuses):
+                        validation_result['warnings'].append({
+                            'type': 'all_episodes_exist',
+                            'message': "All selected episodes already have videos and will be skipped unless Force Overwrite is enabled",
+                            'suggestion': "Remove existing episodes from the selection or enable Force Overwrite for replacements"
+                        })
+                else:
+                    validation_result['can_upload'] = False
+                    validation_result['errors'].append({
+                        'type': 'duplicate_database',
+                        'message': f"TV Show '{existing_show.title}' (ID: {content_id}) already exists in database",
+                        'suggestion': "Try editing the existing show from the Manage Shows page or enable Force Overwrite",
+                        'details': {
+                            'existing_title': existing_show.title,
+                            'existing_year': existing_show.first_air_date.year if existing_show.first_air_date else None
+                        }
+                    })
             else:
                 log_info(f"📺 TV show ID {content_id} not found in database - OK to upload")
-            
+
             # For TV shows, check episodes if provided
-            episodes_data = data.get('episodes', [])
             if episodes_data:
                 log_info(f"📺 Validating {len(episodes_data)} episodes for TV show ID {content_id}")
                 existing_episodes = []
@@ -1416,16 +1753,32 @@ def validate_upload(current_admin):
                     season_num = episode_data.get('season_number')
                     episode_num = episode_data.get('episode_number')
                     if season_num and episode_num:
-                        # Check if episode file exists
-                        episode_filename = f"{content_id}S{season_num:02d}E{episode_num:02d}.mp4"
-                        episode_filepath = os.path.join(UPLOADS_DIR, episode_filename)
-                        
+                        # Check if episode file exists using DB video_id or canonical padded fallback
+                        _, db_episode = find_episode_for_show(content_id, int(season_num), int(episode_num))
+                        _, episode_filepath = get_episode_video_path(
+                            content_id,
+                            int(season_num),
+                            int(episode_num),
+                            db_episode
+                        )
+
                         log_info(f"📁 Checking episode file: {episode_filepath}")
-                        
+
                         if os.path.exists(episode_filepath):
                             existing_episodes.append(f"S{season_num}E{episode_num}")
                             log_warning(f"📁 Episode file already exists: {episode_filepath}")
-                            
+
+                            merge_status = None
+                            if existing_show and auto_merge_mode:
+                                merge_status = build_episode_merge_status(
+                                    content_id,
+                                    int(season_num),
+                                    int(episode_num),
+                                    coerce_bool(episode_data.get('force'), False)
+                                )
+                            if merge_status and merge_status.get('status') == 'skipped_existing':
+                                continue
+
                             # Validate episode file integrity
                             warnings, errors = validate_file_integrity(episode_filepath)
                             episode_warnings.extend(warnings)
@@ -1559,10 +1912,26 @@ def validate_upload(current_admin):
                         season_num = episode_data.get('season_number')
                         episode_num = episode_data.get('episode_number')
                         if season_num and episode_num:
-                            episode_filename = f"{content_id}S{season_num:02d}E{episode_num:02d}.mp4"
-                            episode_filepath = os.path.join(UPLOADS_DIR, episode_filename)
-                            
+                            _, db_episode = find_episode_for_show(content_id, int(season_num), int(episode_num))
+                            _, episode_filepath = get_episode_video_path(
+                                content_id,
+                                int(season_num),
+                                int(episode_num),
+                                db_episode
+                            )
+
                             if os.path.exists(episode_filepath):
+                                merge_status = None
+                                if existing_show and auto_merge_mode:
+                                    merge_status = build_episode_merge_status(
+                                        content_id,
+                                        int(season_num),
+                                        int(episode_num),
+                                        coerce_bool(episode_data.get('force'), False)
+                                    )
+                                if merge_status and merge_status.get('status') == 'skipped_existing':
+                                    continue
+
                                 scan_warnings, scan_errors = validate_content_scanning(episode_filepath)
                                 for warning in scan_warnings:
                                     validation_result['warnings'].append({

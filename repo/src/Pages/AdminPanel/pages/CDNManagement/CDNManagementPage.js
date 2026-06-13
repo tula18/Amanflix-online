@@ -48,12 +48,12 @@ import {
 import { API_URL } from "../../../../config";
 import './CDNManagementPage.css';
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
-import TextArea from "antd/es/input/TextArea";
 import dayjs from 'dayjs';
 // Import the SeasonEpisodeEditor component
 import SeasonEpisodeEditor from './SeasonEpisodeEditor';
 
 const { Dragger } = Upload;
+const { TextArea } = Input;
 
 // Helper function to convert formatted TXT to JSON for preview (matches backend logic)
 const convertFormattedTxtToPreview = (txtContent) => {
