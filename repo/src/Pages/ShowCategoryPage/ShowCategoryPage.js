@@ -2,10 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import Card from '../../Components/Card/Card';
+import CategoryHeader from '../../Components/CategoryHeader/CategoryHeader';
 import { API_URL } from '../../config';
 import './ShowCategoryPage.css'
 import ErrorHandler from '../../Utils/ErrorHandler';
 import MovieModal from '../../Components/Model/Model';
+
+const getCategoryEyebrow = (category) => {
+    if (!category) return 'Shows';
+    if (category.type === 'genre') return 'Show genre';
+    if (category.title.toLowerCase().includes('random')) return 'Random picks';
+    if (category.title.toLowerCase().includes('uploaded')) return 'Uploaded library';
+    return 'Shows';
+};
+
+const getCategoryDescription = (category) => {
+    if (!category) return 'Browse shows from the Amanflix catalog.';
+    if (category.type === 'genre') {
+        return `A focused shelf of ${category.title.toLowerCase()} from the catalog.`;
+    }
+    if (category.title.toLowerCase().includes('random')) {
+        return 'A shuffled selection of shows for when you want something unexpected.';
+    }
+    if (category.title.toLowerCase().includes('uploaded')) {
+        return 'Browse the uploaded show library in one place.';
+    }
+    return 'Browse shows from the Amanflix catalog.';
+};
 
 const ShowCategoryPage = () => {
     const { categoryId } = useParams();
@@ -232,18 +255,28 @@ const ShowCategoryPage = () => {
         )
     }
 
+    const activeCategory = categories[categoryId];
+
     return (
-        <div className='MoviesCategoryPage'>
-            <h1 className='MoviesCategory_title'>{(categoryId in categories) ? categories[categoryId].title : ""}</h1>
+        <div className='ShowCategoryPage'>
+            <CategoryHeader
+                title={activeCategory ? activeCategory.title : 'Shows'}
+                eyebrow={getCategoryEyebrow(activeCategory)}
+                description={getCategoryDescription(activeCategory)}
+                count={movies.length}
+                meta={[hasMore ? 'More titles available' : 'Complete list']}
+                backgroundPath={movies[0]?.backdrop_path}
+                tone="shows"
+            />
             <InfiniteScroll
                 dataLength={movies.length}
                 next={() => setPage(prevPage => prevPage + 1)}
                 hasMore={hasMore}
                 loader={
-                    <h4 className='MoviesCategory_title'>Loading...</h4>
+                    <h4 className='category-status-message'>Loading...</h4>
                 }
                 endMessage={
-                    <p className='MoviesCategory_title' style={{ textAlign: 'center' }}>
+                    <p className='category-status-message'>
                         <b>Yay! You have seen it all</b>
                     </p>
                 }

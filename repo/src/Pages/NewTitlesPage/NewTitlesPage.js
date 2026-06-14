@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import Card from '../../Components/Card/Card';
+import CategoryHeader from '../../Components/CategoryHeader/CategoryHeader';
 import MovieModal from '../../Components/Model/Model';
 import { API_URL } from '../../config';
 import './NewTitlesPage.css';
@@ -138,9 +139,17 @@ const NewTitlesPage = () => {
 
     return (
         <div className='NewTitlesPage'>
-            <h1 className='NewTitles_title'>New Titles</h1>
+            <CategoryHeader
+                title="New Titles"
+                eyebrow="Fresh additions"
+                description="Recently added movies and shows from the last 30 days."
+                count={titles.length}
+                meta={[hasMore ? 'More titles available' : 'Complete list']}
+                backgroundPath={titles[0]?.backdrop_path}
+                tone="new"
+            />
             {titles.length === 0 ? (
-                <p className='NewTitles_title' style={{ textAlign: 'center' }}>
+                <p className='category-status-message'>
                     <b>No new titles have been added recently.</b>
                 </p>
             ) : (
@@ -148,9 +157,9 @@ const NewTitlesPage = () => {
                     dataLength={titles.length}
                     next={() => setPage(prevPage => prevPage + 1)}
                     hasMore={hasMore}
-                    loader={<h4 className='NewTitles_title'>Loading...</h4>}
+                    loader={<h4 className='category-status-message'>Loading...</h4>}
                     endMessage={
-                        <p className='NewTitles_title' style={{ textAlign: 'center' }}>
+                        <p className='category-status-message'>
                             <b>Yay! You have seen it all</b>
                         </p>
                     }
