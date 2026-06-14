@@ -2,11 +2,38 @@ from flask import Blueprint, request, jsonify, abort
 from models import TVShow
 from api.utils import admin_token_required, token_required, serialize_watch_history
 from api.cache import get_all_shows_cached, get_show_by_id_cached
+from cdn.utils import filter_valid_genres
 from utils.fuzzy import fuzzy_filter_and_rank
 from paths import UPLOADS_DIR
 import os
 
 shows_bp = Blueprint('shows_bp', __name__, url_prefix='/api')
+
+def _extract_year(show):
+    date_str = show.get('first_air_date', '') or show.get('release_date', '') or ''
+    try:
+        return int(str(date_str)[:4])
+    except (ValueError, TypeError):
+        return None
+
+def _passes_filters(show, genre, year, min_rating, max_rating):
+    vote_average = show.get('vote_average', 0) or 0
+    if isinstance(vote_average, str):
+        try:
+            vote_average = float(vote_average)
+        except ValueError:
+            return False
+
+    if not (min_rating <= vote_average <= max_rating):
+        return False
+
+    if genre and not filter_valid_genres(show, genre):
+        return False
+
+    if year is not None and _extract_year(show) != year:
+        return False
+
+    return True
 
 @shows_bp.route('/shows', methods=['GET'])
 @token_required
@@ -17,9 +44,16 @@ def get_shows(current_user):
     sort_by_field = request.args.get('sort_by', None, type=str)  # Default sort_by is None
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     reverse = request.args.get('reverse', False, type=bool)
-    
+    genre = request.args.get('genre', '', type=str)
+    year = request.args.get('year', None, type=int)
+    min_rating = request.args.get('min_rating', 0, type=float)
+    max_rating = request.args.get('max_rating', 10, type=float)
+
     # Get all Shows from cache
-    all_shows_data = get_all_shows_cached()
+    all_shows_data = [
+        show for show in get_all_shows_cached()
+        if _passes_filters(show, genre, year, min_rating, max_rating)
+    ]
     
     # Apply sorting if sort_by_field is provided
     if sort_by_field:

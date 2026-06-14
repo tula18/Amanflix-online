@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, abort
-from cdn.utils import paginate, calculate_similarity, check_images_existence
+from cdn.utils import paginate, calculate_similarity, check_images_existence, filter_valid_genres
 from api.utils import token_required, serialize_watch_history
 from utils.data_helpers import get_movies, get_movies_with_images
 from utils.fuzzy import fuzzy_filter_and_rank
@@ -8,6 +8,13 @@ import os
 import time
 
 movie_cdn_bp = Blueprint('movie_cdn_bp', __name__, url_prefix='/cdn')
+
+def _extract_year(movie):
+    date_str = movie.get('release_date', '') or ''
+    try:
+        return int(str(date_str)[:4])
+    except (ValueError, TypeError):
+        return None
 
 # Endpoint to get all movies with pagination
 @movie_cdn_bp.route('/movies', methods=['GET'])
@@ -98,6 +105,8 @@ def get__random_movie(current_user):
     max_rating = request.args.get('max_rating', 10, type=float)
     with_images = request.args.get('with_images', False, type=bool)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
+    genre = request.args.get('genre', '', type=str)
+    year = request.args.get('year', None, type=int)
 
     movies_to_use = temp_movies
     if with_images:
@@ -115,8 +124,13 @@ def get__random_movie(current_user):
                     vote_average = float(vote_average)
                 except ValueError:
                     continue
-            if min_rating <= vote_average <= max_rating:
-                results.append(item)
+            if not (min_rating <= vote_average <= max_rating):
+                continue
+            if genre and not filter_valid_genres(item, genre):
+                continue
+            if year is not None and _extract_year(item) != year:
+                continue
+            results.append(item)
         return results
 
     movie_results = apply_filters(shuffled_movies)

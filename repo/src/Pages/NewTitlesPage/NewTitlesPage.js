@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import Card from '../../Components/Card/Card';
 import CategoryHeader from '../../Components/CategoryHeader/CategoryHeader';
+import CategoryFilters, { CategoryFiltersToggle, DEFAULT_CATEGORY_FILTERS } from '../../Components/CategoryFilters/CategoryFilters';
 import MovieModal from '../../Components/Model/Model';
 import { API_URL } from '../../config';
+import { applyNewTitleFiltersToUrl } from '../../Utils/categoryFilters';
 import './NewTitlesPage.css';
 
 const NewTitlesPage = () => {
@@ -13,6 +15,8 @@ const NewTitlesPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [filters, setFilters] = useState(DEFAULT_CATEGORY_FILTERS);
+    const [filtersOpen, setFiltersOpen] = useState(false);
 
     const perPage = 30;
 
@@ -55,7 +59,7 @@ const NewTitlesPage = () => {
         };
     };
 
-    const fetchTitles = async () => {
+    const fetchTitles = async (pageToFetch = page, replace = false) => {
         try {
             const token = localStorage.getItem('token');
             const options = {
@@ -65,16 +69,17 @@ const NewTitlesPage = () => {
                 options.headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const url = `${API_URL}/api/discovery/new-titles?page=${page}&per_page=${perPage}&with_images=true&days=30&include_watch_history=true`;
+            const baseUrl = `${API_URL}/api/discovery/new-titles?page=${pageToFetch}&per_page=${perPage}&with_images=true&days=30&include_watch_history=true`;
+            const url = applyNewTitleFiltersToUrl(baseUrl, filters);
             const response = await fetch(url, options);
             const data = await response.json();
 
             if (data.length > 0) {
-                setTitles(prevTitles => [...prevTitles, ...data]);
+                setTitles(prevTitles => replace ? data : [...prevTitles, ...data]);
+            } else if (replace) {
+                setTitles([]);
             }
-            if (data.length < perPage) {
-                setHasMore(false);
-            }
+            setHasMore(data.length >= perPage);
         } catch (error) {
             console.error('Error fetching new titles:', error);
         } finally {
@@ -83,7 +88,17 @@ const NewTitlesPage = () => {
     };
 
     useEffect(() => {
-        fetchTitles();
+        setTitles([]);
+        setPage(1);
+        setHasMore(true);
+        setIsLoading(true);
+        fetchTitles(1, true);
+    }, [filters]);
+
+    useEffect(() => {
+        if (page > 1) {
+            fetchTitles(page, false);
+        }
     }, [page]);
 
     const handleMovieClick = (movie, event) => {
@@ -143,14 +158,26 @@ const NewTitlesPage = () => {
                 title="New Titles"
                 eyebrow="Fresh additions"
                 description="Recently added movies and shows from the last 30 days."
-                count={titles.length}
                 meta={[hasMore ? 'More titles available' : 'Complete list']}
+                actions={
+                    <CategoryFiltersToggle
+                        filtersOpen={filtersOpen}
+                        onToggle={() => setFiltersOpen(open => !open)}
+                    />
+                }
                 backgroundPath={titles[0]?.backdrop_path}
                 tone="new"
             />
+            <CategoryFilters
+                filters={filters}
+                onChange={setFilters}
+                filtersOpen={filtersOpen}
+                hideToggle
+                showMediaType
+            />
             {titles.length === 0 ? (
                 <p className='category-status-message'>
-                    <b>No new titles have been added recently.</b>
+                    <b>No new titles match these filters.</b>
                 </p>
             ) : (
                 <InfiniteScroll

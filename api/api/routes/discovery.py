@@ -1,13 +1,40 @@
 from flask import Blueprint, request, jsonify
 from api.utils import token_required, serialize_watch_history
 from api.cache import get_all_movies_cached, get_all_shows_cached
-from cdn.utils import paginate, check_images_existence
+from cdn.utils import paginate, check_images_existence, filter_valid_genres
 from models import Movie, TVShow, db
 from sqlalchemy import func, text
 from datetime import datetime, timedelta
 import random
 
 discovery_bp = Blueprint('discovery_bp', __name__, url_prefix='/api')
+
+def _extract_year(item, item_type):
+    date_field = 'release_date' if item_type == 'movie' else 'first_air_date'
+    date_str = item.get(date_field, '') or ''
+    try:
+        return int(str(date_str)[:4])
+    except (ValueError, TypeError):
+        return None
+
+def _passes_filters(item, item_type, genre, year, min_rating, max_rating):
+    vote_average = item.get('vote_average', 0) or 0
+    if isinstance(vote_average, str):
+        try:
+            vote_average = float(vote_average)
+        except ValueError:
+            return False
+
+    if not (min_rating <= vote_average <= max_rating):
+        return False
+
+    if genre and not filter_valid_genres(item, genre):
+        return False
+
+    if year is not None and _extract_year(item, item_type) != year:
+        return False
+
+    return True
 
 @discovery_bp.route('/discovery/random', methods=['GET'])
 @token_required
@@ -236,6 +263,10 @@ def get_discovery_new_titles(current_user):
     with_images = request.args.get('with_images', False, type=bool)
     include_watch_history = request.args.get('include_watch_history', False, type=bool)
     content_type = request.args.get('content_type', '')  # 'movie', 'tv', or '' for both
+    genre = request.args.get('genre', '', type=str)
+    year = request.args.get('year', None, type=int)
+    min_rating = request.args.get('min_rating', 0, type=float)
+    max_rating = request.args.get('max_rating', 10, type=float)
 
     combined_content = []
     cutoff = datetime.utcnow() - timedelta(days=days)
@@ -250,6 +281,8 @@ def get_discovery_new_titles(current_user):
                     continue
                 if with_images and (not movie_data.get('poster_path') or not movie_data.get('backdrop_path')):
                     continue
+                if not _passes_filters(movie_data, 'movie', genre, year, min_rating, max_rating):
+                    continue
                 movie_data['id'] = movie_data.get('id', movie_data.get('movie_id'))
                 combined_content.append(movie_data)
 
@@ -260,6 +293,8 @@ def get_discovery_new_titles(current_user):
                 if not added_at or added_at < cutoff_iso:
                     continue
                 if with_images and (not tv_data.get('poster_path') or not tv_data.get('backdrop_path')):
+                    continue
+                if not _passes_filters(tv_data, 'tv_series', genre, year, min_rating, max_rating):
                     continue
                 tv_data['id'] = tv_data.get('show_id', tv_data.get('id'))
                 combined_content.append(tv_data)

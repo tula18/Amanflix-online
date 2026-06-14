@@ -12,7 +12,7 @@
         radial-gradient(circle at 14% 30%, rgba(229, 9, 20, 0.28), transparent 28%),
         linear-gradient(135deg, #181818 0%, #222 55%, #141414 100%);
     box-sizing: border-box;
-    cursor: pointer !important;
+    cursor: default;
 }
 
 .category-header::before {

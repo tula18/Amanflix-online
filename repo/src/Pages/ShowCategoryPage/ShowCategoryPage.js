@@ -3,7 +3,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import Card from '../../Components/Card/Card';
 import CategoryHeader from '../../Components/CategoryHeader/CategoryHeader';
+import CategoryFilters, { CategoryFiltersToggle, DEFAULT_CATEGORY_FILTERS } from '../../Components/CategoryFilters/CategoryFilters';
 import { API_URL } from '../../config';
+import { applyCategoryFiltersToUrl } from '../../Utils/categoryFilters';
 import './ShowCategoryPage.css'
 import ErrorHandler from '../../Utils/ErrorHandler';
 import MovieModal from '../../Components/Model/Model';
@@ -43,6 +45,8 @@ const ShowCategoryPage = () => {
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [filters, setFilters] = useState(DEFAULT_CATEGORY_FILTERS);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     
     const [categories, setCategories] = useState({
         uploaded: {
@@ -119,9 +123,9 @@ const ShowCategoryPage = () => {
         setSelectedMovie(null);
         setShowModal(false);
         if (genresLoaded) {
-            fetchMovies();
+            fetchMovies(1, true);
         }
-    }, [categoryId, location.pathname]);
+    }, [categoryId, location.pathname, filters, genresLoaded]);
     
     const fetchGenres = async () => {
         try {
@@ -158,8 +162,8 @@ const ShowCategoryPage = () => {
     }, [genresLoaded, isLoggedIn]);
     
     useEffect(() => {
-        if (genresLoaded) {
-            fetchMovies();
+        if (genresLoaded && page > 1) {
+            fetchMovies(page, false);
         }
     }, [page, genresLoaded]);
 
@@ -185,7 +189,7 @@ const ShowCategoryPage = () => {
     };
 
 
-    const fetchMovies = async () => {
+    const fetchMovies = async (pageToFetch = page, replace = false) => {
         try {
             const category = categories[categoryId];
             if (!category) {
@@ -193,7 +197,9 @@ const ShowCategoryPage = () => {
                 // ErrorHandler("not_found", navigate);
                 return;
             }
-            const url = category.url.replace(`page=page_num`, `page=${page}`);
+            const baseUrl = category.url.replace(`page=page_num`, `page=${pageToFetch}`);
+            const url = applyCategoryFiltersToUrl(baseUrl, filters);
+            const perPage = Number(new URL(url).searchParams.get('per_page')) || 30;
             
             const options = {};
             if (isLoggedIn) {
@@ -205,13 +211,14 @@ const ShowCategoryPage = () => {
             
             const response = await fetch(url, options);
             const data = await response.json();
-            
+
             // Debug: Log watch history data
             if (data.length > 0) {
-                setMovies(prevMovies => [...prevMovies, ...data]);
-            } else {
-                setHasMore(false);
+                setMovies(prevMovies => replace ? data : [...prevMovies, ...data]);
+            } else if (replace) {
+                setMovies([]);
             }
+            setHasMore(data.length >= perPage);
         } catch (error) {
             console.error('Error fetching movies:', error);
         } finally {
@@ -263,41 +270,58 @@ const ShowCategoryPage = () => {
                 title={activeCategory ? activeCategory.title : 'Shows'}
                 eyebrow={getCategoryEyebrow(activeCategory)}
                 description={getCategoryDescription(activeCategory)}
-                count={movies.length}
                 meta={[hasMore ? 'More titles available' : 'Complete list']}
+                actions={
+                    <CategoryFiltersToggle
+                        filtersOpen={filtersOpen}
+                        onToggle={() => setFiltersOpen(open => !open)}
+                    />
+                }
                 backgroundPath={movies[0]?.backdrop_path}
                 tone="shows"
             />
-            <InfiniteScroll
-                dataLength={movies.length}
-                next={() => setPage(prevPage => prevPage + 1)}
-                hasMore={hasMore}
-                loader={
-                    <h4 className='category-status-message'>Loading...</h4>
-                }
-                endMessage={
-                    <p className='category-status-message'>
-                        <b>Yay! You have seen it all</b>
-                    </p>
-                }
-            >
-                <div className='search-grid'>
-                    {movies.map((result, idx) => (
-                        <span key={idx}>
-                            <button className="button3" onClick={(event) => handleMovieClick(result, event)}>
-                                <Card 
-                                    movie={result} 
-                                    title={result.title || result.name} 
-                                    mediaType={result.media_type || result.type} 
-                                    image={result.backdrop_path}
-                                    watchProgress={getProgressPercentage(result)}
-                                    episodeInfo={getEpisodeInfo(result)}
-                                />
-                            </button>
-                        </span>
-                    ))}
-                </div>
-            </InfiniteScroll>
+            <CategoryFilters
+                filters={filters}
+                onChange={setFilters}
+                filtersOpen={filtersOpen}
+                hideToggle
+            />
+            {movies.length === 0 ? (
+                <p className='category-status-message'>
+                    <b>No shows match these filters.</b>
+                </p>
+            ) : (
+                <InfiniteScroll
+                    dataLength={movies.length}
+                    next={() => setPage(prevPage => prevPage + 1)}
+                    hasMore={hasMore}
+                    loader={
+                        <h4 className='category-status-message'>Loading...</h4>
+                    }
+                    endMessage={
+                        <p className='category-status-message'>
+                            <b>Yay! You have seen it all</b>
+                        </p>
+                    }
+                >
+                    <div className='search-grid'>
+                        {movies.map((result, idx) => (
+                            <span key={idx}>
+                                <button className="button3" onClick={(event) => handleMovieClick(result, event)}>
+                                    <Card
+                                        movie={result}
+                                        title={result.title || result.name}
+                                        mediaType={result.media_type || result.type}
+                                        image={result.backdrop_path}
+                                        watchProgress={getProgressPercentage(result)}
+                                        episodeInfo={getEpisodeInfo(result)}
+                                    />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                </InfiniteScroll>
+            )}
             {showModal && (
                 <MovieModal
                   movie={selectedMovie}

@@ -14,16 +14,13 @@ const CategoryHeader = ({
     title,
     eyebrow,
     description,
-    count,
     meta = [],
+    actions,
     backgroundPath,
     tone = 'default'
 }) => {
     const imageUrl = getImageUrl(backgroundPath);
-    const metaItems = [
-        typeof count === 'number' ? `${count} loaded` : null,
-        ...meta
-    ].filter(Boolean);
+    const metaItems = meta.filter(Boolean);
 
     return (
         <section
@@ -37,8 +34,9 @@ const CategoryHeader = ({
                     {description && <p>{description}</p>}
                 </div>
 
-                {metaItems.length > 0 && (
+                {(actions || metaItems.length > 0) && (
                     <div className="category-header__meta" aria-label="Category details">
+                        {actions}
                         {metaItems.map((item, index) => (
                             <span key={`${item}-${index}`}>{item}</span>
                         ))}
