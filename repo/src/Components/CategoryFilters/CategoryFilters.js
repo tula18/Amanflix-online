@@ -3,6 +3,7 @@ import { API_URL } from '../../config';
 import './CategoryFilters.css';
 
 const CURRENT_YEAR = new Date().getFullYear();
+const FILTER_PANEL_ANIMATION_MS = 280;
 
 export const DEFAULT_CATEGORY_FILTERS = {
     genre: '',
@@ -41,6 +42,8 @@ const CategoryFilters = ({
     const [internalFiltersOpen, setInternalFiltersOpen] = useState(false);
     const filtersOpen = controlledFiltersOpen ?? internalFiltersOpen;
     const toggleFilters = onToggle ?? (() => setInternalFiltersOpen(open => !open));
+    const [shouldRenderPanel, setShouldRenderPanel] = useState(filtersOpen);
+    const [panelExpanded, setPanelExpanded] = useState(filtersOpen);
 
     useEffect(() => {
         fetch(`${API_URL}/cdn/facets`)
@@ -53,6 +56,18 @@ const CategoryFilters = ({
             .catch(() => {});
     }, []);
 
+    useEffect(() => {
+        if (filtersOpen) {
+            setShouldRenderPanel(true);
+            setPanelExpanded(false);
+            const timeoutId = window.setTimeout(() => setPanelExpanded(true), 20);
+            return () => window.clearTimeout(timeoutId);
+        }
+        setPanelExpanded(false);
+        const timeoutId = window.setTimeout(() => setShouldRenderPanel(false), FILTER_PANEL_ANIMATION_MS);
+        return () => window.clearTimeout(timeoutId);
+    }, [filtersOpen]);
+
     const updateFilters = (nextFilters) => {
         onChange({
             ...filters,
@@ -64,7 +79,7 @@ const CategoryFilters = ({
         onChange(DEFAULT_CATEGORY_FILTERS);
     };
 
-    if (hideToggle && !filtersOpen) {
+    if (hideToggle && !shouldRenderPanel) {
         return null;
     }
 
@@ -77,8 +92,16 @@ const CategoryFilters = ({
                 />
             )}
 
-            {filtersOpen && (
-                <div className="category-filters__body">
+            {shouldRenderPanel && (
+                <div
+                    className={`category-filters__body${panelExpanded ? ' category-filters__body--open' : ' category-filters__body--closed'}`}
+                    aria-hidden={!filtersOpen}
+                    onTransitionEnd={event => {
+                        if (event.target === event.currentTarget && event.propertyName === 'max-height' && !filtersOpen) {
+                            setShouldRenderPanel(false);
+                        }
+                    }}
+                >
                     <label className="category-filter__label">
                         Genre
                         <select

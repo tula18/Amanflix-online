@@ -6,6 +6,7 @@ import MovieModal from '../../Components/Model/Model';
 import { API_URL } from '../../config';
 
 const CURRENT_YEAR = new Date().getFullYear();
+const FILTER_PANEL_ANIMATION_MS = 280;
 
 const SearchPage = () => {
     const [results, setResults] = useState([]);
@@ -26,6 +27,8 @@ const SearchPage = () => {
     const [filterMaxRating, setFilterMaxRating] = useState(10);
     const [filterMediaType, setFilterMediaType] = useState('all');
     const [filtersOpen, setFiltersOpen] = useState(false);
+    const [shouldRenderFilters, setShouldRenderFilters] = useState(false);
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
 
     // Check if user is logged in
     useEffect(() => {
@@ -44,6 +47,19 @@ const SearchPage = () => {
             }))
             .catch(() => {});
     }, []);
+
+    useEffect(() => {
+        if (filtersOpen) {
+            setShouldRenderFilters(true);
+            setFiltersExpanded(false);
+            const timeoutId = window.setTimeout(() => setFiltersExpanded(true), 20);
+            return () => window.clearTimeout(timeoutId);
+        }
+
+        setFiltersExpanded(false);
+        const timeoutId = window.setTimeout(() => setShouldRenderFilters(false), FILTER_PANEL_ANIMATION_MS);
+        return () => window.clearTimeout(timeoutId);
+    }, [filtersOpen]);
 
     // Helper functions for watch progress and episode info
     const shouldShowNextEpisode = (item) => {
@@ -252,8 +268,16 @@ const SearchPage = () => {
                     {filtersOpen ? '▲ Hide Filters' : '▼ Filters'}
                 </button>
 
-                {filtersOpen && (
-                    <div className='search-filters-body'>
+                {shouldRenderFilters && (
+                    <div
+                        className={`search-filters-body${filtersExpanded ? ' search-filters-body--open' : ' search-filters-body--closed'}`}
+                        aria-hidden={!filtersOpen}
+                        onTransitionEnd={event => {
+                            if (event.target === event.currentTarget && event.propertyName === 'max-height' && !filtersOpen) {
+                                setShouldRenderFilters(false);
+                            }
+                        }}
+                    >
 
                         {/* Genre */}
                         <label className='search-filter-label'>
