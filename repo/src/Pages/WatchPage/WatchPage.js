@@ -2762,6 +2762,7 @@ const WatchPage = () => {
 
     const renderWatchPartyPanel = () => {
         const partyPanelStyle = {};
+        const isPartyPanelCompactHeader = !partyPanelCollapsed && (partyPanelSize?.width || 380) <= 340;
         if (partyPanelPosition) {
             Object.assign(partyPanelStyle, {
                 left: `${partyPanelPosition.x}px`,
@@ -2779,7 +2780,7 @@ const WatchPage = () => {
 
         return (
             <aside
-                className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''} ${isPartyPanelDragging ? 'dragging' : ''} ${isPartyPanelResizing ? 'resizing' : ''}`}
+                className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''} ${isPartyPanelCompactHeader ? 'compactHeader' : ''} ${isPartyPanelDragging ? 'dragging' : ''} ${isPartyPanelResizing ? 'resizing' : ''}`}
                 style={partyPanelStyle}
             >
                 <div

@@ -276,6 +276,27 @@
     flex: 0 0 auto;
 }
 
+.watchPartyPanel.compactHeader .watchPartyPanelHeader {
+    align-items: flex-start;
+}
+
+.watchPartyPanel.compactHeader .watchPartyPanelHeader > div:first-child {
+    flex: 1 1 0;
+    max-width: calc(100% - 130px);
+}
+
+.watchPartyPanel.compactHeader .watchPartyHeaderButtons {
+    width: 118px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-content: flex-start;
+    row-gap: 7px;
+}
+
+.watchPartyPanel.compactHeader .watchPartyTitle {
+    font-size: 22px;
+}
+
 .watchPartyEyebrow {
     color: rgba(255, 255, 255, 0.58);
     font-size: 12px;
