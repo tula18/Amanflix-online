@@ -52,6 +52,10 @@ const WatchPage = () => {
     const [partyExpiryToastDismissed, setPartyExpiryToastDismissed] = useState(false);
     const [partyPanelOpen, setPartyPanelOpen] = useState(false);
     const [partyPanelCollapsed, setPartyPanelCollapsed] = useState(false);
+    const [partyPanelPosition, setPartyPanelPosition] = useState(null);
+    const [partyPanelSize, setPartyPanelSize] = useState(null);
+    const [isPartyPanelDragging, setIsPartyPanelDragging] = useState(false);
+    const [isPartyPanelResizing, setIsPartyPanelResizing] = useState(false);
     const [partyCollapsedPreview, setPartyCollapsedPreview] = useState(null);
     const [partyChatPinned, setPartyChatPinned] = useState(false);
     const [pinnedChatPosition, setPinnedChatPosition] = useState(null);
@@ -101,6 +105,8 @@ const WatchPage = () => {
     const pendingJoinRequestIdsRef = useRef(new Set());
     const partyPanelOpenRef = useRef(false);
     const partyPanelCollapsedRef = useRef(false);
+    const partyPanelDragRef = useRef(null);
+    const partyPanelResizeRef = useRef(null);
     const partyCollapsedPreviewTimerRef = useRef(null);
     const typingTimeoutsRef = useRef({});
     const typingDebounceRef = useRef(null);
@@ -197,8 +203,12 @@ const WatchPage = () => {
     const closePartyPanel = () => {
         partyPanelOpenRef.current = false;
         partyPanelCollapsedRef.current = false;
+        partyPanelDragRef.current = null;
+        partyPanelResizeRef.current = null;
         setPartyPanelOpen(false);
         setPartyPanelCollapsed(false);
+        setIsPartyPanelDragging(false);
+        setIsPartyPanelResizing(false);
         setPartySettingsOpen(false);
         setPartySyncOpen(false);
         setMemberActionMenu(null);
@@ -212,6 +222,8 @@ const WatchPage = () => {
         setPartySettingsOpen(false);
         setPartySyncOpen(false);
         setMemberActionMenu(null);
+        partyPanelResizeRef.current = null;
+        setIsPartyPanelResizing(false);
         if (!nextCollapsed) {
             clearPartyCollapsedPreview();
         }
@@ -1308,6 +1320,128 @@ const WatchPage = () => {
             setIsPinnedChatResizing(false);
             setIsPinnedChatHovered(false);
         }
+    };
+
+    const clampPartyPanelPosition = (x, y, width, height) => {
+        const margin = 10;
+        const maxX = Math.max(margin, window.innerWidth - width - margin);
+        const maxY = Math.max(margin, window.innerHeight - height - margin);
+        return {
+            x: Math.min(Math.max(margin, x), maxX),
+            y: Math.min(Math.max(margin, y), maxY)
+        };
+    };
+
+    const clampPartyPanelSize = (width, height, left, top) => {
+        const margin = 10;
+        const availableWidth = Math.max(0, window.innerWidth - margin * 2);
+        const availableHeight = Math.max(0, window.innerHeight - margin * 2);
+        const minWidth = Math.min(300, availableWidth);
+        const minHeight = Math.min(220, availableHeight);
+        const maxWidth = Math.max(minWidth, window.innerWidth - left - margin);
+        const maxHeight = Math.max(minHeight, window.innerHeight - top - margin);
+        return {
+            width: Math.min(Math.max(minWidth, width), maxWidth),
+            height: Math.min(Math.max(minHeight, height), maxHeight)
+        };
+    };
+
+    const startPartyPanelDrag = (event) => {
+        if (event.target.closest?.('button')) return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        const panel = event.currentTarget.closest('.watchPartyPanel');
+        if (!panel) return;
+
+        const rect = panel.getBoundingClientRect();
+        partyPanelDragRef.current = {
+            pointerId: event.pointerId,
+            offsetX: event.clientX - rect.left,
+            offsetY: event.clientY - rect.top,
+            width: rect.width,
+            height: rect.height
+        };
+        setPartyPanelPosition({ x: rect.left, y: rect.top });
+        if (!partyPanelCollapsedRef.current) {
+            setPartyPanelSize({ width: rect.width, height: rect.height });
+        }
+        setIsPartyPanelDragging(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+    };
+
+    const dragPartyPanel = (event) => {
+        const dragState = partyPanelDragRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+        const nextPosition = clampPartyPanelPosition(
+            event.clientX - dragState.offsetX,
+            event.clientY - dragState.offsetY,
+            dragState.width,
+            dragState.height
+        );
+        setPartyPanelPosition(nextPosition);
+        event.preventDefault();
+    };
+
+    const stopPartyPanelDrag = (event) => {
+        const dragState = partyPanelDragRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+        partyPanelDragRef.current = null;
+        setIsPartyPanelDragging(false);
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+    };
+
+    const startPartyPanelResize = (event) => {
+        if (partyPanelCollapsedRef.current) return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        const panel = event.currentTarget.closest('.watchPartyPanel');
+        if (!panel) return;
+
+        const rect = panel.getBoundingClientRect();
+        partyPanelResizeRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height
+        };
+        setPartyPanelPosition({ x: rect.left, y: rect.top });
+        setPartyPanelSize({ width: rect.width, height: rect.height });
+        setIsPartyPanelResizing(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        event.stopPropagation();
+        event.preventDefault();
+    };
+
+    const resizePartyPanel = (event) => {
+        const resizeState = partyPanelResizeRef.current;
+        if (!resizeState || resizeState.pointerId !== event.pointerId) return;
+
+        setPartyPanelSize(
+            clampPartyPanelSize(
+                resizeState.width + event.clientX - resizeState.startX,
+                resizeState.height + event.clientY - resizeState.startY,
+                resizeState.left,
+                resizeState.top
+            )
+        );
+        event.stopPropagation();
+        event.preventDefault();
+    };
+
+    const stopPartyPanelResize = (event) => {
+        const resizeState = partyPanelResizeRef.current;
+        if (!resizeState || resizeState.pointerId !== event.pointerId) return;
+
+        partyPanelResizeRef.current = null;
+        setIsPartyPanelResizing(false);
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        event.stopPropagation();
     };
 
     const clampPinnedChatPosition = (x, y, width, height) => {
@@ -2626,291 +2760,330 @@ const WatchPage = () => {
         );
     };
 
-    const renderWatchPartyPanel = () => (
-        <aside className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''}`}>
-            <div className="watchPartyPanelHeader">
-                <div>
-                    <div className="watchPartyEyebrow">Watch Party</div>
-                    <div className="watchPartyTitle">{party?.code || 'Start a party'}</div>
-                </div>
-                <div className="watchPartyHeaderButtons">
-                    {party && isPartyLeader && (
-                        <button
-                            className={`watchPartyIconButton watchPartyPopoverToggle ${partySettingsOpen ? 'active' : ''}`}
-                            onClick={togglePartySettingsPopup}
-                            title="Party settings"
-                        >
-                            <FaCog />
-                        </button>
-                    )}
-                    {party && (
-                        <button
-                            className={`watchPartyIconButton watchPartyPopoverToggle ${partySyncOpen ? 'active' : ''}`}
-                            onClick={togglePartySyncPopup}
-                            title="Sync health"
-                        >
-                            <FaSignal />
-                        </button>
-                    )}
-                    {party && (
+    const renderWatchPartyPanel = () => {
+        const partyPanelStyle = {};
+        if (partyPanelPosition) {
+            Object.assign(partyPanelStyle, {
+                left: `${partyPanelPosition.x}px`,
+                top: `${partyPanelPosition.y}px`,
+                right: 'auto',
+                bottom: 'auto'
+            });
+            if (partyPanelSize && !partyPanelCollapsed) {
+                Object.assign(partyPanelStyle, {
+                    width: `${partyPanelSize.width}px`,
+                    height: `${partyPanelSize.height}px`
+                });
+            }
+        }
+
+        return (
+            <aside
+                className={`watchPartyPanel ${partyPanelOpen ? 'open' : ''} ${partyPanelCollapsed ? 'collapsed' : ''} ${isPartyPanelDragging ? 'dragging' : ''} ${isPartyPanelResizing ? 'resizing' : ''}`}
+                style={partyPanelStyle}
+            >
+                <div
+                    className="watchPartyPanelHeader"
+                    onPointerDown={startPartyPanelDrag}
+                    onPointerMove={dragPartyPanel}
+                    onPointerUp={stopPartyPanelDrag}
+                    onPointerCancel={stopPartyPanelDrag}
+                >
+                    <div>
+                        <div className="watchPartyEyebrow">Watch Party</div>
+                        <div className="watchPartyTitle">{party?.code || 'Start a party'}</div>
+                    </div>
+                    <div className="watchPartyHeaderButtons">
+                        {party && isPartyLeader && (
+                            <button
+                                className={`watchPartyIconButton watchPartyPopoverToggle ${partySettingsOpen ? 'active' : ''}`}
+                                onClick={togglePartySettingsPopup}
+                                title="Party settings"
+                            >
+                                <FaCog />
+                            </button>
+                        )}
+                        {party && (
+                            <button
+                                className={`watchPartyIconButton watchPartyPopoverToggle ${partySyncOpen ? 'active' : ''}`}
+                                onClick={togglePartySyncPopup}
+                                title="Sync health"
+                            >
+                                <FaSignal />
+                            </button>
+                        )}
+                        {party && (
+                            <button
+                                className="watchPartyIconButton"
+                                onClick={followPartyLeader}
+                                title="Follow leader"
+                            >
+                                <FaSyncAlt />
+                            </button>
+                        )}
                         <button
                             className="watchPartyIconButton"
-                            onClick={followPartyLeader}
-                            title="Follow leader"
+                            onClick={togglePartyPanelCollapsed}
+                            title={partyPanelCollapsed ? 'Expand' : 'Collapse'}
                         >
-                            <FaSyncAlt />
+                            {partyPanelCollapsed ? <FaExpandAlt /> : <FaMinus />}
                         </button>
-                    )}
-                    <button
-                        className="watchPartyIconButton"
-                        onClick={togglePartyPanelCollapsed}
-                        title={partyPanelCollapsed ? 'Expand' : 'Collapse'}
-                    >
-                        {partyPanelCollapsed ? <FaExpandAlt /> : <FaMinus />}
-                    </button>
-                    <button className="watchPartyIconButton" onClick={closePartyPanel} title="Close">
-                        <FaTimes />
-                    </button>
-                </div>
-            </div>
-
-            {partySettingsOpen && party && isPartyLeader && !partyPanelCollapsed && renderPartySettingsPopup()}
-            {partySyncOpen && party && !partyPanelCollapsed && renderSyncHealthPopup()}
-
-            <div className={`watchPartyStatus ${partyStatus}`}>
-                <span />
-                {partyStatusLabel}
-            </div>
-
-            {partyPanelCollapsed && partyCollapsedPreview && (
-                <div className={`watchPartyCollapsedPreview ${partyCollapsedPreview.kind || 'message'}`}>
-                    <div className="watchPartyCollapsedPreviewMeta">
-                        <span>{partyCollapsedPreview.label}</span>
-                        <strong>{partyCollapsedPreview.title}</strong>
+                        <button className="watchPartyIconButton" onClick={closePartyPanel} title="Close">
+                            <FaTimes />
+                        </button>
                     </div>
-                    <div className="watchPartyCollapsedPreviewBody">{partyCollapsedPreview.body}</div>
                 </div>
-            )}
 
-            {!partyPanelCollapsed && (
-                <>
-                    {!party && (
-                        <div className="watchPartyEmpty">
-                            <button className="watchPartyPrimaryButton" onClick={startWatchParty} disabled={isCreatingParty}>
-                                <LuPartyPopper />
-                                {isCreatingParty ? 'Starting...' : 'Start Party'}
-                            </button>
-                            <button className="watchPartySecondaryButton" onClick={() => navigate('/party')}>
-                                Join By Code
-                            </button>
+                {partySettingsOpen && party && isPartyLeader && !partyPanelCollapsed && renderPartySettingsPopup()}
+                {partySyncOpen && party && !partyPanelCollapsed && renderSyncHealthPopup()}
+
+                <div className="watchPartyPanelBody">
+                    <div className={`watchPartyStatus ${partyStatus}`}>
+                        <span />
+                        {partyStatusLabel}
+                    </div>
+
+                    {partyPanelCollapsed && partyCollapsedPreview && (
+                        <div className={`watchPartyCollapsedPreview ${partyCollapsedPreview.kind || 'message'}`}>
+                            <div className="watchPartyCollapsedPreviewMeta">
+                                <span>{partyCollapsedPreview.label}</span>
+                                <strong>{partyCollapsedPreview.title}</strong>
+                            </div>
+                            <div className="watchPartyCollapsedPreviewBody">{partyCollapsedPreview.body}</div>
                         </div>
                     )}
 
-                    {party && (
+                    {!partyPanelCollapsed && (
                         <>
-                            <div className="watchPartyActions">
-                                <button className="watchPartySecondaryButton" onClick={copyPartyInvite}>
-                                    <FaLink />
-                                    Copy Link
-                                </button>
-                                <button className="watchPartySecondaryButton" onClick={copyPartyCode}>
-                                    <FaCopy />
-                                    Copy Code
-                                </button>
-                                <button
-                                    className={isPartyLeader ? 'watchPartyDangerButton' : 'watchPartySecondaryButton'}
-                                    onClick={isPartyLeader ? confirmEndWatchParty : leaveWatchParty}
-                                >
-                                    <FaSignOutAlt />
-                                    {isPartyLeader ? 'End' : 'Leave'}
-                                </button>
-                            </div>
-
-                            {isPartyLeader && pendingJoinRequests.length > 0 && (
-                                <section className="watchPartySection watchPartyRequestsSection">
-                                    <div className="watchPartySectionTitle">Join Requests</div>
-                                    <div className="watchPartyJoinRequests">
-                                        {pendingJoinRequests.map((joinRequest) => (
-                                            <div className="watchPartyJoinRequest" key={joinRequest.user_id}>
-                                                <div>
-                                                    <strong>{joinRequest.username}</strong>
-                                                    <span>wants to join</span>
-                                                </div>
-                                                <div className="watchPartyJoinRequestActions">
-                                                    <button
-                                                        type="button"
-                                                        className="approve"
-                                                        onClick={() => respondToJoinRequest(joinRequest, 'approve')}
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="deny"
-                                                        onClick={() => respondToJoinRequest(joinRequest, 'deny')}
-                                                    >
-                                                        Deny
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
+                            {!party && (
+                                <div className="watchPartyEmpty">
+                                    <button className="watchPartyPrimaryButton" onClick={startWatchParty} disabled={isCreatingParty}>
+                                        <LuPartyPopper />
+                                        {isCreatingParty ? 'Starting...' : 'Start Party'}
+                                    </button>
+                                    <button className="watchPartySecondaryButton" onClick={() => navigate('/party')}>
+                                        Join By Code
+                                    </button>
+                                </div>
                             )}
 
-                            <section className="watchPartySection">
-                                <div className="watchPartySectionTitle">Members</div>
-                                <div className="watchPartyMembers">
-                                    {partyMembers.map((member) => (
-                                        <div className="watchPartyMember" key={member.id} title={getMemberConnectionLabel(member)}>
-                                            <div className="watchPartyMemberInfo">
-                                                <span className={member.connected ? 'online' : ''} />
-                                                <div className="watchPartyMemberText">
-                                                    <strong>{member.username}</strong>
-                                                </div>
-                                            </div>
-                                            <div className="watchPartyMemberActions">
-                                                {member.is_leader && (
-                                                    <span className="watchPartyLeaderBadge" title="Leader">
-                                                        <FaCrown />
-                                                    </span>
-                                                )}
-                                                {member.chat_muted && (
-                                                    <span className="watchPartyMutedBadge" title="Muted in chat">
-                                                        <FaVolumeMute />
-                                                    </span>
-                                                )}
-                                                {isPartyLeader && !member.is_leader && member.id !== party.current_user_id && (
-                                                    <button
-                                                        className={`watchPartyMemberMenuButton ${memberActionMenu?.memberId === member.id ? 'active' : ''}`}
-                                                        onClick={(event) => openMemberActionMenu(event, member)}
-                                                        title={`Actions for ${member.username}`}
-                                                    >
-                                                        <FaEllipsisV />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-
-                            <section className="watchPartySection watchPartyChatSection">
-                                <div className="watchPartyChatHeader">
-                                    <div className="watchPartySectionTitle">Chat</div>
-                                    <button
-                                        type="button"
-                                        className={`watchPartyPinChatButton ${partyChatPinned ? 'active' : ''}`}
-                                        onClick={togglePartyChatPinned}
-                                        title={partyChatPinned ? 'Unpin chat' : 'Pin chat'}
-                                    >
-                                        <FaThumbtack />
-                                    </button>
-                                </div>
-                                <div className="watchPartyChatLogWrapper">
-                                    <div className="watchPartyChatLog" ref={chatLogRef} onScroll={handleChatScroll}>
-                                        {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
-                                        {partyChat.map(renderPartyChatMessage)}
-                                    </div>
-                                    {!chatAtBottom && (
-                                        <button type="button" className="watchPartyChatScrollBtn" onClick={scrollChatToBottom} title="Scroll to bottom">
-                                            <FaArrowDown />
+                            {party && (
+                                <>
+                                    <div className="watchPartyActions">
+                                        <button className="watchPartySecondaryButton" onClick={copyPartyInvite}>
+                                            <FaLink />
+                                            Copy Link
                                         </button>
+                                        <button className="watchPartySecondaryButton" onClick={copyPartyCode}>
+                                            <FaCopy />
+                                            Copy Code
+                                        </button>
+                                        <button
+                                            className={isPartyLeader ? 'watchPartyDangerButton' : 'watchPartySecondaryButton'}
+                                            onClick={isPartyLeader ? confirmEndWatchParty : leaveWatchParty}
+                                        >
+                                            <FaSignOutAlt />
+                                            {isPartyLeader ? 'End' : 'Leave'}
+                                        </button>
+                                    </div>
+
+                                    {isPartyLeader && pendingJoinRequests.length > 0 && (
+                                        <section className="watchPartySection watchPartyRequestsSection">
+                                            <div className="watchPartySectionTitle">Join Requests</div>
+                                            <div className="watchPartyJoinRequests">
+                                                {pendingJoinRequests.map((joinRequest) => (
+                                                    <div className="watchPartyJoinRequest" key={joinRequest.user_id}>
+                                                        <div>
+                                                            <strong>{joinRequest.username}</strong>
+                                                            <span>wants to join</span>
+                                                        </div>
+                                                        <div className="watchPartyJoinRequestActions">
+                                                            <button
+                                                                type="button"
+                                                                className="approve"
+                                                                onClick={() => respondToJoinRequest(joinRequest, 'approve')}
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="deny"
+                                                                onClick={() => respondToJoinRequest(joinRequest, 'deny')}
+                                                            >
+                                                                Deny
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
                                     )}
-                                </div>
-                                {typingUsernames.length > 0 && (
-                                    <div className="watchPartyTypingIndicator">
-                                        <span className="watchPartyTypingDots"><span /><span /><span /></span>
-                                        {typingUsernames.join(', ')} {typingUsernames.length === 1 ? 'is' : 'are'} typing
-                                    </div>
-                                )}
-                                {chatDisabledReason && (
-                                    <div className="watchPartyChatDisabled">{chatDisabledReason}</div>
-                                )}
-                                {showReactionBar && (
-                                    <div className="watchPartyReactionBar" aria-label="Chat reactions">
-                                        {PARTY_REACTIONS.map((reaction) => (
-                                            <button
-                                                key={reaction}
-                                                type="button"
-                                                onClick={() => sendPartyReaction(reaction)}
-                                                disabled={!canUsePartyReactions}
-                                            >
-                                                {reaction}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="watchPartyChatInputArea">
-                                    {mentionOpen && filteredMentionMembers.length > 0 && (
-                                        <div className="watchPartyMentionDropdown">
-                                            {filteredMentionMembers.map((member, idx) => (
-                                                <button
-                                                    key={member.id}
-                                                    type="button"
-                                                    className={`watchPartyMentionItem${idx === mentionIndex ? ' active' : ''}`}
-                                                    onMouseDown={(e) => { e.preventDefault(); insertMention(member.username); }}
-                                                >
-                                                    @{member.username}
-                                                </button>
+
+                                    <section className="watchPartySection">
+                                        <div className="watchPartySectionTitle">Members</div>
+                                        <div className="watchPartyMembers">
+                                            {partyMembers.map((member) => (
+                                                <div className="watchPartyMember" key={member.id} title={getMemberConnectionLabel(member)}>
+                                                    <div className="watchPartyMemberInfo">
+                                                        <span className={member.connected ? 'online' : ''} />
+                                                        <div className="watchPartyMemberText">
+                                                            <strong>{member.username}</strong>
+                                                        </div>
+                                                    </div>
+                                                    <div className="watchPartyMemberActions">
+                                                        {member.is_leader && (
+                                                            <span className="watchPartyLeaderBadge" title="Leader">
+                                                                <FaCrown />
+                                                            </span>
+                                                        )}
+                                                        {member.chat_muted && (
+                                                            <span className="watchPartyMutedBadge" title="Muted in chat">
+                                                                <FaVolumeMute />
+                                                            </span>
+                                                        )}
+                                                        {isPartyLeader && !member.is_leader && member.id !== party.current_user_id && (
+                                                            <button
+                                                                className={`watchPartyMemberMenuButton ${memberActionMenu?.memberId === member.id ? 'active' : ''}`}
+                                                                onClick={(event) => openMemberActionMenu(event, member)}
+                                                                title={`Actions for ${member.username}`}
+                                                            >
+                                                                <FaEllipsisV />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             ))}
                                         </div>
-                                    )}
-                                    <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
-                                    <textarea
-                                        ref={chatTextareaRef}
-                                        value={chatDraft}
-                                        onChange={handleChatChange}
-                                        onKeyDown={handleChatKeyDown}
-                                        onBlur={() => setTimeout(() => setMentionOpen(false), 200)}
-                                        maxLength={500}
-                                        placeholder={chatDisabledReason || 'Message'}
-                                        disabled={!canUsePartyChat}
-                                        rows={1}
-                                    />
-                                    <button
-                                        type="button"
-                                        className={`watchPartyEmojiToggle${showReactionBar ? ' active' : ''}`}
-                                        onClick={() => setShowReactionBar(v => !v)}
-                                        title="Reactions"
-                                        disabled={!canUsePartyReactions}
-                                    >
-                                        <FaSmile />
-                                    </button>
-                                    <button type="submit" disabled={!chatDraft.trim() || !canUsePartyChat} title="Send">
-                                        <FaPaperPlane />
-                                    </button>
-                                </form>
-                                </div>
-                            </section>
+                                    </section>
+
+                                    <section className="watchPartySection watchPartyChatSection">
+                                        <div className="watchPartyChatHeader">
+                                            <div className="watchPartySectionTitle">Chat</div>
+                                            <button
+                                                type="button"
+                                                className={`watchPartyPinChatButton ${partyChatPinned ? 'active' : ''}`}
+                                                onClick={togglePartyChatPinned}
+                                                title={partyChatPinned ? 'Unpin chat' : 'Pin chat'}
+                                            >
+                                                <FaThumbtack />
+                                            </button>
+                                        </div>
+                                        <div className="watchPartyChatLogWrapper">
+                                            <div className="watchPartyChatLog" ref={chatLogRef} onScroll={handleChatScroll}>
+                                                {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
+                                                {partyChat.map(renderPartyChatMessage)}
+                                            </div>
+                                            {!chatAtBottom && (
+                                                <button type="button" className="watchPartyChatScrollBtn" onClick={scrollChatToBottom} title="Scroll to bottom">
+                                                    <FaArrowDown />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {typingUsernames.length > 0 && (
+                                            <div className="watchPartyTypingIndicator">
+                                                <span className="watchPartyTypingDots"><span /><span /><span /></span>
+                                                {typingUsernames.join(', ')} {typingUsernames.length === 1 ? 'is' : 'are'} typing
+                                            </div>
+                                        )}
+                                        {chatDisabledReason && (
+                                            <div className="watchPartyChatDisabled">{chatDisabledReason}</div>
+                                        )}
+                                        {showReactionBar && (
+                                            <div className="watchPartyReactionBar" aria-label="Chat reactions">
+                                                {PARTY_REACTIONS.map((reaction) => (
+                                                    <button
+                                                        key={reaction}
+                                                        type="button"
+                                                        onClick={() => sendPartyReaction(reaction)}
+                                                        disabled={!canUsePartyReactions}
+                                                    >
+                                                        {reaction}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="watchPartyChatInputArea">
+                                            {mentionOpen && filteredMentionMembers.length > 0 && (
+                                                <div className="watchPartyMentionDropdown">
+                                                    {filteredMentionMembers.map((member, idx) => (
+                                                        <button
+                                                            key={member.id}
+                                                            type="button"
+                                                            className={`watchPartyMentionItem${idx === mentionIndex ? ' active' : ''}`}
+                                                            onMouseDown={(e) => { e.preventDefault(); insertMention(member.username); }}
+                                                        >
+                                                            @{member.username}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
+                                                <textarea
+                                                    ref={chatTextareaRef}
+                                                    value={chatDraft}
+                                                    onChange={handleChatChange}
+                                                    onKeyDown={handleChatKeyDown}
+                                                    onBlur={() => setTimeout(() => setMentionOpen(false), 200)}
+                                                    maxLength={500}
+                                                    placeholder={chatDisabledReason || 'Message'}
+                                                    disabled={!canUsePartyChat}
+                                                    rows={1}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className={`watchPartyEmojiToggle${showReactionBar ? ' active' : ''}`}
+                                                    onClick={() => setShowReactionBar(v => !v)}
+                                                    title="Reactions"
+                                                    disabled={!canUsePartyReactions}
+                                                >
+                                                    <FaSmile />
+                                                </button>
+                                                <button type="submit" disabled={!chatDraft.trim() || !canUsePartyChat} title="Send">
+                                                    <FaPaperPlane />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </section>
+                                </>
+                            )}
                         </>
                     )}
-                </>
-            )}
 
-            {showExpiryWarning && (
-                <div className="watchPartyExpiryInline">
-                    Party expires in {formatPartyRemaining(partyExpiryRemaining)}
+                    {showExpiryWarning && (
+                        <div className="watchPartyExpiryInline">
+                            Party expires in {formatPartyRemaining(partyExpiryRemaining)}
+                        </div>
+                    )}
+                    {partyNotice && (
+                        <div className={`watchPartyNotice ${partyNotice.type}`}>
+                            <span>{partyNotice.message}</span>
+                            <button type="button" onClick={dismissPartyNotice} title="Dismiss">
+                                <FaTimes />
+                            </button>
+                        </div>
+                    )}
+                    {partyError && <div className="watchPartyError">{partyError}</div>}
                 </div>
-            )}
-            {partyNotice && (
-                <div className={`watchPartyNotice ${partyNotice.type}`}>
-                    <span>{partyNotice.message}</span>
-                    <button type="button" onClick={dismissPartyNotice} title="Dismiss">
-                        <FaTimes />
-                    </button>
-                </div>
-            )}
-            {partyError && <div className="watchPartyError">{partyError}</div>}
-        </aside>
-    );
+                {!partyPanelCollapsed && (
+                    <div
+                        className="watchPartyPanelResizeHandle"
+                        onPointerDown={startPartyPanelResize}
+                        onPointerMove={resizePartyPanel}
+                        onPointerUp={stopPartyPanelResize}
+                        onPointerCancel={stopPartyPanelResize}
+                        title="Resize party panel"
+                    />
+                )}
+            </aside>
+        );
+    };
 
     if (isCheckingVideoAvailability || (isLoadingMediaData && !useOldPlayer)) {
         return <div className="watchPageLoading">Loading player data...</div>; // Or a proper loading spinner
     }
 
-    return (
-            <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
+    const watchPartyOverlay = (
+        <>
             {renderWatchPartyPanel()}
             {renderMemberActionMenu()}
             {renderLeaderConfirmation()}
@@ -2925,59 +3098,67 @@ const WatchPage = () => {
                     ))}
                 </div>
             )}
+        </>
+    );
+
+    return (
+        <div className={`watchPageContainer ${useOldPlayer ? 'use-old-player' : ''}`}>
+            {useOldPlayer && watchPartyOverlay}
 
             <div className="watchPlayerShell">
-            {useOldPlayer ? (
-                <video
-                    ref={videoRef}
-                    src={`${API_URL}/api/stream/${watch_id}`}
-                    controls={true}
-                    onError={(e) => {
-                        const vid = e.target;
-                        const mediaError = vid?.error;
-                        handleError({
-                            code: mediaError?.code,
-                            message: mediaError?.message,
-                        });
-                    }}
-                    onTimeUpdate={handleProgress}
-                    onLoadedMetadata={handleMetadataLoaded}
-                    autoPlay
-                    width="100%"
-                    height="100%"
-                />
-            ) : (                <ReactNetflixPlayer 
-                    src={`${API_URL}/api/stream/${watch_id}`}
-                    onErrorVideo={handleError}
-                    onTimeUpdate={handleProgress}
-                    onLoadedMetadata={handleMetadataLoaded}
-                    autoPlay
-                    backButton={() => navigate(`/${contentId}`)}
-                    disablePreview={disablePreview}
-                    disableBufferPreview={disableBuffer}
-                    primaryColor='#e50914'
-                    title={mediaTitle}
-                    subTitle={mediaSubTitle}
-                    titleMedia={mediaTitleMedia}
-                    extraInfoMedia={mediaExtraInfoMedia}
-                    dataNext={mediaDataNext}
-                    reproductionList={mediaReproductionList}
-                    onClickItemListReproduction={handleEpisodeClick}
-                    videoRef={videoRef}
-                    onPlayPause={handlePartyPlayPause}
-                    onPlayPauseBlocked={() => showPartyNotice('Only the party leader can control playback', 'warning')}
-                    onSeek={handlePartySeek}
-                    onWatchPartyClick={openPartyPanel}
-                    watchPartyActive={isInParty}
-                    watchPartyLabel={isInParty ? `Party ${party.code}` : 'Watch Party'}
-                    watchPartyUnreadCount={unreadCount}
-                    disablePlayPause={disablePartyPlayPause}
-                    disableSeeking={disablePartyNavigation}
-                    disableNextControls={disablePartyNavigation}
-                    disableReproductionList={disablePartyNavigation}
-                    onNextClick={mediaDataNext ? handleNextEpisode : undefined} // Pass the handler
-                />
-            )}
+                {useOldPlayer ? (
+                    <video
+                        ref={videoRef}
+                        src={`${API_URL}/api/stream/${watch_id}`}
+                        controls={true}
+                        onError={(e) => {
+                            const vid = e.target;
+                            const mediaError = vid?.error;
+                            handleError({
+                                code: mediaError?.code,
+                                message: mediaError?.message,
+                            });
+                        }}
+                        onTimeUpdate={handleProgress}
+                        onLoadedMetadata={handleMetadataLoaded}
+                        autoPlay
+                        width="100%"
+                        height="100%"
+                    />
+                ) : (
+                    <ReactNetflixPlayer
+                        src={`${API_URL}/api/stream/${watch_id}`}
+                        onErrorVideo={handleError}
+                        onTimeUpdate={handleProgress}
+                        onLoadedMetadata={handleMetadataLoaded}
+                        autoPlay
+                        backButton={() => navigate(`/${contentId}`)}
+                        disablePreview={disablePreview}
+                        disableBufferPreview={disableBuffer}
+                        primaryColor='#e50914'
+                        title={mediaTitle}
+                        subTitle={mediaSubTitle}
+                        titleMedia={mediaTitleMedia}
+                        extraInfoMedia={mediaExtraInfoMedia}
+                        dataNext={mediaDataNext}
+                        reproductionList={mediaReproductionList}
+                        onClickItemListReproduction={handleEpisodeClick}
+                        videoRef={videoRef}
+                        onPlayPause={handlePartyPlayPause}
+                        onPlayPauseBlocked={() => showPartyNotice('Only the party leader can control playback', 'warning')}
+                        onSeek={handlePartySeek}
+                        onWatchPartyClick={openPartyPanel}
+                        watchPartyActive={isInParty}
+                        watchPartyLabel={isInParty ? `Party ${party.code}` : 'Watch Party'}
+                        watchPartyUnreadCount={unreadCount}
+                        disablePlayPause={disablePartyPlayPause}
+                        disableSeeking={disablePartyNavigation}
+                        disableNextControls={disablePartyNavigation}
+                        disableReproductionList={disablePartyNavigation}
+                        watchPartyOverlay={watchPartyOverlay}
+                        onNextClick={mediaDataNext ? handleNextEpisode : undefined} // Pass the handler
+                    />
+                )}
             </div>
         </div>
     );

@@ -137,6 +137,7 @@ export interface IProps {
   watchPartyActive?: boolean;
   watchPartyLabel?: string;
   watchPartyUnreadCount?: number;
+  watchPartyOverlay?: React.ReactNode;
   onNextClick?: () => void;
   onClickItemListReproduction?: (id: string | number, playing: boolean) => void;
   onCrossClick?: () => void;
@@ -185,6 +186,7 @@ export default function ReactNetflixPlayer({
   watchPartyActive = false,
   watchPartyLabel = 'Watch Party',
   watchPartyUnreadCount = 0,
+  watchPartyOverlay = null,
   onNextClick = undefined,
   onClickItemListReproduction = undefined,
   onCrossClick = () => {},
@@ -754,6 +756,10 @@ export default function ReactNetflixPlayer({
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
+
+    if (target.closest('.watch-party-overlay-slot')) {
+      return;
+    }
 
     if (target.tagName === 'VIDEO' || 
         target === playerElement.current ||
@@ -1451,6 +1457,16 @@ export default function ReactNetflixPlayer({
           </div>
         )}
       </Controls>
+
+      {watchPartyOverlay && (
+        <div
+          className="watch-party-overlay-slot"
+          onClick={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+        >
+          {watchPartyOverlay}
+        </div>
+      )}
     </Container>
   );
 }

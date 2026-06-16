@@ -69,6 +69,25 @@ export const Container = styled.div<IContainerProps>`
   background: #000;
   overflow: hidden;
 
+  .watch-party-overlay-slot {
+    position: absolute;
+    inset: 0;
+    z-index: 10060;
+    pointer-events: none;
+  }
+
+  .watch-party-overlay-slot > * {
+    pointer-events: auto;
+  }
+
+  .watch-party-overlay-slot > .watchPartyPanel:not(.open) {
+    pointer-events: none;
+  }
+
+  .watch-party-overlay-slot > .watchPartyFloatingReactions {
+    pointer-events: none;
+  }
+
   video {
     height: 100% !important;
     max-height: 100% !important;

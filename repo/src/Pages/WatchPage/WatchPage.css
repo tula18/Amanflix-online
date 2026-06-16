@@ -45,6 +45,7 @@
 
 .watchPartyPanel {
     position: fixed;
+    box-sizing: border-box;
     top: 70px;
     right: 18px;
     bottom: 132px;
@@ -60,6 +61,7 @@
     display: flex;
     flex-direction: column;
     padding: 16px;
+    overflow: hidden;
     transform: translateX(calc(100% + 28px));
     opacity: 0;
     pointer-events: none;
@@ -78,6 +80,32 @@
     width: 300px;
     min-height: 0;
     max-height: none;
+}
+
+.watchPartyPanelBody {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.watchPartyPanelBody::-webkit-scrollbar {
+    width: 5px;
+}
+
+.watchPartyPanelBody::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+}
+
+.watchPartyPanel.collapsed .watchPartyPanelBody {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-right: 0;
 }
 
 .watchPartyCollapsedPreview {
@@ -199,6 +227,42 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 12px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.watchPartyPanel.dragging .watchPartyPanelHeader {
+    cursor: grabbing;
+}
+
+.watchPartyPanelResizeHandle {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    z-index: 2;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    opacity: 0.46;
+    touch-action: none;
+}
+
+.watchPartyPanelResizeHandle::before {
+    content: '';
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid rgba(255, 255, 255, 0.46);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.46);
+    border-radius: 1px;
+}
+
+.watchPartyPanel:hover .watchPartyPanelResizeHandle,
+.watchPartyPanel.resizing .watchPartyPanelResizeHandle {
+    opacity: 0.9;
 }
 
 .watchPartyPanelHeader > div:first-child {
