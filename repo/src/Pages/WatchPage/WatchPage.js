@@ -9,6 +9,7 @@ import ReactNetflixPlayer from '../../Components/NetflixPlayer/index.tsx';
 
 const PARTY_REACTIONS = ['👍', '😂', '❤️', '😮', '🔥', '👏'];
 const PARTY_EXPIRY_WARNING_SECONDS = 10 * 60;
+const CHAT_AUTO_SCROLL_THRESHOLD = 160;
 const DEFAULT_PARTY_SETTINGS = {
     members_can_control_playback: true,
     chat_enabled: true,
@@ -169,16 +170,35 @@ const WatchPage = () => {
         setUnreadDividerMessageId(null);
     };
 
+    const isChatNearBottom = (element) => {
+        if (!element) return true;
+        return element.scrollHeight - element.scrollTop - element.clientHeight <= CHAT_AUTO_SCROLL_THRESHOLD;
+    };
+
+    const isOpenPartyChatNearLatest = () => (
+        partyPanelOpenRef.current &&
+        !partyPanelCollapsedRef.current &&
+        (chatAtBottomRef.current || isChatNearBottom(chatLogRef.current))
+    );
+
     const isPartyChatReadable = () => (
-        partyChatPinnedRef.current ||
-        (partyPanelOpenRef.current && !partyPanelCollapsedRef.current && chatAtBottomRef.current)
+        partyChatPinnedRef.current || isOpenPartyChatNearLatest()
     );
 
     const registerUnreadPartyMessages = (messages) => {
         const incomingMessages = (messages || []).filter(Boolean);
         if (incomingMessages.length === 0) return;
 
-        if (isPartyChatReadable()) {
+        const shouldAutoScrollOpenChat = isOpenPartyChatNearLatest();
+
+        if (shouldAutoScrollOpenChat) {
+            chatAtBottomRef.current = true;
+            setChatAtBottom(true);
+            markPartyChatRead();
+            return;
+        }
+
+        if (partyChatPinnedRef.current) {
             markPartyChatRead();
             return;
         }
@@ -1109,7 +1129,7 @@ const WatchPage = () => {
     const handleChatScroll = () => {
         const el = chatLogRef.current;
         if (!el) return;
-        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        const atBottom = isChatNearBottom(el);
         chatAtBottomRef.current = atBottom;
         setChatAtBottom(atBottom);
         if (atBottom) {
@@ -1655,9 +1675,16 @@ const WatchPage = () => {
     }, [party?.code, party?.is_leader, partyStatus]);
 
     useEffect(() => {
-        if (chatAtBottom && chatLogRef.current) {
+        const chatElement = chatLogRef.current;
+        if (!chatElement || (!chatAtBottomRef.current && !isChatNearBottom(chatElement))) return;
+
+        requestAnimationFrame(() => {
+            if (!chatLogRef.current) return;
             chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
-        }
+            chatAtBottomRef.current = true;
+            setChatAtBottom(true);
+            markPartyChatRead();
+        });
     }, [party?.chat?.length]);
 
     useEffect(() => {
