@@ -19,6 +19,11 @@ const DEFAULT_PARTY_SETTINGS = {
     profanity_filter_enabled: true,
     spam_protection_enabled: true
 };
+const PARTY_PANEL_DEFAULT_WIDTH = 380;
+const PARTY_PANEL_DEFAULT_TOP = 70;
+const PARTY_PANEL_DEFAULT_BOTTOM = 132;
+const RESIZE_RESET_TAP_MS = 320;
+const RESIZE_RESET_TAP_DISTANCE = 18;
 
 const WatchPage = () => {
     const { watch_id } = useParams();
@@ -107,11 +112,13 @@ const WatchPage = () => {
     const pinnedChatMessagesRef = useRef(null);
     const pinnedChatDragRef = useRef(null);
     const pinnedChatResizeRef = useRef(null);
+    const pinnedChatResizeTapRef = useRef({ time: 0, x: 0, y: 0 });
     const pendingJoinRequestIdsRef = useRef(new Set());
     const partyPanelOpenRef = useRef(false);
     const partyPanelCollapsedRef = useRef(false);
     const partyPanelDragRef = useRef(null);
     const partyPanelResizeRef = useRef(null);
+    const partyPanelResizeTapRef = useRef({ time: 0, x: 0, y: 0 });
     const partyCollapsedPreviewTimerRef = useRef(null);
     const typingTimeoutsRef = useRef({});
     const typingDebounceRef = useRef(null);
@@ -1511,6 +1518,31 @@ const WatchPage = () => {
         };
     };
 
+    const isResizeResetTap = (tapRef, event) => {
+        const now = Date.now();
+        const previous = tapRef.current || { time: 0, x: 0, y: 0 };
+        const distance = Math.hypot(event.clientX - previous.x, event.clientY - previous.y);
+        const isDoubleTap = now - previous.time <= RESIZE_RESET_TAP_MS && distance <= RESIZE_RESET_TAP_DISTANCE;
+        tapRef.current = isDoubleTap
+            ? { time: 0, x: 0, y: 0 }
+            : { time: now, x: event.clientX, y: event.clientY };
+        return isDoubleTap;
+    };
+
+    const resetPartyPanelSize = () => {
+        partyPanelResizeRef.current = null;
+        setIsPartyPanelResizing(false);
+
+        if (!partyPanelPosition) {
+            setPartyPanelSize(null);
+            return;
+        }
+
+        const defaultWidth = Math.min(PARTY_PANEL_DEFAULT_WIDTH, Math.max(300, window.innerWidth - 36));
+        const defaultHeight = Math.max(220, window.innerHeight - PARTY_PANEL_DEFAULT_TOP - PARTY_PANEL_DEFAULT_BOTTOM);
+        setPartyPanelSize(clampPartyPanelSize(defaultWidth, defaultHeight, partyPanelPosition.x, partyPanelPosition.y));
+    };
+
     const startPartyPanelDrag = (event) => {
         if (event.target.closest?.('button')) return;
         if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -1564,6 +1596,13 @@ const WatchPage = () => {
 
         const panel = event.currentTarget.closest('.watchPartyPanel');
         if (!panel) return;
+
+        if (isResizeResetTap(partyPanelResizeTapRef, event)) {
+            resetPartyPanelSize();
+            event.stopPropagation();
+            event.preventDefault();
+            return;
+        }
 
         const rect = panel.getBoundingClientRect();
         partyPanelResizeRef.current = {
@@ -1631,6 +1670,12 @@ const WatchPage = () => {
         };
     };
 
+    const resetPinnedChatSize = () => {
+        pinnedChatResizeRef.current = null;
+        setIsPinnedChatResizing(false);
+        setPinnedChatSize(null);
+    };
+
     const startPinnedChatDrag = (event) => {
         if (event.target.closest?.('button')) return;
         if (event.target.closest?.('.watchPartyPinnedChatResizeHandle')) return;
@@ -1681,6 +1726,13 @@ const WatchPage = () => {
 
         const panel = event.currentTarget.closest('.watchPartyPinnedChat');
         if (!panel) return;
+
+        if (isResizeResetTap(pinnedChatResizeTapRef, event)) {
+            resetPinnedChatSize();
+            event.stopPropagation();
+            event.preventDefault();
+            return;
+        }
 
         const rect = panel.getBoundingClientRect();
         pinnedChatResizeRef.current = {
@@ -2993,7 +3045,7 @@ const WatchPage = () => {
                     onPointerMove={resizePinnedChat}
                     onPointerUp={stopPinnedChatResize}
                     onPointerCancel={stopPinnedChatResize}
-                    title="Resize chat"
+                    title="Resize chat. Double tap to reset size"
                 />
             </aside>
         );
@@ -3357,7 +3409,7 @@ const WatchPage = () => {
                         onPointerMove={resizePartyPanel}
                         onPointerUp={stopPartyPanelResize}
                         onPointerCancel={stopPartyPanelResize}
-                        title="Resize party panel"
+                        title="Resize party panel. Double tap to reset size"
                     />
                 )}
             </aside>
