@@ -86,6 +86,77 @@ class WatchPartyMemoryTests(unittest.TestCase):
 
             self.assertEqual(len(party['chat']), watch_party.MAX_CHAT_MESSAGES)
 
+    def test_chat_reply_snapshot_is_preserved(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            original, original_error = watch_party._handle_chat_message(
+                party,
+                leader,
+                {'message': 'original message'}
+            )
+            reply, reply_error = watch_party._handle_chat_message(
+                party,
+                member,
+                {'message': 'reply message', 'reply_to_id': original['id']}
+            )
+
+        self.assertIsNone(original_error)
+        self.assertIsNone(reply_error)
+        self.assertEqual(reply['reply_to']['id'], original['id'])
+        self.assertEqual(reply['reply_to']['username'], 'leader')
+        self.assertEqual(reply['reply_to']['message'], 'original message')
+
+    def test_member_can_edit_own_chat_message(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            watch_party._upsert_member_locked(party, member)
+            message, chat_error = watch_party._handle_chat_message(
+                party,
+                member,
+                {'message': 'original message'}
+            )
+            edit_error = watch_party._handle_chat_edit_message(
+                party,
+                member,
+                {'message_id': message['id'], 'message': 'edited message'}
+            )
+
+        self.assertIsNone(chat_error)
+        self.assertIsNone(edit_error)
+        self.assertEqual(message['message'], 'edited message')
+        self.assertIn('edited_at', message)
+
+    def test_member_cannot_edit_another_users_message(self):
+        leader = FakeUser(1, 'leader')
+        member = FakeUser(2, 'member')
+        created = watch_party._create_party_for_user(leader, 'm-123')
+
+        with watch_party._party_lock:
+            party = watch_party._parties[created['code']]
+            watch_party._upsert_member_locked(party, member)
+            message, chat_error = watch_party._handle_chat_message(
+                party,
+                leader,
+                {'message': 'leader message'}
+            )
+            edit_error = watch_party._handle_chat_edit_message(
+                party,
+                member,
+                {'message_id': message['id'], 'message': 'edited by member'}
+            )
+
+        self.assertIsNone(chat_error)
+        self.assertEqual(edit_error, 'Only the message author can edit this message')
+        self.assertEqual(message['message'], 'leader message')
+
     def test_muted_member_cannot_chat(self):
         leader = FakeUser(1, 'leader')
         member = FakeUser(2, 'member')

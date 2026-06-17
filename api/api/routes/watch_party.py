@@ -307,6 +307,32 @@ def _append_system_message_locked(party, message):
     })
 
 
+def _build_reply_snapshot_locked(party, data):
+    raw_reply_to = data.get('reply_to') if isinstance(data.get('reply_to'), dict) else {}
+    reply_to_id = data.get('reply_to_id') or raw_reply_to.get('id')
+    if not reply_to_id:
+        return None
+
+    original = next(
+        (
+            item for item in party.get('chat', [])
+            if item.get('id') == reply_to_id and item.get('type') in ('message', 'reaction')
+        ),
+        None
+    )
+    if not original:
+        return None
+
+    preview_text = original.get('reaction') or original.get('message') or ''
+    return {
+        'id': original.get('id'),
+        'type': original.get('type'),
+        'user_id': original.get('user_id'),
+        'username': original.get('username') or 'Someone',
+        'message': str(preview_text)[:160],
+    }
+
+
 def _format_playback_position(seconds):
     safe_seconds = max(0, int(seconds or 0))
     hours = safe_seconds // 3600
@@ -589,7 +615,59 @@ def _handle_chat_message(party, user, data):
         'message': message_text,
         'created_at': _utc_now_iso(),
     }
+    reply_snapshot = _build_reply_snapshot_locked(party, data)
+    if reply_snapshot:
+        message['reply_to'] = reply_snapshot
     return _append_chat_item_locked(party, message), None
+
+
+def _handle_chat_edit_message(party, user, data):
+    settings = {**DEFAULT_PARTY_SETTINGS, **party.get('settings', {})}
+    if not settings.get('chat_enabled', True):
+        return 'Chat is disabled for this party'
+    member = party['members'].get(int(user.id))
+    if member and member.get('chat_muted'):
+        return 'You are muted in this party'
+
+    message_id = (data.get('message_id') or '').strip()
+    if not message_id:
+        return 'Message is required'
+
+    raw_message = data.get('message')
+    if not isinstance(raw_message, str):
+        return 'Message is required'
+    message_text = raw_message.strip()
+    if not message_text:
+        return 'Message is required'
+    if len(message_text) > MAX_CHAT_LENGTH:
+        message_text = message_text[:MAX_CHAT_LENGTH]
+
+    target_message = next(
+        (
+            item for item in party.get('chat', [])
+            if item.get('id') == message_id and item.get('type') == 'message'
+        ),
+        None
+    )
+    if not target_message:
+        return 'Message not found'
+    try:
+        target_user_id = int(target_message.get('user_id'))
+    except (TypeError, ValueError):
+        return 'Message not found'
+    if target_user_id != int(user.id):
+        return 'Only the message author can edit this message'
+
+    if target_message.get('message') == message_text:
+        return None
+
+    control_error = _check_chat_controls_locked(party, user, message_text, check_duplicate=False)
+    if control_error:
+        return control_error
+
+    target_message['message'] = message_text
+    target_message['edited_at'] = _utc_now_iso()
+    return None
 
 
 def _handle_reaction_message(party, user, data):
@@ -919,6 +997,20 @@ def register_watch_party_socket(sock):
                         ws.send(_json_message('error', message=error))
                     else:
                         _broadcast(normalized_code, 'chat_message', message=message)
+                    continue
+
+                if message_type == 'chat_edit':
+                    with _party_lock:
+                        party = _parties.get(normalized_code)
+                        if not party:
+                            ws.send(_json_message('party_expired', code=normalized_code))
+                            break
+                        _touch_party_locked(party)
+                        error = _handle_chat_edit_message(party, user, data)
+                    if error:
+                        ws.send(_json_message('error', message=error))
+                    else:
+                        _broadcast_party_state(normalized_code)
                     continue
 
                 if message_type == 'typing':

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaSignal, FaSignOutAlt, FaSmile, FaSyncAlt, FaThumbtack, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
+import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEdit, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaReply, FaSignal, FaSignOutAlt, FaSmile, FaSyncAlt, FaThumbtack, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -69,6 +69,8 @@ const WatchPage = () => {
     const [partyExpiryRemaining, setPartyExpiryRemaining] = useState(null);
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [chatDraft, setChatDraft] = useState('');
+    const [replyTarget, setReplyTarget] = useState(null);
+    const [editTarget, setEditTarget] = useState(null);
     const [showReactionBar, setShowReactionBar] = useState(false);
     const [typingUsers, setTypingUsers] = useState({});
     const [unreadCount, setUnreadCount] = useState(0);
@@ -82,6 +84,7 @@ const WatchPage = () => {
     const [lastPartyPlaybackAt, setLastPartyPlaybackAt] = useState(null);
     const [syncHealthTick, setSyncHealthTick] = useState(0);
     const [memberActionMenu, setMemberActionMenu] = useState(null);
+    const [messageActionMenu, setMessageActionMenu] = useState(null);
     const [leaderConfirmation, setLeaderConfirmation] = useState(null);
     const wsRef = useRef(null);
     const joinedPartyCodeRef = useRef(null);
@@ -97,6 +100,7 @@ const WatchPage = () => {
     const currentPartyUserIdRef = useRef(null);
     const watchIdRef = useRef(watch_id);
     const chatLogRef = useRef(null);
+    const chatLogWrapperRef = useRef(null);
     const chatTextareaRef = useRef(null);
     const chatAtBottomRef = useRef(true);
     const partyChatPinnedRef = useRef(false);
@@ -709,8 +713,11 @@ const WatchPage = () => {
             setPartySettingsOpen(false);
             setPartySyncOpen(false);
             setMemberActionMenu(null);
+            setMessageActionMenu(null);
             setLeaderConfirmation(null);
             setPartyChatPinned(false);
+            setReplyTarget(null);
+            setEditTarget(null);
             setPartyExpiryToastDismissed(false);
             markPartyChatRead();
             chatAtBottomRef.current = true;
@@ -735,8 +742,11 @@ const WatchPage = () => {
             setPartySettingsOpen(false);
             setPartySyncOpen(false);
             setMemberActionMenu(null);
+            setMessageActionMenu(null);
             setLeaderConfirmation(null);
             setPartyChatPinned(false);
+            setReplyTarget(null);
+            setEditTarget(null);
             setPartyExpiryToastDismissed(false);
             markPartyChatRead();
             chatAtBottomRef.current = true;
@@ -1000,23 +1010,61 @@ const WatchPage = () => {
         }
     };
 
-    const sendChatMessage = (event) => {
-        event.preventDefault();
-        const message = chatDraft.trim();
-        if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-        const disabledReason = getPartyChatDisabledReason();
-        if (disabledReason) {
-            setPartyError(disabledReason);
-            return;
-        }
+    const sendTypingIndicator = (typing) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !partyRef.current) return;
+        if (typing && getPartyChatDisabledReason()) return;
+        if (isTypingRef.current === typing) return;
+        isTypingRef.current = typing;
+        wsRef.current.send(JSON.stringify({ type: 'typing', typing }));
+    };
 
-        wsRef.current.send(JSON.stringify({ type: 'chat', message }));
+    const resetChatComposer = () => {
         setChatDraft('');
+        setReplyTarget(null);
+        setEditTarget(null);
         setMentionOpen(false);
+        setMentionIndex(0);
         sendTypingIndicator(false);
         if (chatTextareaRef.current) {
             chatTextareaRef.current.style.height = 'auto';
         }
+    };
+
+    const sendCurrentChatMessage = () => {
+        const message = chatDraft.trim();
+        if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return false;
+        const disabledReason = getPartyChatDisabledReason();
+        if (disabledReason) {
+            setPartyError(disabledReason);
+            return false;
+        }
+
+        if (editTarget?.id) {
+            if (message === (editTarget.message || '').trim()) {
+                resetChatComposer();
+                return true;
+            }
+            wsRef.current.send(JSON.stringify({
+                type: 'chat_edit',
+                message_id: editTarget.id,
+                message
+            }));
+            resetChatComposer();
+            return true;
+        }
+
+        const payload = { type: 'chat', message };
+        if (replyTarget?.id) {
+            payload.reply_to_id = replyTarget.id;
+        }
+        wsRef.current.send(JSON.stringify(payload));
+        resetChatComposer();
+        return true;
+    };
+
+    const sendChatMessage = (event) => {
+        event.preventDefault();
+        sendCurrentChatMessage();
     };
 
     const handleChatKeyDown = (event) => {
@@ -1024,6 +1072,16 @@ const WatchPage = () => {
             event.preventDefault();
             setMentionOpen(false);
             setMentionIndex(0);
+            return;
+        }
+        if (event.key === 'Escape' && replyTarget) {
+            event.preventDefault();
+            setReplyTarget(null);
+            return;
+        }
+        if (event.key === 'Escape' && editTarget) {
+            event.preventDefault();
+            resetChatComposer();
             return;
         }
         if (mentionOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
@@ -1058,21 +1116,7 @@ const WatchPage = () => {
                     return;
                 }
             }
-            const message = chatDraft.trim();
-            if (!message || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-            const disabledReason = getPartyChatDisabledReason();
-            if (disabledReason) {
-                setPartyError(disabledReason);
-                return;
-            }
-            wsRef.current.send(JSON.stringify({ type: 'chat', message }));
-            setChatDraft('');
-            setMentionOpen(false);
-            setMentionIndex(0);
-            sendTypingIndicator(false);
-            if (chatTextareaRef.current) {
-                chatTextareaRef.current.style.height = 'auto';
-            }
+            sendCurrentChatMessage();
         }
     };
 
@@ -1101,14 +1145,6 @@ const WatchPage = () => {
         setShowReactionBar(false);
     };
 
-    const sendTypingIndicator = (typing) => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !partyRef.current) return;
-        if (typing && getPartyChatDisabledReason()) return;
-        if (isTypingRef.current === typing) return;
-        isTypingRef.current = typing;
-        wsRef.current.send(JSON.stringify({ type: 'typing', typing }));
-    };
-
     const kickPartyMember = (member) => {
         if (!isPartyLeader || !member?.id || member.id === party?.current_user_id) return;
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
@@ -1129,6 +1165,9 @@ const WatchPage = () => {
     const handleChatScroll = () => {
         const el = chatLogRef.current;
         if (!el) return;
+        if (messageActionMenu) {
+            setMessageActionMenu(null);
+        }
         const atBottom = isChatNearBottom(el);
         chatAtBottomRef.current = atBottom;
         setChatAtBottom(atBottom);
@@ -1160,11 +1199,68 @@ const WatchPage = () => {
         textarea.focus();
     };
 
+    const getReplyPreviewText = (message) => {
+        if (!message) return '';
+        return String(message.reaction || message.message || '').trim();
+    };
+
+    const createReplyTarget = (message) => {
+        if (!message?.id || !['message', 'reaction'].includes(message.type)) return null;
+        return {
+            id: message.id,
+            type: message.type,
+            user_id: message.user_id,
+            username: message.username || 'Someone',
+            message: getReplyPreviewText(message)
+        };
+    };
+
+    const startReplyToMessage = (message) => {
+        const target = createReplyTarget(message);
+        if (!target) return;
+        if (editTarget) {
+            setChatDraft('');
+            setEditTarget(null);
+        }
+        setReplyTarget(target);
+        setTimeout(() => chatTextareaRef.current?.focus(), 0);
+    };
+
+    const startEditPartyChatMessage = (message) => {
+        if (!message?.id || message.type !== 'message' || message.user_id !== party?.current_user_id) return;
+        const currentMessage = String(message.message || '');
+        setEditTarget({ id: message.id, message: currentMessage });
+        setReplyTarget(null);
+        setMessageActionMenu(null);
+        setShowReactionBar(false);
+        setMentionOpen(false);
+        setMentionQuery('');
+        setMentionIndex(0);
+        setChatDraft(currentMessage);
+        sendTypingIndicator(false);
+        setTimeout(() => {
+            const textarea = chatTextareaRef.current;
+            if (!textarea) return;
+            textarea.focus();
+            textarea.setSelectionRange(currentMessage.length, currentMessage.length);
+        }, 0);
+    };
+
+    const renderReplyReference = (reply, label = 'Replying to') => {
+        if (!reply) return null;
+        return (
+            <div className="watchPartyReplyReference">
+                <strong>{label} {reply.username || 'Someone'}</strong>
+                <span>{getReplyPreviewText(reply)}</span>
+            </div>
+        );
+    };
+
     const handleChatChange = (event) => {
         const value = event.target.value;
         setChatDraft(value);
         const chatDisabled = getPartyChatDisabledReason();
-        if (value.trim() && partyRef.current && !chatDisabled) {
+        if (!editTarget && value.trim() && partyRef.current && !chatDisabled) {
             sendTypingIndicator(true);
             if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
             typingDebounceRef.current = setTimeout(() => sendTypingIndicator(false), 2000);
@@ -1277,6 +1373,52 @@ const WatchPage = () => {
         setMemberActionMenu(null);
     };
 
+    const toggleMessageActionMenu = (event, message) => {
+        event.stopPropagation();
+        if (!message?.id) return;
+        const isOwnMessage = message.user_id === party?.current_user_id;
+        const canEditMessage = isOwnMessage && message.type === 'message';
+        const canDeleteMessage = isPartyLeader;
+        if (!canEditMessage && !canDeleteMessage) return;
+
+        if (messageActionMenu?.messageId === message.id) {
+            setMessageActionMenu(null);
+            return;
+        }
+
+        const triggerRect = event.currentTarget.getBoundingClientRect();
+        const wrapperRect = chatLogWrapperRef.current?.getBoundingClientRect()
+            || chatLogRef.current?.getBoundingClientRect()
+            || {
+                top: 0,
+                left: 0,
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+        const inset = 8;
+        const menuWidth = 136;
+        const menuHeight = 10 + (Number(canEditMessage) + Number(canDeleteMessage)) * 32;
+        const minLeft = inset;
+        const maxLeft = Math.max(minLeft, wrapperRect.width - menuWidth - inset);
+        const preferredLeft = isOwnMessage
+            ? triggerRect.right - wrapperRect.left - menuWidth
+            : triggerRect.left - wrapperRect.left;
+        const left = Math.min(Math.max(minLeft, preferredLeft), maxLeft);
+        const minTop = inset;
+        const maxTop = Math.max(minTop, wrapperRect.height - menuHeight - inset);
+        let top = triggerRect.top - wrapperRect.top - menuHeight - 7;
+        if (top < minTop) {
+            top = triggerRect.bottom - wrapperRect.top + 7;
+        }
+        top = Math.min(Math.max(minTop, top), maxTop);
+
+        setMessageActionMenu({ messageId: message.id, top, left });
+    };
+
+    const closeMessageActionMenu = () => {
+        setMessageActionMenu(null);
+    };
+
     const deletePartyChatMessage = (message) => {
         if (!isPartyLeader || !message?.id) return;
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -1297,7 +1439,10 @@ const WatchPage = () => {
             message: 'This message will be removed from the party chat.',
             confirmLabel: 'Delete',
             danger: true,
-            onConfirm: () => deletePartyChatMessage(message)
+            onConfirm: () => {
+                closeMessageActionMenu();
+                deletePartyChatMessage(message);
+            }
         });
     };
 
@@ -1692,6 +1837,12 @@ const WatchPage = () => {
     }, [party?.code]);
 
     useEffect(() => {
+        setReplyTarget(null);
+        setEditTarget(null);
+        setMessageActionMenu(null);
+    }, [party?.code]);
+
+    useEffect(() => {
         partyChatPinnedRef.current = partyChatPinned;
         if (partyChatPinned) {
             markPartyChatRead();
@@ -1787,6 +1938,26 @@ const WatchPage = () => {
         document.addEventListener('mousedown', handleOutsideClick);
         return () => document.removeEventListener('mousedown', handleOutsideClick);
     }, [memberActionMenu]);
+
+    useEffect(() => {
+        if (!messageActionMenu) {
+            return;
+        }
+
+        const handleOutsideClick = (event) => {
+            const target = event.target;
+            if (
+                target.closest?.('.watchPartyMessageActionMenu') ||
+                target.closest?.('.watchPartyMessageActionToggle')
+            ) {
+                return;
+            }
+            setMessageActionMenu(null);
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, [messageActionMenu]);
 
     // Parse the watch ID and URL parameters once
     useEffect(() => {
@@ -2477,10 +2648,14 @@ const WatchPage = () => {
 
         const isOwnMessage = message.user_id === party?.current_user_id;
         const isReaction = message.type === 'reaction';
+        const canEditMessage = isOwnMessage && message.type === 'message';
+        const canDeleteMessage = isPartyLeader;
+        const hasMessageActions = canEditMessage || canDeleteMessage;
+        const isMessageActionMenuOpen = messageActionMenu?.messageId === message.id;
 
         return withUnreadDivider(
             <div
-                className={`watchPartyChatMessage ${isOwnMessage ? 'own' : ''} ${isReaction ? 'reaction' : ''}`}
+                className={`watchPartyChatMessage ${isOwnMessage ? 'own' : ''} ${isReaction ? 'reaction' : ''} ${hasMessageActions ? 'hasActions' : ''}`}
                 key={message.id}
             >
                 <div className="watchPartyChatMeta">
@@ -2493,18 +2668,81 @@ const WatchPage = () => {
                             })}
                         </time>
                     )}
-                    {isPartyLeader && (
-                        <button
-                            type="button"
-                            className="watchPartyDeleteMessageButton"
-                            onClick={() => confirmDeletePartyChatMessage(message)}
-                            title="Delete message"
-                        >
-                            <FaTrashAlt />
-                        </button>
+                    {message.edited_at && <span className="watchPartyEditedLabel">edited</span>}
+                    <button
+                        type="button"
+                        className="watchPartyReplyMessageButton"
+                        onClick={() => startReplyToMessage(message)}
+                        title="Reply"
+                    >
+                        <FaReply />
+                    </button>
+                </div>
+                {message.reply_to && renderReplyReference(message.reply_to, 'Reply to')}
+                <div className="watchPartyChatBubbleFrame">
+                    <span className={`watchPartyChatBubble ${hasMessageActions ? 'withActions' : ''}`}>
+                        {isReaction ? message.reaction || message.message : renderMessageWithMentions(message.message)}
+                    </span>
+                    {hasMessageActions && (
+                        <div className="watchPartyMessageActions">
+                            <button
+                                type="button"
+                                className={`watchPartyMessageActionToggle ${isMessageActionMenuOpen ? 'active' : ''}`}
+                                onClick={(event) => toggleMessageActionMenu(event, message)}
+                                title="Message actions"
+                            >
+                                <FaEllipsisV />
+                            </button>
+                        </div>
                     )}
                 </div>
-                <span>{isReaction ? message.reaction || message.message : renderMessageWithMentions(message.message)}</span>
+            </div>
+        );
+    };
+
+    const renderMessageActionMenu = () => {
+        if (!messageActionMenu) return null;
+
+        const message = partyChat.find((item) => item.id === messageActionMenu.messageId);
+        if (!message) return null;
+
+        const isOwnMessage = message.user_id === party?.current_user_id;
+        const canEditMessage = isOwnMessage && message.type === 'message';
+        const canDeleteMessage = isPartyLeader;
+        if (!canEditMessage && !canDeleteMessage) return null;
+
+        const runMessageAction = (action) => {
+            action();
+            closeMessageActionMenu();
+        };
+
+        return (
+            <div
+                className="watchPartyMessageActionMenu"
+                style={{
+                    top: `${messageActionMenu.top}px`,
+                    left: `${messageActionMenu.left}px`
+                }}
+            >
+                {canEditMessage && (
+                    <button
+                        type="button"
+                        onClick={() => runMessageAction(() => startEditPartyChatMessage(message))}
+                    >
+                        <FaEdit />
+                        Edit
+                    </button>
+                )}
+                {canDeleteMessage && (
+                    <button
+                        type="button"
+                        className="danger"
+                        onClick={() => runMessageAction(() => confirmDeletePartyChatMessage(message))}
+                    >
+                        <FaTrashAlt />
+                        Delete
+                    </button>
+                )}
             </div>
         );
     };
@@ -2996,11 +3234,12 @@ const WatchPage = () => {
                                                 <FaThumbtack />
                                             </button>
                                         </div>
-                                        <div className="watchPartyChatLogWrapper">
+                                        <div className="watchPartyChatLogWrapper" ref={chatLogWrapperRef}>
                                             <div className="watchPartyChatLog" ref={chatLogRef} onScroll={handleChatScroll}>
                                                 {partyChat.length === 0 && <div className="watchPartyChatEmpty">No messages yet</div>}
                                                 {partyChat.map(renderPartyChatMessage)}
                                             </div>
+                                            {renderMessageActionMenu()}
                                             {!chatAtBottom && (
                                                 <button type="button" className="watchPartyChatScrollBtn" onClick={scrollChatToBottom} title="Scroll to bottom">
                                                     <FaArrowDown />
@@ -3045,6 +3284,25 @@ const WatchPage = () => {
                                                     ))}
                                                 </div>
                                             )}
+                                            {replyTarget && (
+                                                <div className="watchPartyReplyComposer">
+                                                    {renderReplyReference(replyTarget)}
+                                                    <button type="button" onClick={() => setReplyTarget(null)} title="Cancel reply">
+                                                        <FaTimes />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {editTarget && (
+                                                <div className="watchPartyEditComposer">
+                                                    <div>
+                                                        <strong>Editing message</strong>
+                                                        <span>{editTarget.message}</span>
+                                                    </div>
+                                                    <button type="button" onClick={resetChatComposer} title="Cancel edit">
+                                                        <FaTimes />
+                                                    </button>
+                                                </div>
+                                            )}
                                             <form className="watchPartyChatForm" onSubmit={sendChatMessage}>
                                                 <textarea
                                                     ref={chatTextareaRef}
@@ -3053,7 +3311,7 @@ const WatchPage = () => {
                                                     onKeyDown={handleChatKeyDown}
                                                     onBlur={() => setTimeout(() => setMentionOpen(false), 200)}
                                                     maxLength={500}
-                                                    placeholder={chatDisabledReason || 'Message'}
+                                                    placeholder={chatDisabledReason || (editTarget ? 'Edit message' : 'Message')}
                                                     disabled={!canUsePartyChat}
                                                     rows={1}
                                                 />
@@ -3066,7 +3324,7 @@ const WatchPage = () => {
                                                 >
                                                     <FaSmile />
                                                 </button>
-                                                <button type="submit" disabled={!chatDraft.trim() || !canUsePartyChat} title="Send">
+                                                <button type="submit" disabled={!chatDraft.trim() || !canUsePartyChat} title={editTarget ? 'Save edit' : 'Send'}>
                                                     <FaPaperPlane />
                                                 </button>
                                             </form>
