@@ -217,7 +217,7 @@ const Sidebar = ({user}) => {
                         return (
                             <div key={category.name} className='sidebar_category'>
                                 {!isSidebarCollapsed && (
-                                    <div className='category-header' onClick={() => toggleCategory(category.name)}>
+                                    <div className='sidebar_category_header' onClick={() => toggleCategory(category.name)}>
                                         <span>{category.name}</span>
                                         <MdExpandLess className={`coll_icon ${isCategoryCollapsed ? 'collapsed' : ''}`} />
                                     </div>
