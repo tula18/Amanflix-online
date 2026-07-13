@@ -224,13 +224,19 @@ def get_cached_user(user_id: int):
     
     Returns the User object or None if not found.
     """
-    from models import User
-    
+    from models import User, db
+
     # Check cache first
     cached = user_cache.get(str(user_id))
     if cached is not None:
-        return cached
-    
+        try:
+            # Re-attach the detached instance to this request's session
+            # without a DB round-trip
+            return db.session.merge(cached, load=False)
+        except Exception:
+            # Cached instance has expired/dirty state - fall through to DB
+            user_cache.delete(str(user_id))
+
     # Cache miss - fetch from DB
     user = User.query.get(user_id)
     if user:
@@ -245,13 +251,19 @@ def get_cached_admin(admin_id: int):
     
     Returns the Admin object or None if not found.
     """
-    from models import Admin
-    
+    from models import Admin, db
+
     # Check cache first
     cached = admin_cache.get(str(admin_id))
     if cached is not None:
-        return cached
-    
+        try:
+            # Re-attach the detached instance to this request's session
+            # without a DB round-trip
+            return db.session.merge(cached, load=False)
+        except Exception:
+            # Cached instance has expired/dirty state - fall through to DB
+            admin_cache.delete(str(admin_id))
+
     # Cache miss - fetch from DB
     admin = Admin.query.get(admin_id)
     if admin:
