@@ -14,7 +14,8 @@ import {
     LineChartOutlined, 
     UserSwitchOutlined,
     CloudServerOutlined, // Add this import for the CDN icon
-    PoweroffOutlined // Service control icon
+    PoweroffOutlined, // Service control icon
+    MedicineBoxOutlined // Media health icon
 } from '@ant-design/icons';
 import { Tooltip, notification } from 'antd';
 
@@ -98,6 +99,7 @@ const Sidebar = ({user}) => {
                 {name: 'Add By File', path: '/admin/upload/by-file', requiredRoleLevel: 1, icon: UploadOutlined, description: "Upload content by analyzing file names with smart detection"},
                 // Add the CDN Management link here
                 {name: 'CDN Management', path: '/admin/cdn', requiredRoleLevel: 1, icon: CloudServerOutlined, description: "Manage content delivery network and import data"},
+                {name: 'Media Health', path: '/admin/media-health', requiredRoleLevel: 1, icon: MedicineBoxOutlined, description: "Scan stored videos for container defects and repair them"},
             ]
         },
         {

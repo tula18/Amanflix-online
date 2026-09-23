@@ -64,6 +64,7 @@ from api.routes.analytics import analytics_bp
 from api.routes.file_parser import file_parser_bp
 from api.routes.discovery import discovery_bp
 from api.routes.service_control import service_control_bp
+from api.routes.media_health import media_health_bp
 from api.routes.watch_party import watch_party_bp, register_watch_party_socket
 
 # Service controller for checking service status
@@ -224,6 +225,7 @@ app.register_blueprint(discovery_cdn_bp)
 log_substep("API endpoints: upload, stream, movies, shows, auth, admin, search, bug reports, mylist, upload requests, watch history, notifications, analytics, file parser, discovery")
 # API ENDPOINTS register
 app.register_blueprint(upload_bp)
+app.register_blueprint(media_health_bp)
 app.register_blueprint(stream_bp)
 app.register_blueprint(movies_bp)
 app.register_blueprint(shows_bp)

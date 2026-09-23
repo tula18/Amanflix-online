@@ -52,6 +52,38 @@ def ensure_upload_folder_exists():
     if not os.path.exists(UPLOADS_DIR):
         os.makedirs(UPLOADS_DIR)
 
+def auto_repair_uploaded_video(dst_path):
+    """Repair container defects in a freshly stored upload.
+
+    Runs on the way in so a defective file never reaches a viewer. Only handles
+    defects a stream copy can fix (currently a corrupt display matrix, which
+    renders as a black screen with working audio in Chrome 143+), so it costs
+    seconds rather than a re-encode.
+
+    Never raises: a failed repair must not fail the upload, since the file is
+    still stored and can be fixed later from the Media Health page.
+    """
+    try:
+        from api.media_health import ISSUE_CORRUPT_DISPLAY_MATRIX, analyze_file, repair_file
+
+        analysis = analyze_file(dst_path)
+        if ISSUE_CORRUPT_DISPLAY_MATRIX not in analysis['issues']:
+            return None
+
+        video_id = os.path.splitext(os.path.basename(dst_path))[0]
+        log_warning(f"Corrupt display matrix detected in upload {video_id}; repairing")
+
+        result = repair_file(dst_path, video_id)
+        if result['repaired']:
+            log_info(f"Repaired upload {video_id} via {result['strategy']}")
+        else:
+            log_error(f"Could not repair upload {video_id}: {result['reason']}")
+        return result
+    except Exception as e:
+        log_error(f"Media health check failed for {dst_path}: {e}")
+        return None
+
+
 def save_with_progress(src_file, dst_path, convert_to_mp4=True):
     """
     Save the uploaded file with a progress bar, optionally converting to MP4 format.
@@ -93,6 +125,7 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
         progress_bar.close()
         if convert_to_mp4 and not is_src_mp4 and not ffmpeg_available:
             log_warning("ffmpeg not available. File saved without conversion.")
+        auto_repair_uploaded_video(dst_path)
         return
     
     # For non-MP4 files that need conversion
@@ -117,6 +150,8 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
         
         # Remove the temporary file
         os.remove(temp_path)
+
+        auto_repair_uploaded_video(dst_path)
         
     except subprocess.SubprocessError as e:
         # Clean up both files on error

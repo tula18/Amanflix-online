@@ -1,0 +1,321 @@
+/* Dark theme for the Media Health page.
+   antd ships light defaults and this project has no global dark algorithm, so
+   each page restyles the components it uses. Palette matches CDN Management:
+   surface #1f2a40, border #283555, text #e0e0e0, accent #e50914. Everything is
+   scoped to .media-health-page so it cannot leak into other admin pages. */
+
+.media-health-page {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #e0e0e0;
+}
+
+.media-health-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* ---- Typography ---- */
+
+.media-health-page h2.ant-typography,
+.media-health-page h3.ant-typography {
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.media-health-page .ant-typography {
+    color: #e0e0e0;
+}
+
+.media-health-page .ant-typography-secondary,
+.media-health-page .ant-typography.ant-typography-secondary {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---- Cards ---- */
+
+.media-health-page .ant-card {
+    background: #1f2a40 !important;
+    border: 1px solid #283555 !important;
+    border-radius: 8px;
+}
+
+.media-health-page .ant-card-head {
+    border-bottom: 1px solid #283555;
+    color: #ffffff;
+}
+
+.media-health-page .ant-card-head-title,
+.media-health-page .ant-card-extra {
+    color: #ffffff;
+}
+
+/* ---- Summary tiles ---- */
+
+.media-health-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.media-health-summary .ant-card-body {
+    padding: 16px 20px;
+}
+
+.media-health-summary h3.ant-typography {
+    margin: 4px 0 0;
+}
+
+.stat-good {
+    color: #52c41a !important;
+}
+
+.stat-warn {
+    color: #faad14 !important;
+}
+
+.stat-bad {
+    color: #ff4d4f !important;
+}
+
+.media-health-progress {
+    margin-bottom: 24px;
+}
+
+.media-health-page .ant-progress-text {
+    color: #e0e0e0;
+}
+
+/* ---- Tables ---- */
+
+.media-health-page .ant-table {
+    background-color: transparent !important;
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-table-thead > tr > th {
+    background-color: #1f2a40 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    border-bottom: 1px solid #283555;
+}
+
+.media-health-page .ant-table-tbody > tr > td {
+    border-bottom: 1px solid rgba(40, 53, 85, 0.5) !important;
+    color: #e0e0e0 !important;
+    transition: background-color 0.2s;
+}
+
+.media-health-page .ant-table-tbody > tr.ant-table-row:nth-child(odd) > td {
+    background-color: #141b2d !important;
+}
+
+.media-health-page .ant-table-tbody > tr.ant-table-row:nth-child(even) > td {
+    background-color: #1a2035 !important;
+}
+
+.media-health-page .ant-table-tbody > tr.ant-table-row:hover > td,
+.media-health-page .ant-table-tbody > tr.ant-table-row-selected > td {
+    background-color: #283555 !important;
+}
+
+/* antd v5 applies hover via a cell class rather than a :hover selector. */
+.media-health-page .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+    background-color: #283555 !important;
+}
+
+/* Header cell separators and the cell shown when the table is empty. */
+.media-health-page .ant-table-thead > tr > th::before {
+    background-color: #283555 !important;
+}
+
+.media-health-page .ant-table-placeholder > td,
+.media-health-page .ant-table-placeholder:hover > td {
+    background-color: #141b2d !important;
+    border-bottom: none;
+}
+
+/* Sort and filter affordances in the header. */
+.media-health-page .ant-table-column-sorter,
+.media-health-page .ant-table-filter-trigger {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.media-health-page .ant-table-column-sorter-up.active,
+.media-health-page .ant-table-column-sorter-down.active,
+.media-health-page .ant-table-filter-trigger.active {
+    color: #e50914;
+}
+
+.media-health-page .ant-table-thead th.ant-table-column-has-sorters:hover {
+    background-color: #283555 !important;
+}
+
+.media-health-page .ant-table-column-sort {
+    background-color: transparent !important;
+}
+
+/* ---- Pagination ---- */
+
+.media-health-page .ant-pagination-item {
+    background-color: #1f2a40 !important;
+    border-color: #283555 !important;
+}
+
+.media-health-page .ant-pagination-item a {
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-pagination-item-active {
+    background-color: #e50914 !important;
+    border-color: #e50914 !important;
+}
+
+.media-health-page .ant-pagination-item-active a {
+    color: #ffffff !important;
+}
+
+.media-health-page .ant-pagination-item:hover {
+    border-color: #e50914;
+}
+
+.media-health-page .ant-pagination-item:hover a {
+    color: #e50914;
+}
+
+.media-health-page .ant-pagination-total-text,
+.media-health-page .ant-pagination-item-ellipsis,
+.media-health-page .ant-pagination-options-quick-jumper {
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-pagination-item-link {
+    background-color: #1f2a40 !important;
+    border-color: #283555 !important;
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-pagination-disabled .ant-pagination-item-link {
+    color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* ---- Select (scope picker and page-size) ---- */
+
+.media-health-page .ant-select .ant-select-selector {
+    background-color: #1f2a40 !important;
+    border-color: #283555 !important;
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-select .ant-select-selection-item,
+.media-health-page .ant-select .ant-select-selection-placeholder {
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-select .ant-select-arrow {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.media-health-page .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+    border-color: #e50914 !important;
+}
+
+/* ---- Buttons ---- */
+
+.media-health-page .ant-btn-default {
+    background-color: #1f2a40 !important;
+    border-color: #283555 !important;
+    color: #e0e0e0 !important;
+}
+
+.media-health-page .ant-btn-default:not(:disabled):hover {
+    background-color: #283555 !important;
+    border-color: #e50914 !important;
+    color: #ffffff !important;
+}
+
+.media-health-page .ant-btn-default:disabled,
+.media-health-page .ant-btn-default.ant-btn-disabled {
+    background-color: rgba(31, 42, 64, 0.5);
+    border-color: rgba(40, 53, 85, 0.6);
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.media-health-page .ant-btn-dangerous.ant-btn-default {
+    border-color: rgba(255, 77, 79, 0.5);
+    color: #ff4d4f;
+}
+
+.media-health-page .ant-btn-dangerous.ant-btn-default:not(:disabled):hover {
+    background-color: rgba(255, 77, 79, 0.15);
+    border-color: #ff4d4f;
+    color: #ff4d4f;
+}
+
+/* ---- Row-selection checkboxes ---- */
+
+.media-health-page .ant-checkbox-inner {
+    background-color: #1f2a40 !important;
+    border-color: #3a4a70 !important;
+}
+
+.media-health-page .ant-checkbox-checked .ant-checkbox-inner,
+.media-health-page .ant-checkbox-indeterminate .ant-checkbox-inner {
+    background-color: #e50914 !important;
+    border-color: #e50914 !important;
+}
+
+.media-health-page .ant-checkbox-indeterminate .ant-checkbox-inner::after {
+    background-color: #ffffff;
+}
+
+.media-health-page .ant-checkbox-disabled .ant-checkbox-inner {
+    background-color: rgba(31, 42, 64, 0.4);
+    border-color: rgba(58, 74, 112, 0.5);
+}
+
+/* ---- Tags ---- */
+
+/* Untinted tags (the movie/episode type column) default to a light chip. */
+.media-health-page .ant-tag:not([class*="ant-tag-"]) {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: #283555 !important;
+    color: #e0e0e0 !important;
+}
+
+/* ---- Empty state ---- */
+
+.media-health-page .ant-empty-description {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.media-health-empty-icon {
+    font-size: 48px;
+    color: #52c41a;
+}
+
+/* ---- Backups ---- */
+
+.media-health-backups {
+    margin-top: 24px;
+}
+
+.media-health-note {
+    margin-bottom: 16px !important;
+}
+
+@media (max-width: 768px) {
+    .media-health-page {
+        padding: 16px;
+    }
+
+    .media-health-header {
+        flex-direction: column;
+    }
+}

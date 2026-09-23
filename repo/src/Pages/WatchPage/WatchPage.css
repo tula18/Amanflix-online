@@ -7,6 +7,7 @@
 
 /* Ensure the Netflix player takes full space */
 .watchPlayerShell {
+    position: relative; /* anchors the report-problem button */
     width: 100%;
     height: 100vh;
 }
@@ -2081,4 +2082,52 @@
     0%   { transform: translateY(0) scale(1);   opacity: 1; }
     70%  { transform: translateY(-140px) scale(1.2); opacity: 1; }
     100% { transform: translateY(-200px) scale(0.8); opacity: 0; }
+}
+
+/* Manual playback-problem report, for failures that fire no MediaError
+   (a corrupt display matrix renders as a black screen with working audio).
+   Kept dim until hovered so it does not compete with the player controls. */
+.watchReportIssueButton {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 13px;
+    cursor: pointer;
+    opacity: 0.35;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.watchPlayerShell:hover .watchReportIssueButton {
+    opacity: 1;
+}
+
+.watchReportIssueButton:hover:not(:disabled) {
+    background: rgba(229, 9, 20, 0.85);
+    border-color: rgba(229, 9, 20, 0.9);
+    color: #fff;
+}
+
+.watchReportIssueButton:disabled {
+    cursor: default;
+}
+
+.watchReportIssueButton.reported {
+    opacity: 1;
+    border-color: rgba(82, 196, 26, 0.6);
+    color: rgba(82, 196, 26, 0.95);
+}
+
+@media (max-width: 600px) {
+    .watchReportIssueButton span {
+        display: none;
+    }
 }

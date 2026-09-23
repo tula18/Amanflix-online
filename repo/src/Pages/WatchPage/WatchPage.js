@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './WatchPage.css';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEdit, FaEllipsisV, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaReply, FaSignal, FaSignOutAlt, FaSmile, FaSyncAlt, FaThumbtack, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
+import { FaArrowDown, FaBan, FaCog, FaCopy, FaCrown, FaEdit, FaEllipsisV, FaExclamationTriangle, FaExpandAlt, FaLink, FaMinus, FaPaperPlane, FaReply, FaSignal, FaSignOutAlt, FaSmile, FaSyncAlt, FaThumbtack, FaTimes, FaTrashAlt, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { LuPartyPopper } from "react-icons/lu";
 import { API_URL } from '../../config';
 import ErrorHandler from '../../Utils/ErrorHandler';
@@ -30,6 +30,10 @@ const WatchPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const videoRef = useRef(null);
+    // Guards against reporting the same black-frame playback repeatedly.
+    const blackFrameReportedRef = useRef(false);
+    const [reportingIssue, setReportingIssue] = useState(false);
+    const [issueReported, setIssueReported] = useState(false);
     const initialSeekPerformed = useRef(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -2386,6 +2390,63 @@ const WatchPage = () => {
         };
     }, [contentId, contentType, seasonNumber, episodeNumber, totalDuration]);
 
+    // Report a playback problem to the API, which decides whether to repair the file.
+    // Shared by the MediaError path, the black-frame detector and the manual button.
+    // Returns true when a repair was started or is already running.
+    const reportPlaybackIssue = async ({ reason = '', errorCode = null, message = '' }) => {
+        const token = localStorage.getItem('token');
+        if (!token) return false;
+
+        try {
+            const response = await fetch(`${API_URL}/api/stream/report-error`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    watch_id: watch_id,
+                    error_code: errorCode,
+                    error_message: message,
+                    reason: reason
+                })
+            });
+
+            if (!response.ok) return false;
+
+            const data = await response.json();
+            return data.action === 'reencode_started' || data.action === 'in_progress';
+        } catch (err) {
+            console.error('Failed to report video error:', err);
+            return false;
+        }
+    };
+
+    // Wait for a repair to finish, then reload the stream in place.
+    // Repairs of this kind are a stream copy, so they usually finish in seconds.
+    const waitForRepairAndReload = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        for (let attempt = 0; attempt < 60; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            try {
+                const response = await fetch(`${API_URL}/api/stream/can-watch/${watch_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.available) {
+                        window.location.reload();
+                        return;
+                    }
+                }
+            } catch {
+                // Keep polling: a transient failure while the file is swapped is expected.
+            }
+        }
+    }, [watch_id]);
+
     // Handle errors
     const handleError = async (errorInfo) => {
         // If it's a network error (code 2), check if the video is being re-encoded
@@ -2409,36 +2470,72 @@ const WatchPage = () => {
         
         // If it's a decode error (code 3), report it to the API to trigger re-encoding
         if (errorInfo && errorInfo.code === 3) {
-            const token = localStorage.getItem('token');
-            if (token) {
-                try {
-                    const response = await fetch(`${API_URL}/api/stream/report-error`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            watch_id: watch_id,
-                            error_code: errorInfo.code,
-                            error_message: errorInfo.message || ''
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.action === 'reencode_started' || data.action === 'in_progress') {
-                            ErrorHandler('video_processing', navigate);
-                            return;
-                        }
-                    }
-                } catch (err) {
-                    console.error('Failed to report video error:', err);
-                }
+            const started = await reportPlaybackIssue({
+                errorCode: errorInfo.code,
+                message: errorInfo.message || ''
+            });
+            if (started) {
+                ErrorHandler('video_processing', navigate);
+                waitForRepairAndReload();
+                return;
             }
         }
         
         ErrorHandler("video_error", navigate);
+    };
+
+    // A corrupt display matrix makes Chrome 143+ reject the video track without
+    // ever firing a MediaError: the audio plays and the picture stays black, so
+    // handleError above is never called. Detect it by watching for a decoder
+    // that has produced no frames while playback is genuinely advancing.
+    useEffect(() => {
+        blackFrameReportedRef.current = false;
+
+        const interval = setInterval(() => {
+            const video = videoRef.current;
+            if (!video || video.paused || blackFrameReportedRef.current) return;
+
+            // Wait for real progress first, so buffering is not mistaken for a
+            // dead video track.
+            if (video.currentTime < 3) return;
+
+            const quality = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : null;
+            const noFramesDecoded = quality ? quality.totalVideoFrames === 0 : false;
+            const noDimensions = video.videoWidth === 0 || video.videoHeight === 0;
+
+            if (!noFramesDecoded && !noDimensions) return;
+
+            blackFrameReportedRef.current = true;
+            reportPlaybackIssue({
+                reason: 'no_video_frames',
+                message: `No video frames decoded after ${video.currentTime.toFixed(1)}s of playback`
+            }).then((started) => {
+                if (started) {
+                    ErrorHandler('video_processing', navigate);
+                    waitForRepairAndReload();
+                }
+            });
+        }, 2000);
+
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [watch_id, navigate, waitForRepairAndReload]);
+
+    // Manual fallback, for playback problems the detector above cannot see.
+    const handleManualReport = async () => {
+        if (reportingIssue || issueReported) return;
+        setReportingIssue(true);
+        const started = await reportPlaybackIssue({
+            reason: 'user_report',
+            message: 'Reported from the player by the viewer'
+        });
+        setReportingIssue(false);
+        setIssueReported(true);
+
+        if (started) {
+            ErrorHandler('video_processing', navigate);
+            waitForRepairAndReload();
+        }
     };
 
     const requestPartyWatchChange = (nextWatchId) => {
@@ -3444,6 +3541,23 @@ const WatchPage = () => {
             {useOldPlayer && watchPartyOverlay}
 
             <div className="watchPlayerShell">
+                <button
+                    type="button"
+                    className={`watchReportIssueButton${issueReported ? ' reported' : ''}`}
+                    onClick={handleManualReport}
+                    disabled={reportingIssue || issueReported}
+                    title="Report a problem with this video, such as a black screen or missing picture"
+                >
+                    <FaExclamationTriangle />
+                    <span>
+                        {issueReported
+                            ? 'Problem reported'
+                            : reportingIssue
+                                ? 'Reporting...'
+                                : 'Report playback problem'}
+                    </span>
+                </button>
+
                 {useOldPlayer ? (
                     <video
                         ref={videoRef}

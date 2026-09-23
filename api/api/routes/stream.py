@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file, make_response
 from werkzeug.utils import secure_filename
 from api.utils import ensure_upload_folder_exists, parse_watch_id, get_episode_video_id_cached, token_required
+from api.media_health import ISSUE_CORRUPT_DISPLAY_MATRIX, analyze_file, repair_file
 from models import Episode, Season 
 from paths import UPLOADS_DIR, LOGS_DIR
 import os
@@ -11,6 +12,11 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
 stream_bp = Blueprint('stream_bp', __name__, url_prefix='/api')
+
+# Client-supplied reasons that justify a repair job even without a MediaError.
+# 'no_video_frames' is the decoder-starvation heuristic (black screen, audio OK);
+# 'user_report' is the manual "report playback problem" control.
+REPORTABLE_REASONS = {'no_video_frames', 'user_report'}
 
 # Track which files are currently being re-encoded to avoid duplicate jobs
 _reencode_in_progress = set()
@@ -45,6 +51,20 @@ def _setup_reencode_logger():
 reencode_log = _setup_reencode_logger()
 
 
+def _release_file_lock(video_id):
+    """Unblock streaming for a file and clear its in-progress marker.
+
+    Every exit path out of _reencode_file must go through this, or /stream will
+    keep waiting on a lock event that is never set.
+    """
+    with _reencode_lock:
+        _reencode_in_progress.discard(video_id)
+        if video_id in _file_locks:
+            _file_locks[video_id].set()  # signal unlocked
+            del _file_locks[video_id]
+    reencode_log.info(f'UNLOCKED | video_id={video_id}')
+
+
 def _detect_corrupt_track(error_message):
     """Detect which track is corrupt from the browser's error message."""
     msg = (error_message or '').lower()
@@ -67,6 +87,26 @@ def _reencode_file(file_path, video_id, watch_id='', error_message='', reported_
 
     reencode_log.info(f'STARTED  | video_id={video_id} | watch_id={watch_id} | reported_by={reported_by} | track={corrupt_track} | file={file_path}')
     reencode_log.info(f'REASON   | video_id={video_id} | {error_message}')
+
+    # A corrupt display matrix renders as a black screen with working audio and
+    # is fixable by a stream copy in seconds. Check for it before falling back to
+    # a full re-encode, which takes hours and would be pure waste here.
+    try:
+        analysis = analyze_file(file_path)
+        if ISSUE_CORRUPT_DISPLAY_MATRIX in analysis['issues']:
+            result = repair_file(file_path, video_id, logger=reencode_log)
+            if result['repaired']:
+                reencode_log.info(
+                    f'SUCCESS  | video_id={video_id} | method=remux | strategy={result["strategy"]} | '
+                    f'skipped full re-encode'
+                )
+                _release_file_lock(video_id)
+                return
+            reencode_log.warning(
+                f'FALLBACK | video_id={video_id} | remux failed ({result["reason"]}), re-encoding'
+            )
+    except Exception as e:
+        reencode_log.warning(f'FALLBACK | video_id={video_id} | media health check failed: {e}')
 
     # Build ffmpeg command based on which track is corrupt
     if corrupt_track == 'audio':
@@ -114,13 +154,7 @@ def _reencode_file(file_path, video_id, watch_id='', error_message='', reported_
         if os.path.exists(temp_path):
             os.remove(temp_path)
     finally:
-        # Unlock the file
-        with _reencode_lock:
-            _reencode_in_progress.discard(video_id)
-            if video_id in _file_locks:
-                _file_locks[video_id].set()  # signal unlocked
-                del _file_locks[video_id]
-        reencode_log.info(f'UNLOCKED | video_id={video_id}')
+        _release_file_lock(video_id)
 
 @stream_bp.route('/stream/can-watch/<string:watch_id>', methods=['GET'])
 @token_required
@@ -215,8 +249,11 @@ def stream_video(watch_id):
 @stream_bp.route('/stream/report-error', methods=['POST'])
 @token_required
 def report_video_error(current_user):
-    """Handle video decode error reports from the client.
-    If the error is a decode error (code 3), re-encode the audio track in the background."""
+    """Handle playback problem reports from the client.
+
+    Triggers a background repair for decode errors (MediaError code 3) and for
+    client-side reasons in REPORTABLE_REASONS, which cover failures the browser
+    does not surface as an error at all."""
     data = request.get_json()
     if not data:
         return jsonify(message="Missing request body"), 400
@@ -224,12 +261,15 @@ def report_video_error(current_user):
     watch_id = data.get('watch_id')
     error_code = data.get('error_code')
     error_message = data.get('error_message', '')
+    reason = data.get('reason', '')
 
     if not watch_id:
         return jsonify(message="Missing watch_id"), 400
 
-    # Only handle decode errors (code 3)
-    if error_code != 3:
+    # Decode errors (code 3) are the classic signal, but a corrupt display matrix
+    # produces no MediaError at all - the video track simply never renders. Those
+    # arrive as an explicit reason from the client instead.
+    if error_code != 3 and reason not in REPORTABLE_REASONS:
         return jsonify(message="Error reported", action="none"), 200
 
     # Resolve watch_id to actual file path
@@ -258,7 +298,7 @@ def report_video_error(current_user):
         _reencode_in_progress.add(video_id)
 
     # Run re-encode in background thread
-    reencode_log.info(f'REPORTED | video_id={video_id} | watch_id={watch_id} | user={current_user.username} | error_message={error_message[:200]}')
+    reencode_log.info(f'REPORTED | video_id={video_id} | watch_id={watch_id} | user={current_user.username} | reason={reason or f"error_code={error_code}"} | error_message={error_message[:200]}')
     thread = threading.Thread(
         target=_reencode_file,
         args=(file_path, video_id),
@@ -267,4 +307,4 @@ def report_video_error(current_user):
     )
     thread.start()
 
-    return jsonify(message="Decode error received, re-encoding audio in background", action="reencode_started"), 200
+    return jsonify(message="Playback problem received, repairing the file in background", action="reencode_started"), 200
