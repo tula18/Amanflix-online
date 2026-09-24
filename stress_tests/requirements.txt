@@ -1,3 +1,6 @@
 # Requirements for Amanflix Load Testing Suite
 aiohttp==3.9.1
 asyncio-pool==0.5.2
+# Production-slowness simulation (stress_tests/sim)
+locust>=2.30
+py-spy>=0.4

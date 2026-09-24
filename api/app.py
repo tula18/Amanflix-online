@@ -698,5 +698,5 @@ if __name__ == '__main__':
         from api.cache import warm_content_caches
         warm_content_caches()
     
-    app.run(debug=True, host='0.0.0.0', port=5001, threaded=True)
+    app.run(debug=os.environ.get('AMANFLIX_DEBUG', '1') == '1', host='0.0.0.0', port=5001, threaded=True)
     # For production set host to machine ip
