@@ -28,6 +28,7 @@ import { API_URL } from './config';
 import ComingSoonPage from './Pages/ComingSoonPage/ComingSoonPage';
 import MaintenancePage from './Pages/ErrorsPages/MaintenancePage/MaintenancePage';
 import PartyJoinPage from './Pages/PartyJoinPage/PartyJoinPage';
+import VisitorQueueGate from './Utils/VisitorQueueGate';
 
 const isRouteAllowedWhenServiceDown = (pathname) => (
   pathname.startsWith('/admin') ||
@@ -254,30 +255,32 @@ function App() {
       <Router>
         <ScrollToTop/>
         <ServiceAvailabilityGate serviceStatus={serviceStatus}>
-          <Navbar/>
-          <Routes>
-            <Route path='/' element={<PrivateRoute><HomePage /></PrivateRoute>}/>
-            <Route path='/:contentId' element={<PrivateRoute><HomePage /></PrivateRoute>}/>
-            <Route path='/signin' element={<Login />}/>
-            <Route path='/signup' element={<Signup />}/>
-            <Route path='/shows' element={<PrivateRoute><TvShowsPage /></PrivateRoute>}/>
-            <Route path='/shows/:categoryId' element={<PrivateRoute><ShowCategoryPage /></PrivateRoute>}/>
-            <Route path='/movies' element={<PrivateRoute><MoviesPage /></PrivateRoute>}/>
-            <Route path='/movies/:categoryId' element={<PrivateRoute><MoviesCategoryPage /></PrivateRoute>}/>
-            <Route path='/new-titles' element={<PrivateRoute><NewTitlesPage /></PrivateRoute>}/>
-            <Route path="/watch/:watch_id" element={<PrivateRoute><Watch/></PrivateRoute>} />
-            <Route path="/party" element={<PrivateRoute><PartyJoinPage/></PrivateRoute>} />
-            <Route path="/party/:partyCode" element={<PrivateRoute><PartyJoinPage/></PrivateRoute>} />
-            <Route path='/search' element={<PrivateRoute><SearchPage/></PrivateRoute>} />
-            <Route path='/profile' element={<PrivateRoute><ProfilePage/></PrivateRoute>} />
-            <Route path='/admin/*' element={<AdminPage/>} />
-            <Route path='/error' element={<ServiceDownPage/>} />
-            <Route path='/maintenance' element={<MaintenancePage/>} />
-            <Route path='/list' element={<MyListPage/>} />
-            <Route path='/help' element={<HelpPage/>} />
-            <Route path='*' element={<NotFoundPage/>} />
-          </Routes>
-          <Footer/>
+          <VisitorQueueGate>
+            <Navbar/>
+            <Routes>
+              <Route path='/' element={<PrivateRoute><HomePage /></PrivateRoute>}/>
+              <Route path='/:contentId' element={<PrivateRoute><HomePage /></PrivateRoute>}/>
+              <Route path='/signin' element={<Login />}/>
+              <Route path='/signup' element={<Signup />}/>
+              <Route path='/shows' element={<PrivateRoute><TvShowsPage /></PrivateRoute>}/>
+              <Route path='/shows/:categoryId' element={<PrivateRoute><ShowCategoryPage /></PrivateRoute>}/>
+              <Route path='/movies' element={<PrivateRoute><MoviesPage /></PrivateRoute>}/>
+              <Route path='/movies/:categoryId' element={<PrivateRoute><MoviesCategoryPage /></PrivateRoute>}/>
+              <Route path='/new-titles' element={<PrivateRoute><NewTitlesPage /></PrivateRoute>}/>
+              <Route path="/watch/:watch_id" element={<PrivateRoute><Watch/></PrivateRoute>} />
+              <Route path="/party" element={<PrivateRoute><PartyJoinPage/></PrivateRoute>} />
+              <Route path="/party/:partyCode" element={<PrivateRoute><PartyJoinPage/></PrivateRoute>} />
+              <Route path='/search' element={<PrivateRoute><SearchPage/></PrivateRoute>} />
+              <Route path='/profile' element={<PrivateRoute><ProfilePage/></PrivateRoute>} />
+              <Route path='/admin/*' element={<AdminPage/>} />
+              <Route path='/error' element={<ServiceDownPage/>} />
+              <Route path='/maintenance' element={<MaintenancePage/>} />
+              <Route path='/list' element={<MyListPage/>} />
+              <Route path='/help' element={<HelpPage/>} />
+              <Route path='*' element={<NotFoundPage/>} />
+            </Routes>
+            <Footer/>
+          </VisitorQueueGate>
         </ServiceAvailabilityGate>
       </Router>
     </div>

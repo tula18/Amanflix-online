@@ -289,3 +289,25 @@
     width: 100%;
   }
 }
+
+/* Visitor Limit card */
+.visitor-limit-card {
+  margin-top: 24px;
+}
+
+.visitor-limit-card .ant-input-number {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.visitor-limit-card .ant-input-number-input {
+  color: #fff;
+}
+
+.visitor-limit-card .ant-input-number:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.visitor-limit-card .ant-form-item-extra {
+  color: rgba(255, 255, 255, 0.45);
+}

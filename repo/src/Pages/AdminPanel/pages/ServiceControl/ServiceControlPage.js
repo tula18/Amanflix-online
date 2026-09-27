@@ -14,7 +14,8 @@ import {
   Tag,
   Modal,
   Tooltip,
-  Select
+  Select,
+  InputNumber
 } from "antd";
 import { 
   PoweroffOutlined, 
@@ -24,9 +25,11 @@ import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  TeamOutlined
 } from "@ant-design/icons";
 import { API_URL } from "../../../../config";
+import { formatWait } from "../../../../Utils/visitorQueue";
 import './ServiceControlPage.css';
 
 const { Title, Text } = Typography;
@@ -136,11 +139,32 @@ const ServiceControlPage = () => {
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState(null);
   const [form] = Form.useForm();
+  const [limitForm] = Form.useForm();
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [queueStats, setQueueStats] = useState(null);
 
   useEffect(() => {
     fetchServiceConfig();
   }, []);
+
+  // Live numbers for the Visitor Limit card
+  useEffect(() => {
+    const fetchQueueStats = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/service/queue/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          setQueueStats(await res.json());
+        }
+      } catch (error) {
+        // Keep showing the last numbers
+      }
+    };
+    fetchQueueStats();
+    const interval = setInterval(fetchQueueStats, 10000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   const fetchServiceConfig = async () => {
     try {
@@ -160,6 +184,10 @@ const ServiceControlPage = () => {
           maintenance_message: data.maintenance_message,
           estimated_downtime: data.estimated_downtime,
           allow_admin_access: data.allow_admin_access,
+        });
+        limitForm.setFieldsValue({
+          visitor_limit_enabled: data.visitor_limit_enabled,
+          max_visitors: data.max_visitors,
         });
       } else {
         const data = await res.json();
@@ -403,6 +431,19 @@ const ServiceControlPage = () => {
       maintenance_message: values.maintenance_message,
       estimated_downtime: values.estimated_downtime,
       allow_admin_access: values.allow_admin_access,
+    });
+  };
+
+  const handleSaveVisitorLimit = async () => {
+    let values;
+    try {
+      values = await limitForm.validateFields();
+    } catch (error) {
+      return; // the form shows what's wrong
+    }
+    await updateConfig({
+      visitor_limit_enabled: values.visitor_limit_enabled,
+      max_visitors: values.max_visitors,
     });
   };
 
@@ -703,6 +744,87 @@ const ServiceControlPage = () => {
                   loading={saving}
                 >
                   Save Settings
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+
+          {/* Visitor Limit */}
+          <Card className="settings-card visitor-limit-card" title={<><TeamOutlined /> Visitor Limit</>}>
+            <div className="status-grid">
+              <div className={`status-item ${queueStats && queueStats.enabled && queueStats.active >= queueStats.limit ? 'maintenance' : 'active'}`}>
+                <div className="status-icon">
+                  <TeamOutlined />
+                </div>
+                <div className="status-info">
+                  <Text strong>Visitors on the site</Text>
+                  <Text>{queueStats ? `${queueStats.active} / ${queueStats.enabled ? queueStats.limit : 'no limit'}` : '...'}</Text>
+                </div>
+              </div>
+
+              <div className={`status-item ${queueStats && queueStats.waiting > 0 ? 'maintenance' : 'normal'}`}>
+                <div className="status-icon">
+                  <ExclamationCircleOutlined />
+                </div>
+                <div className="status-info">
+                  <Text strong>Waiting in line</Text>
+                  <Text>{queueStats ? queueStats.waiting : '...'}</Text>
+                </div>
+              </div>
+
+              <div className="status-item info">
+                <div className="status-icon">
+                  <ReloadOutlined />
+                </div>
+                <div className="status-info">
+                  <Text strong>Next spot frees up in</Text>
+                  <Text>{queueStats && queueStats.waiting > 0 ? formatWait(queueStats.eta_for_next_seconds) : 'Nobody waiting'}</Text>
+                </div>
+              </div>
+
+              <div className="status-item info">
+                <div className="status-icon">
+                  <CheckCircleOutlined />
+                </div>
+                <div className="status-info">
+                  <Text strong>Last hour</Text>
+                  <Text>{queueStats ? `${queueStats.admitted_last_hour} got in, ${queueStats.released_last_hour} left` : '...'}</Text>
+                </div>
+              </div>
+            </div>
+
+            <Divider />
+
+            <Form form={limitForm} layout="vertical">
+              <Form.Item
+                name="visitor_limit_enabled"
+                label="Limit visitors"
+                valuePropName="checked"
+                tooltip="When on, visitors beyond the maximum wait in line and get in automatically when a spot frees up. Admins are never limited."
+              >
+                <Switch checkedChildren="On" unCheckedChildren="Off" />
+              </Form.Item>
+
+              <Form.Item
+                name="max_visitors"
+                label="Maximum visitors at the same time"
+                rules={[
+                  { required: true, message: 'Enter the maximum number of visitors' },
+                  { type: 'integer', min: 1, max: 10000, message: 'Enter a whole number from 1 to 10000' },
+                ]}
+                extra="Lowering it doesn't remove anyone already on the site: new visitors wait until the count drops below the new maximum."
+              >
+                <InputNumber min={1} max={10000} precision={0} style={{ width: 200 }} />
+              </Form.Item>
+
+              <Form.Item>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSaveVisitorLimit}
+                  loading={saving}
+                >
+                  Save Visitor Limit
                 </Button>
               </Form.Item>
             </Form>

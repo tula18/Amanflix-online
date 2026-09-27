@@ -84,6 +84,10 @@ def item_id(item):
 
 def capture_user(username):
     s = requests.Session()
+    # Visitor queue: get a ticket like the frontend does (a capture never fills the site)
+    queue = s.post(f'{BASE}/api/service/queue/check-in', json={})
+    if queue.status_code == 200:
+        s.headers['X-Visitor-Ticket'] = queue.json()['ticket']
     r = s.post(f'{BASE}/api/auth/login', data={'username': username, 'password': _users['password']})
     r.raise_for_status()
     s.headers['Authorization'] = f"Bearer {r.json()['api_key']}"

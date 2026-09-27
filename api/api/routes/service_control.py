@@ -17,6 +17,7 @@ from api.service_controller import (
     is_service_enabled,
     is_maintenance_mode
 )
+from api.visitor_queue import visitor_queue, is_admin_request
 from utils.logger import log_info, log_warning, log_success
 
 service_control_bp = Blueprint('service_control_bp', __name__, url_prefix='/api/service')
@@ -69,6 +70,8 @@ def update_config(current_admin):
         - maintenance_title: string (optional)
         - estimated_downtime: string (optional)
         - allow_admin_access: bool (optional)
+        - visitor_limit_enabled: bool (optional)
+        - max_visitors: int from 1 to 10000 (optional)
     
     Returns:
         JSON with updated configuration
@@ -95,6 +98,18 @@ def update_config(current_admin):
     
     if 'allow_admin_access' in data:
         updates['allow_admin_access'] = data['allow_admin_access'].lower() == 'true'
+    
+    if 'visitor_limit_enabled' in data:
+        updates['visitor_limit_enabled'] = data['visitor_limit_enabled'].lower() == 'true'
+    
+    if 'max_visitors' in data:
+        try:
+            max_visitors = int(data['max_visitors'])
+        except ValueError:
+            max_visitors = 0
+        if not 1 <= max_visitors <= 10000:
+            return jsonify({'message': 'Maximum visitors must be a whole number from 1 to 10000'}), 400
+        updates['max_visitors'] = max_visitors
     
     if not updates:
         return jsonify({'message': 'No valid configuration updates provided'}), 400
@@ -218,3 +233,40 @@ def disable_maintenance_route(current_admin):
         'message': 'Maintenance mode has been disabled',
         'config': config
     })
+
+
+# ---------------------------------------------------------------------------
+# Visitor queue (api/visitor_queue.py). Under /api/service/, so reachable even when the site is
+# full or down.
+# ---------------------------------------------------------------------------
+
+@service_control_bp.route('/queue/check-in', methods=['POST'])
+def queue_check_in():
+    """
+    Join the visitor queue, or report that this browser is still here (public).
+
+    JSON body: {ticket?: string, idle_seconds?: number}
+    An admin's check-in (Authorization: Bearer <admin token>) is admitted without taking a slot.
+
+    Returns:
+        JSON {status: 'admitted'|'waiting', ticket, position, ahead, queue_length, eta_seconds,
+              next_check_seconds, reason}
+    """
+    data = request.get_json(silent=True) or {}
+    return jsonify(visitor_queue.check_in(data.get('ticket'), data.get('idle_seconds', 0),
+                                          is_admin=is_admin_request(request)))
+
+
+@service_control_bp.route('/queue/leave', methods=['POST'])
+def queue_leave():
+    """Leave the queue (public). Sent with navigator.sendBeacon, so the body may be text/plain."""
+    data = request.get_json(force=True, silent=True) or {}
+    visitor_queue.leave(data.get('ticket'))
+    return jsonify({'message': 'Left the queue'})
+
+
+@service_control_bp.route('/queue/stats', methods=['GET'])
+@admin_token_required('superadmin')
+def queue_stats(current_admin):
+    """Live visitor numbers for the admin dashboard (superadmin only)."""
+    return jsonify(visitor_queue.stats())

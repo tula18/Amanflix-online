@@ -132,6 +132,9 @@ const ErrorHandler = (error, navigate, json={}) => {
                 // Redirect to maintenance page for service unavailable errors
                 navigate('/maintenance');
                 break;
+            case "queue_required":
+                // The site is full: VisitorQueueGate shows the waiting page (Utils/visitorQueue.js)
+                break;
             case "admin_token_missing":
                 navigate('/admin/login', {state: { message: "Please log in to continue." }})
                 break;

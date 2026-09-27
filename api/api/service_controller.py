@@ -29,7 +29,11 @@ DEFAULT_CONFIG = {
     "estimated_downtime": None,
     "last_updated": None,
     "updated_by": None,
-    "allow_admin_access": True
+    "allow_admin_access": True,
+    # Visitor limit: at most max_visitors browsers use the site at once, the rest wait in line
+    # (api/visitor_queue.py)
+    "visitor_limit_enabled": True,
+    "max_visitors": 150
 }
 
 
@@ -48,7 +52,8 @@ def _load_config_from_file():
     if os.path.exists(SERVICE_CONFIG_PATH):
         try:
             with open(SERVICE_CONFIG_PATH, 'r', encoding='utf-8') as f:
-                _service_config = json.load(f)
+                # Defaults first, so settings added later exist even in an older file
+                _service_config = {**DEFAULT_CONFIG, **json.load(f)}
                 log_info(f"Service config loaded from file: service_enabled={_service_config.get('service_enabled')}")
         except (json.JSONDecodeError, IOError) as e:
             log_warning(f"Failed to load service config from file: {e}. Using defaults.")
@@ -149,7 +154,9 @@ def update_service_config(updates, updated_by=None):
             'maintenance_message',
             'maintenance_title',
             'estimated_downtime',
-            'allow_admin_access'
+            'allow_admin_access',
+            'visitor_limit_enabled',
+            'max_visitors'
         ]
         
         for field in allowed_fields:

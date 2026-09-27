@@ -1,3 +1,5 @@
+// First: adds the visitor-queue ticket to every API request (see Utils/visitorQueue.js)
+import './Utils/visitorQueue';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';

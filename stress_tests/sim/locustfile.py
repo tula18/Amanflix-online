@@ -95,8 +95,14 @@ class AmanflixUser(HttpUser):
         self.etags = {}          # per-user browser cache: image path -> ETag
         self.fresh_until = {}    # image path -> time until which the browser reuses it (Cache-Control max-age)
         self.last_items = []     # cards seen on the last page, for hover/modal
+        self.ticket = None       # visitor-queue ticket (Utils/visitorQueue.js)
+
+        # Like VisitorQueueGate.js: wait in line until admitted, then keep the slot with check-ins
+        self.wait_in_line()
+        self._slot_keeper = gevent.spawn(self.keep_slot)
 
         with self.client.post('/api/auth/login', data={'username': self.username, 'password': PASSWORD},
+                              headers={'X-Visitor-Ticket': self.ticket or ''},
                               name='/api/auth/login', catch_response=True) as r:
             if r.status_code != 200:
                 r.failure(f'login failed {r.status_code}: run seed_sim_data.py first')
@@ -107,9 +113,45 @@ class AmanflixUser(HttpUser):
         data = self.call('POST', '/api/analytics/sessions', json={})
         self.session_id = (data or {}).get('session_id') or str(uuid.uuid4())
 
+    def on_stop(self):
+        if getattr(self, '_slot_keeper', None):
+            self._slot_keeper.kill()
+
+    # ── visitor queue ───────────────────────────────────────────
+    def queue_check_in(self):
+        """POST /api/service/queue/check-in. Simulated users are always active (idle_seconds=0)."""
+        with self.client.post('/api/service/queue/check-in', json={'ticket': self.ticket, 'idle_seconds': 0},
+                              name='/api/service/queue/check-in', catch_response=True) as r:
+            if r.status_code != 200:
+                r.failure(f'HTTP {r.status_code}' if r.status_code else 'no response')
+                return None
+            r.success()
+            data = r.json()
+            self.ticket = data.get('ticket', self.ticket)
+            return data
+
+    def wait_in_line(self):
+        start = time.perf_counter()
+        data = self.queue_check_in()
+        waited = False
+        while data and data.get('status') == 'waiting':
+            waited = True
+            gevent.sleep(data.get('next_check_seconds', 5))
+            data = self.queue_check_in()
+        if waited:
+            fire_page_event('PAGE Queue: waited to get in', start)
+
+    def keep_slot(self):
+        while True:
+            gevent.sleep(20)
+            data = self.queue_check_in()
+            if data and data.get('status') == 'waiting':
+                self.wait_in_line()
+
     # ── request helpers ─────────────────────────────────────────
     def headers(self, extra=None):
-        h = {'Authorization': f'Bearer {self.token}', 'X-Session-ID': self.session_id or ''}
+        h = {'Authorization': f'Bearer {self.token}', 'X-Session-ID': self.session_id or '',
+             'X-Visitor-Ticket': self.ticket or ''}
         if extra:
             h.update(extra)
         return h
@@ -124,6 +166,8 @@ class AmanflixUser(HttpUser):
             text = r.text if ('json' in ctype or 'text' in ctype) else ''
             if 'database is locked' in text:
                 r.failure('database is locked')
+            elif 'queue_required' in text:
+                r.failure('queue_required (turned away: not admitted)')
             elif status == 0:
                 r.failure(f'no response: {type(r.error).__name__}: {str(r.error)[:120]}')
             elif status >= 500:

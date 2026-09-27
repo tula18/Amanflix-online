@@ -208,6 +208,11 @@ def check_service_status():
         'maintenance_mode': config.get('maintenance_mode', False)
     }), 503
 
+# Visitor limit: requests from visitors waiting in line are turned away (api/visitor_queue.py).
+# Registered after check_service_status, so maintenance mode still takes priority.
+from api.visitor_queue import install_visitor_gate
+install_visitor_gate(app)
+
 # Add session cleanup handler to prevent session poisoning
 @app.teardown_request
 def cleanup_session(exception=None):
