@@ -73,7 +73,7 @@ def get_all_uploadRequest(current_user):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
 
-    uploadRequest_items = UploadRequest.query.filter_by(user_id=current_user.id).all()
+    uploadRequest_items = UploadRequest.query.filter_by(user_id=current_user.id).order_by(UploadRequest.id).all()
 
     # Fetch movie details for each item in the watchlist
     titles = []

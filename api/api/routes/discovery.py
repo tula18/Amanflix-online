@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.utils import token_required, serialize_watch_history
+from api.utils import token_required, attach_watch_history
 from api.cache import get_all_movies_cached, get_all_shows_cached
 from cdn.utils import paginate, check_images_existence, filter_valid_genres
 from models import Movie, TVShow, db
@@ -92,16 +92,7 @@ def get_discovery_random(current_user):
         
         # Add watch history if requested
         if include_watch_history:
-            for item in paginated_content:
-                item_content_type = item.get('media_type', 'movie')
-                watch_history = serialize_watch_history(
-                    content_id=item['id'],
-                    content_type=item_content_type,
-                    current_user=current_user,
-                    include_next_episode=(item_content_type == 'tv')
-                )
-                if watch_history:
-                    item['watch_history'] = watch_history
+            paginated_content = attach_watch_history(paginated_content, current_user, lambda i: i.get('media_type', 'movie'), include_next_episode=lambda i: (i.get('media_type', 'movie') == 'tv'))
         
         return jsonify(paginated_content)
         
@@ -159,16 +150,7 @@ def get_discovery_trending(current_user):
         
         # Add watch history if requested
         if include_watch_history:
-            for item in paginated_content:
-                item_content_type = item.get('media_type', 'movie')
-                watch_history = serialize_watch_history(
-                    content_id=item['id'],
-                    content_type=item_content_type,
-                    current_user=current_user,
-                    include_next_episode=(item_content_type == 'tv')
-                )
-                if watch_history:
-                    item['watch_history'] = watch_history
+            paginated_content = attach_watch_history(paginated_content, current_user, lambda i: i.get('media_type', 'movie'), include_next_episode=lambda i: (i.get('media_type', 'movie') == 'tv'))
         
         return jsonify(paginated_content)
         
@@ -232,16 +214,7 @@ def get_discovery_featured(current_user):
         
         # Add watch history if requested
         if include_watch_history:
-            for item in paginated_content:
-                item_content_type = item.get('media_type', 'movie')
-                watch_history = serialize_watch_history(
-                    content_id=item['id'],
-                    content_type=item_content_type,
-                    current_user=current_user,
-                    include_next_episode=(item_content_type == 'tv')
-                )
-                if watch_history:
-                    item['watch_history'] = watch_history
+            paginated_content = attach_watch_history(paginated_content, current_user, lambda i: i.get('media_type', 'movie'), include_next_episode=lambda i: (i.get('media_type', 'movie') == 'tv'))
         
         return jsonify(paginated_content)
         
@@ -312,16 +285,7 @@ def get_discovery_new_titles(current_user):
 
         # Add watch history if requested
         if include_watch_history:
-            for item in paginated_content:
-                item_content_type = item.get('media_type', 'movie')
-                watch_history = serialize_watch_history(
-                    content_id=item['id'],
-                    content_type=item_content_type,
-                    current_user=current_user,
-                    include_next_episode=(item_content_type == 'tv')
-                )
-                if watch_history:
-                    item['watch_history'] = watch_history
+            paginated_content = attach_watch_history(paginated_content, current_user, lambda i: i.get('media_type', 'movie'), include_next_episode=lambda i: (i.get('media_type', 'movie') == 'tv'))
 
         return jsonify(paginated_content)
 

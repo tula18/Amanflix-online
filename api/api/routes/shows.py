@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, abort
 from models import TVShow
-from api.utils import admin_token_required, token_required, serialize_watch_history
+from api.utils import admin_token_required, token_required, attach_watch_history
 from api.cache import get_all_shows_cached, get_show_by_id_cached
 from cdn.utils import filter_valid_genres
 from utils.fuzzy import fuzzy_filter_and_rank
@@ -73,15 +73,7 @@ def get_shows(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for show in show_list:
-            watch_history = serialize_watch_history(
-                content_id=show['show_id'],
-                content_type='tv',
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                show['watch_history'] = watch_history
+        show_list = attach_watch_history(show_list, current_user, 'tv', include_next_episode=True, id_key='show_id')
     
     return jsonify(show_list), 200
 
@@ -98,15 +90,7 @@ def search_show(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for show in limited_result:
-            watch_history = serialize_watch_history(
-                content_id=show['show_id'],
-                content_type='tv',
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                show['watch_history'] = watch_history
+        limited_result = attach_watch_history(limited_result, current_user, 'tv', include_next_episode=True, id_key='show_id')
     
     return jsonify(limited_result)
 
@@ -121,14 +105,7 @@ def get_show(current_user, show_id):
     
     # Add watch history if requested
     if include_watch_history:
-        watch_history = serialize_watch_history(
-            content_id=show_data['show_id'],
-            content_type='tv',
-            current_user=current_user,
-            include_next_episode=True
-        )
-        if watch_history:
-            show_data['watch_history'] = watch_history
+        show_data = attach_watch_history([show_data], current_user, 'tv', include_next_episode=True, id_key='show_id')[0]
     
     return jsonify(show_data)
 

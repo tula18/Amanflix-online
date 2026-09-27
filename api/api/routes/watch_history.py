@@ -6,6 +6,7 @@ from sqlalchemy import desc
 from api.utils import create_watch_id, parse_watch_id
 from utils.logger import log_error, log_info, log_debug
 from api.db_utils import safe_commit, safe_rollback, db_retry
+from api import progress_buffer
 
 watch_history_bp = Blueprint('watch_history', __name__, url_prefix='/api/watch-history')
 
@@ -78,13 +79,23 @@ def update_watch_history(current_user):
     # Is it completed?
     is_completed = progress_percentage > 90
     
-    # Create or update watch history
+    # Update watch history: a save that only moves the position is written with other saves a
+    # few seconds later (api/progress_buffer.py); a change in completion, or the player's final
+    # save when it closes, is written now
     if watch_history:
-        watch_history.watch_timestamp = watch_timestamp
-        watch_history.total_duration = total_duration
-        watch_history.progress_percentage = progress_percentage
-        watch_history.last_watched = datetime.utcnow()
-        watch_history.is_completed = is_completed
+        values = {
+            'watch_timestamp': watch_timestamp,
+            'total_duration': total_duration,
+            'progress_percentage': progress_percentage,
+            'last_watched': datetime.utcnow(),
+            'is_completed': is_completed
+        }
+        write_now = bool(data.get('final')) or is_completed != bool(watch_history.is_completed)
+        response = watch_history.serialize()
+        response.update(values, last_watched=values['last_watched'].isoformat())
+        if not progress_buffer.save(watch_history, values, write_now=write_now):
+            return jsonify({'message': 'Failed to update watch history due to database error'}), 500
+        return jsonify(response), 200
     else:
         watch_history = WatchHistory(
             user_id=current_user.id,
@@ -99,7 +110,7 @@ def update_watch_history(current_user):
         )
         db.session.add(watch_history)
     
-    if not safe_commit():
+    if not safe_commit(apply=lambda: db.session.add(watch_history)):
         return jsonify({'message': 'Failed to update watch history due to database error'}), 500
     return jsonify(watch_history.serialize()), 200
 
@@ -371,10 +382,6 @@ def get_next_episode_info(current_user, watch_history):
         
         # Check if this is a single episode show
         all_seasons = Season.query.filter_by(tvshow_id=content_id).all()
-        
-        # Check how many episodes in each season
-        for season in all_seasons:
-            episodes = Episode.query.filter_by(season_id=season.id).all()
         
         if len(all_seasons) == 1 and current_season:
             episodes_in_season = Episode.query.filter_by(season_id=current_season.id).count()

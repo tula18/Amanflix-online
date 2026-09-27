@@ -1,7 +1,9 @@
 from datetime import datetime
+import atexit
 import logging
 import os
-from logging.handlers import RotatingFileHandler
+import queue
+from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
 import re
 import inspect
 from paths import LOGS_DIR
@@ -71,10 +73,26 @@ def _setup_file_logger():
     api_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
     api_logger.addHandler(api_handler)
     
+    # The log files live on the NAS: write them from one background thread, so a request never
+    # waits for a network write (or for another thread's write to finish)
+    for log in (logger, api_logger):
+        file_handlers = log.handlers[:]
+        log.handlers.clear()
+        log_queue = queue.SimpleQueue()
+        queue_handler = QueueHandler(log_queue)
+        queue_handler.setLevel(logging.INFO)
+        log.addHandler(queue_handler)
+        listener = QueueListener(log_queue, *file_handlers, respect_handler_level=True)
+        listener.start()
+        atexit.register(listener.stop)  # writes whatever is still queued
+    
     return logger, api_logger
 
 # Initialize loggers
 logger, api_logger = _setup_file_logger()
+
+# Debug messages are never written to the log files; print them only when asked to
+CONSOLE_DEBUG = os.environ.get('AMANFLIX_LOG_DEBUG', '0') == '1'
 
 # Helper function to strip ANSI color codes and replace Unicode characters for file logging
 def _strip_ansi_codes(text):
@@ -153,7 +171,9 @@ def log_data(label, value):
     logger.info(_strip_ansi_codes(f"{label}: {value}"))
 
 def log_debug(message):
-    """Print debug message (dim gray)"""
+    """Print debug message (dim gray), only when AMANFLIX_LOG_DEBUG=1"""
+    if not CONSOLE_DEBUG:
+        return
     console_msg = f"{Colors.GRAY}DEBUG: {message}{Colors.RESET}"
     print(console_msg)
     logger.debug(_strip_ansi_codes(f"DEBUG: {message}"))

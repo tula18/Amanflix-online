@@ -361,8 +361,17 @@ __attribute__((constructor)) static void slowfs_init(void) {
     g_enabled = 1;
     if ((v = getenv("SLOWFS_STATS")) && v[0] == '/') {
         strlcpy(g_stats_path, v, sizeof g_stats_path);
-        pthread_t t;
-        pthread_create(&t, NULL, stats_thread, NULL);
-        pthread_detach(t);
+        // Only the first process reports. Child processes (e.g. Python's multiprocessing resource
+        // tracker, started by tqdm) still get the delays but would overwrite the stats file.
+        // An exec keeps the pid (macOS's python launcher execs the real interpreter), a child doesn't.
+        char pid[32];
+        snprintf(pid, sizeof pid, "%d", (int)getpid());
+        const char *owner = getenv("SLOWFS_STATS_PID");
+        if (!owner) setenv("SLOWFS_STATS_PID", pid, 1);
+        if (!owner || strcmp(owner, pid) == 0) {
+            pthread_t t;
+            pthread_create(&t, NULL, stats_thread, NULL);
+            pthread_detach(t);
+        }
     }
 }

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 import subprocess
 from utils.logger import log_api
-from utils.logger import log_warning, log_info, log_error
+from utils.logger import log_warning, log_info, log_error, log_debug
 
 from models import User, BlacklistToken, db, Admin
 
@@ -392,7 +392,7 @@ def get_episode_video_id_cached(content_id, season_number, episode_number):
         video_id, timestamp = _episode_cache[cache_key]
         # Check if cache is still valid
         if time.time() - timestamp < EPISODE_CACHE_TTL:
-            log_info(f"Episode cache hit: {cache_key} -> {video_id}")
+            log_debug(f"Episode cache hit: {cache_key} -> {video_id}")
             return video_id
         else:
             # Cache expired, remove it
@@ -470,9 +470,8 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
     Returns:
         dict: Serialized watch history information, or None if no history found
     """
-    from models import WatchHistory, TVShow, Season, Episode
-    from api.routes.watch_history import get_next_episode_info
-    from sqlalchemy import func, desc
+    from models import WatchHistory
+    from sqlalchemy import desc
     
     # Check if entry exists in database
     query = WatchHistory.query.filter_by(
@@ -481,7 +480,7 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
         content_type=content_type
     )
 
-    log_info(f"Querying watch history for user {current_user.id}, content {content_id}, type {content_type}")
+    log_debug(f"Querying watch history for user {current_user.id}, content {content_id}, type {content_type}")
     
     if content_type == 'tv' and season_number and episode_number:
         # If specific episode requested, get that one
@@ -496,9 +495,23 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
     watch_history = query.first()
     
     if not watch_history:
-        log_info(f"No watch history found for user {current_user.id}, content {content_id}, type {content_type}")
+        log_debug(f"No watch history found for user {current_user.id}, content {content_id}, type {content_type}")
         return None
-        
+    
+    return _watch_history_response(watch_history, content_id, current_user, include_next_episode)
+
+def _watch_history_response(watch_history, content_id, current_user, include_next_episode, completed_episodes=None):
+    """
+    Build the response of serialize_watch_history for a WatchHistory row.
+    
+    Args:
+        completed_episodes (set, optional): (season_number, episode_number) pairs this user has
+            completed for the show. When given, checking whether the user finished the show needs
+            no query per episode.
+    """
+    from models import WatchHistory, TVShow, Season, Episode
+    from api.routes.watch_history import get_next_episode_info
+    
     # Base response
     response = {
         'content_type': watch_history.content_type,
@@ -564,14 +577,17 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
                                 continue
                                 
                             # Check if this episode has been watched and completed
-                            ep_history = WatchHistory.query.filter_by(
-                                user_id=current_user.id,
-                                content_id=content_id,
-                                content_type='tv',
-                                season_number=s.season_number,
-                                episode_number=e.episode_number,
-                                is_completed=True
-                            ).first()
+                            if completed_episodes is not None:
+                                ep_history = (s.season_number, e.episode_number) in completed_episodes
+                            else:
+                                ep_history = WatchHistory.query.filter_by(
+                                    user_id=current_user.id,
+                                    content_id=content_id,
+                                    content_type='tv',
+                                    season_number=s.season_number,
+                                    episode_number=e.episode_number,
+                                    is_completed=True
+                                ).first()
                             
                             if not ep_history:
                                 all_completed = False
@@ -599,6 +615,86 @@ def serialize_watch_history(content_id, content_type, current_user, season_numbe
             response['next_episode'] = next_episode_info
     
     return response
+
+def _content_key(content_id):
+    """Content IDs are ints in the database; catalog items may hold them as strings."""
+    try:
+        return int(content_id)
+    except (TypeError, ValueError):
+        return content_id
+
+def serialize_watch_history_batch(content_ids, content_type, current_user, include_next_episode=True):
+    """
+    serialize_watch_history for many titles of one content type, with a single watch-history query.
+    
+    Picks the same row per title as serialize_watch_history: for TV the most recently watched
+    episode, otherwise the first row stored.
+    
+    Returns:
+        dict: content ID -> serialized watch history, only for titles the user has history for
+    """
+    from models import WatchHistory
+    
+    ids = list(dict.fromkeys(_content_key(c) for c in content_ids))
+    rows_by_id = {}
+    for start in range(0, len(ids), 500):
+        rows = WatchHistory.query.filter(
+            WatchHistory.user_id == current_user.id,
+            WatchHistory.content_type == content_type,
+            WatchHistory.content_id.in_(ids[start:start + 500])
+        ).order_by(WatchHistory.id).all()
+        for row in rows:
+            rows_by_id.setdefault(row.content_id, []).append(row)
+    
+    result = {}
+    for content_id, rows in rows_by_id.items():
+        completed_episodes = None
+        if content_type == 'tv':
+            # Latest first; NULL last_watched sorts last, like ORDER BY last_watched DESC in SQLite
+            watch_history = max(rows, key=lambda r: (r.last_watched is not None, r.last_watched or datetime.min))
+            completed_episodes = {(r.season_number, r.episode_number) for r in rows if r.is_completed}
+        else:
+            watch_history = rows[0]
+        result[content_id] = _watch_history_response(
+            watch_history, content_id, current_user, include_next_episode, completed_episodes)
+    return result
+
+def attach_watch_history(items, current_user, content_type, include_next_episode=False, id_key='id'):
+    """
+    Return copies of catalog items with the user's watch history added under 'watch_history'.
+    
+    Catalog items come from caches shared by every request and every user, so they are never
+    modified here: an item with history is returned as a new dict, one without is returned as is.
+    Watch history is looked up with one query per content type, not one per item.
+    
+    Args:
+        items (list): Catalog items (dicts)
+        current_user (User): The current user object
+        content_type (str or callable): 'movie', 'tv', or a function item -> content type
+        include_next_episode (bool or callable): Passed to serialize_watch_history, or a function item -> bool
+        id_key (str): Key holding the content ID in each item
+        
+    Returns:
+        list: The items, with watch history where the user has any
+    """
+    def value(v, item):
+        return v(item) if callable(v) else v
+    
+    keys = [(value(content_type, item), bool(value(include_next_episode, item)), _content_key(item[id_key]))
+            for item in items]
+    
+    ids_by_group = {}
+    for ctype, with_next, content_id in keys:
+        ids_by_group.setdefault((ctype, with_next), []).append(content_id)
+    
+    histories = {}
+    for (ctype, with_next), ids in ids_by_group.items():
+        for content_id, watch_history in serialize_watch_history_batch(
+                ids, ctype, current_user, include_next_episode=with_next).items():
+            histories[(ctype, with_next, content_id)] = watch_history
+    
+    return [{**item, 'watch_history': histories[key]} if key in histories else item
+            for item, key in zip(items, keys)]
 
 def setup_request_logging(app):
     """Setup request logging with after_request handler"""

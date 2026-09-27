@@ -78,6 +78,9 @@ class BlacklistToken(db.Model):
     blacklisted_on = db.Column(db.DateTime, default=db.func.now())
 
 class WatchHistory(db.Model):
+    # Every card, progress save and continue-watching lookup filters by these columns
+    __table_args__ = (db.Index('ix_watch_history_user_content', 'user_id', 'content_type', 'content_id'),)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content_type = db.Column(db.String(50), nullable=False)  # 'movie' or 'tv'
@@ -110,6 +113,8 @@ class WatchHistory(db.Model):
         }
 
 class MyList(db.Model):
+    __table_args__ = (db.Index('ix_my_list_user_content', 'user_id', 'content_id'),)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content_type = db.Column(db.String(50), nullable=False)
@@ -117,6 +122,8 @@ class MyList(db.Model):
     added_at = db.Column(db.DateTime, default=db.func.now())
 
 class UploadRequest(db.Model):
+    __table_args__ = (db.Index('ix_upload_request_user_content', 'user_id', 'content_type', 'content_id'),)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content_type = db.Column(db.String(50), nullable=False)
@@ -270,6 +277,7 @@ class TVShow(db.Model):
     
 class Season(db.Model):
     __tablename__ = 'season'
+    __table_args__ = (db.Index('ix_season_tvshow_number', 'tvshow_id', 'season_number'),)
 
     id = db.Column(db.Integer, primary_key=True)
     season_number = db.Column(db.Integer, nullable=True)
@@ -295,6 +303,7 @@ class Season(db.Model):
 
 class Episode(db.Model):
     __tablename__ = 'episode'
+    __table_args__ = (db.Index('ix_episode_season_number', 'season_id', 'episode_number'),)
 
     id = db.Column(db.Integer, primary_key=True)
     season_id = db.Column(db.Integer, db.ForeignKey('season.id'), nullable=False)
@@ -375,6 +384,8 @@ class Notification(db.Model):
         }
 
 class UserSession(db.Model):
+    __table_args__ = (db.Index('ix_user_session_user_ended', 'user_id', 'ended_at'),)
+
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(64), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)  # Nullable for anonymous sessions

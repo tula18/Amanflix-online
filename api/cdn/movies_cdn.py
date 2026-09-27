@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, abort
 from cdn.utils import paginate, calculate_similarity, check_images_existence, filter_valid_genres
-from api.utils import token_required, serialize_watch_history
+from api.utils import token_required, attach_watch_history
 from utils.data_helpers import get_movies, get_movies_with_images
 from utils.fuzzy import fuzzy_filter_and_rank
 import random
@@ -29,15 +29,7 @@ def get_movies_endpoint(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for movie in paginated_movies:
-            watch_history = serialize_watch_history(
-                content_id=movie['id'],
-                content_type='movie',
-                current_user=current_user,
-                include_next_episode=False
-            )
-            if watch_history:
-                movie['watch_history'] = watch_history
+        paginated_movies = attach_watch_history(paginated_movies, current_user, 'movie', include_next_episode=False)
     
     return jsonify(paginated_movies)
 
@@ -55,15 +47,7 @@ def search_movies(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for movie in limited_result:
-            watch_history = serialize_watch_history(
-                content_id=movie['id'],
-                content_type='movie',
-                current_user=current_user,
-                include_next_episode=False
-            )
-            if watch_history:
-                movie['watch_history'] = watch_history
+        limited_result = attach_watch_history(limited_result, current_user, 'movie', include_next_episode=False)
     
     return jsonify(limited_result)
 
@@ -80,14 +64,7 @@ def get_movie(current_user, movie_id):
     
     # Add watch history if requested
     if include_watch_history:
-        watch_history = serialize_watch_history(
-            content_id=movie_id,
-            content_type='movie',
-            current_user=current_user,
-            include_next_episode=False
-        )
-        if watch_history:
-            movie['watch_history'] = watch_history
+        movie = attach_watch_history([movie], current_user, 'movie', include_next_episode=False)[0]
     
     return jsonify(movie)
 
@@ -139,15 +116,7 @@ def get__random_movie(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for movie in paginated_movies:
-            watch_history = serialize_watch_history(
-                content_id=movie['id'],
-                content_type='movie',
-                current_user=current_user,
-                include_next_episode=False
-            )
-            if watch_history:
-                movie['watch_history'] = watch_history
+        paginated_movies = attach_watch_history(paginated_movies, current_user, 'movie', include_next_episode=False)
 
     end_time = time.time()
     
@@ -190,14 +159,6 @@ def get_similar_movies(current_user, movie_id):
     
     # Add watch history if requested
     if include_watch_history:
-        for movie in result:
-            watch_history = serialize_watch_history(
-                content_id=movie['id'],
-                content_type='movie',
-                current_user=current_user,
-                include_next_episode=False
-            )
-            if watch_history:
-                movie['watch_history'] = watch_history
+        result = attach_watch_history(result, current_user, 'movie', include_next_episode=False)
     
     return jsonify(result)

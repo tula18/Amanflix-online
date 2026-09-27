@@ -463,7 +463,8 @@ def get_user_mylist_cached(user_id: int) -> list:
     if cached is not None:
         return cached
 
-    items = MyList.query.filter_by(user_id=user_id).all()
+    # In the order they were added (explicit, since the user_id index would sort by content_id)
+    items = MyList.query.filter_by(user_id=user_id).order_by(MyList.id).all()
     entries = [{"content_type": item.content_type, "content_id": item.content_id} for item in items]
     mylist_cache.set(key, entries)
     return entries

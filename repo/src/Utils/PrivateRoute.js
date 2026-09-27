@@ -45,7 +45,8 @@ const PrivateRoute = ({ children }) => {
         };
 
         verifyToken();
-    }, [token, navigate, isAuthenticated]);
+        // Not re-run when isAuthenticated changes: that sent a second verify on every page load
+    }, [token, navigate]);
 
     const spinnerStyle = {
         display: isAuthenticated === null ? 'flex' : 'none',

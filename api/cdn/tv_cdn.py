@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, abort
 from cdn.utils import paginate, calculate_similarity, check_images_existence, filter_valid_genres
-from api.utils import token_required, serialize_watch_history
+from api.utils import token_required, attach_watch_history
 from utils.data_helpers import get_tv_shows, get_tv_shows_with_images
 from utils.fuzzy import fuzzy_filter_and_rank
 import random
@@ -27,15 +27,7 @@ def get_tv_series(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for show in paginated_tv_series:
-            watch_history = serialize_watch_history(
-                content_id=show['id'],
-                content_type='tv',
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                show['watch_history'] = watch_history
+        paginated_tv_series = attach_watch_history(paginated_tv_series, current_user, 'tv', include_next_episode=True)
     
     return jsonify(paginated_tv_series)
 
@@ -53,15 +45,7 @@ def search_tv_series(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for show in limited_result:
-            watch_history = serialize_watch_history(
-                content_id=show['id'],
-                content_type='tv',
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                show['watch_history'] = watch_history
+        limited_result = attach_watch_history(limited_result, current_user, 'tv', include_next_episode=True)
     
     return jsonify(limited_result)
 
@@ -78,14 +62,7 @@ def get_tv(current_user, tv_id):
     
     # Add watch history if requested
     if include_watch_history:
-        watch_history = serialize_watch_history(
-            content_id=tv_id,
-            content_type='tv',
-            current_user=current_user,
-            include_next_episode=True
-        )
-        if watch_history:
-            tv['watch_history'] = watch_history
+        tv = attach_watch_history([tv], current_user, 'tv', include_next_episode=True)[0]
     
     return jsonify(tv)
 
@@ -136,15 +113,7 @@ def get_random_tv(current_user):
     
     # Add watch history if requested
     if include_watch_history:
-        for show in paginated_tv_series:
-            watch_history = serialize_watch_history(
-                content_id=show['id'],
-                content_type='tv',
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                show['watch_history'] = watch_history
+        paginated_tv_series = attach_watch_history(paginated_tv_series, current_user, 'tv', include_next_episode=True)
     
     return jsonify(paginated_tv_series)
 
@@ -185,14 +154,6 @@ def get_similar_tv_series(current_user, tv_id):
     
     # Add watch history if requested
     if include_watch_history:
-        for show in result:
-            watch_history = serialize_watch_history(
-                content_id=show['id'],
-                content_type='tv',
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                show['watch_history'] = watch_history
+        result = attach_watch_history(result, current_user, 'tv', include_next_episode=True)
     
     return jsonify(result)

@@ -56,10 +56,11 @@ Locust exits with code 1 whenever any request failed. That's expected.
 |---|---|
 | `run_experiment.sh` | One complete, repeatable run (see Quick start). Keeps the Mac awake and flags a run as invalid if it slept anyway. |
 | `run_backend.sh` | Starts the backend like production (`AMANFLIX_DEBUG=0`) in `local`, `slowfs` or `nas` mode. `PROFILE=1` adds the profiler. |
-| `locustfile.py` | The simulated users. **BrowserUser** (40%) replays the frontend's real request sequence: auth checks, the Home burst of ~13 requests with 6 parallel connections, images with browser-style revalidation, Movies/TV genre pages, search, My List, hover and modal. **ViewerUser** (60%) streams video byte ranges and saves progress every 10 s, like `WatchPage.js`. |
+| `locustfile.py` | The simulated users. **BrowserUser** (40%) replays the frontend's real request sequence: auth checks, the Home burst of ~13 requests with 6 parallel connections, images with browser-style caching (reused while `Cache-Control: max-age` lasts, then revalidated with the ETag), Movies/TV genre pages, search, My List, hover and modal. CORS preflights are not simulated. **ViewerUser** (60%) streams video byte ranges and saves progress every 10 s, like `WatchPage.js`. |
 | `seed_sim_data.py` | Creates `sim_user_000…149` (password in the generated `sim_users.json`) with 20–80 watch-history rows and 5–30 My List entries each. It backs up the DB to `amanflix_db.db.pre-sim` once. `--restore` puts that backup back. |
 | `profiled_app.py` | Runs `api/app.py` with instrumentation attached and no app changes (Flask signals, SQLAlchemy events, a sampling profiler). A py-spy stand-in that needs no sudo. |
 | `slowfs/slowfs.c` | The NAS simulator: a small library injected with `DYLD_INSERT_LIBRARIES` into the backend process only. Built automatically. |
+| `parity_capture.py` | Checks that a backend change returns the same data. Captures the responses of the card, watch-history and search endpoints for 5 sim users (`parity_capture.py <label>`, add `--restart-per-user` for a baseline that predates the shared-cache fix), then compares two captures (`--compare <before> <after>`). Starts and stops the backend itself; only reads. |
 | `diag_sqlite.py` | Explains a single per-card watch-history lookup on the simulated NAS: page reads and time cold, warm, after another connection commits, with a bigger cache, and with an index. Works on a temporary copy of the DB. |
 | `nas_sim.sh` | Optional alternative to slowfs: a real loopback SMB mount throttled with pf/dnctl. Needs sudo and macOS File Sharing. `up` / `down` / `status`. |
 
@@ -115,6 +116,32 @@ Everything else, even the login check, then waits in line, and writes starve, wh
 "database is locked" comes from.
 
 Run `diag_sqlite.py` to see the per-query numbers on this machine.
+
+## After the fixes (2026-09-27)
+
+Same load, same machine, reports in `reports/A-final`, `reports/B-s2` (database fixes only) and
+`reports/B-final` (everything). Slowest 5% in brackets.
+
+| | Run A before | Run A after | Run B before | Run B, DB fixes | Run B after |
+|---|---|---|---|---|---|
+| Home: rows ready | 2.2 s (7.4 s) | **0.08 s (0.23 s)** | 78 s (129 s) | 0.84 s (2.7 s) | **0.20 s (0.36 s)** |
+| Home: images loaded | 2.9 s (9.5 s) | **0.11 s (0.39 s)** | 78 s (129 s) | 1.5 s (4.8 s) | **0.26 s (0.58 s)** |
+| Search | 1.8 s (7.1 s) | **0.01 s (0.31 s)** | 45 s (47 s) | 0.93 s (1.7 s) | **0.02 s (0.36 s)** |
+| Progress save | 0.13 s (2.4 s) | **4 ms (9 ms)** | 30 s (34 s) | 0.11 s (0.72 s) | **11 ms (41 ms)** |
+| Failed requests | 2,231 | **0** | 1,200 | 1,491 | **0** |
+| DB connection timeouts / "database is locked" | 0 / 0 | 0 / 0 | 1,037 / 6 | 0 / 0 | **0 / 0** |
+
+What changed: indexes on the per-user lookups; one watch-history query per card row instead of one per
+card; progress saves written together every 5 s (new rows, completion and the player's final save at
+once); `safe_commit` no longer reports lost writes as saved; catalog items are no longer modified per
+request (one user's progress could show for another); posters cached by the browser for a day; CORS
+preflights cached; catalog copies and search results computed once per catalog version; log files
+written from a background thread. The failures left in "DB fixes" were the dev server dropping
+connections under bursts of poster requests; browser caching of posters removed them.
+
+`B-final/slowfs-stats.txt` is not usable: a child process (Python's multiprocessing resource tracker,
+started by tqdm) overwrote it. slowfs now writes stats only from the backend process. The delays were
+applied (the same queries average ~8x slower than in run A).
 
 ## Housekeeping
 

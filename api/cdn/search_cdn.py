@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from cdn.utils import filter_valid_genres, check_images_existence, paginate
-from api.utils import token_required, serialize_watch_history
-from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
+from api.utils import token_required, attach_watch_history
+from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images, cached_for_catalog
 from utils.fuzzy import fuzzy_filter_and_rank
 import random
 
@@ -13,18 +13,20 @@ def autocomplete():
     temp_tv_series = get_tv_shows_with_images()
     query = request.args.get('q', '', type=str)
     max_results = request.args.get('max_results', 10, type=int)
+    sources = (temp_movies, temp_tv_series)
 
-    all_items = [
+    all_items = cached_for_catalog(('autocomplete_items',), sources, lambda: [
         {"id": item['id'], "title": item['title']} for item in temp_movies
     ] + [
         {"id": item['id'], "name": item['name']} for item in temp_tv_series if isinstance(item.get('name'), str)
-    ]
+    ])
 
-    suggestions = fuzzy_filter_and_rank(
+    # Many users type the same first letters: rank each query once per catalog version
+    suggestions = cached_for_catalog(('autocomplete', query, max_results), sources, lambda: fuzzy_filter_and_rank(
         query,
         all_items,
         lambda item: item.get('title') or item.get('name') or '',
-    )[:max_results]
+    )[:max_results])
 
     return jsonify(suggestions)
 
@@ -49,6 +51,57 @@ def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
     temp_movies = get_movies()
     temp_tv_series = get_tv_shows()
 
+    temp_movies_search = temp_movies
+    temp_tv_series_search = temp_tv_series
+
+    if with_images:
+        temp_movies_search = get_movies_with_images()
+        temp_tv_series_search = get_tv_shows_with_images()
+
+    # Filtering the whole catalog is the expensive part and depends only on these parameters, so
+    # it's done once per catalog version. Catalog items are shared by every request: the result
+    # type is tracked separately and only added to copies of the page that is returned.
+    filtered, item_types = cached_for_catalog(
+        ('search_filter', genre, min_rating, max_rating, media_type, year, with_images),
+        (temp_movies_search, temp_tv_series_search),
+        lambda: _filter_catalog(temp_movies_search, temp_tv_series_search, genre, min_rating,
+                                max_rating, media_type, year))
+    final_results = filtered
+
+    # Text matching — fuzzy or exact substring (also the same for everyone with these parameters)
+    if query:
+        def match():
+            if fuzzy:
+                return fuzzy_filter_and_rank(
+                    query,
+                    filtered,
+                    text_getter=lambda item: item.get('title') or item.get('name') or '',
+                    threshold=fuzzy_threshold,
+                )
+            q_lower = query.lower()
+            return [
+                item for item in filtered
+                if q_lower in (item.get('title') or item.get('name') or '').lower()
+            ]
+
+        final_results = cached_for_catalog(
+            ('search_match', genre, min_rating, max_rating, media_type, year, with_images, query,
+             bool(fuzzy), fuzzy_threshold),
+            (temp_movies_search, temp_tv_series_search), match)
+
+    # A copy: the cached lists are shared and shuffle works in place
+    final_results = list(final_results)
+
+    if is_random:
+        random.shuffle(final_results)
+
+    return [{**item, 'type': item_types[id(item)]} for item in paginate(final_results, page, per_page)]
+
+
+def _filter_catalog(movies, tv_series, genre, min_rating, max_rating, media_type, year):
+    """The catalog items matching the filters, and a map id(item) -> result type."""
+    item_types = {}
+
     def apply_filters(items, item_type):
         results = []
         for item in items:
@@ -70,47 +123,17 @@ def _perform_search(query, genre, min_rating, max_rating, media_type, is_random,
             # Genre facet
             if genre and not filter_valid_genres(item, genre):
                 continue
-            item['type'] = item_type
+            item_types[id(item)] = item_type
             results.append(item)
         return results
 
-    temp_movies_search = temp_movies
-    temp_tv_series_search = temp_tv_series
-
-    if with_images:
-        temp_movies_search = get_movies_with_images()
-        temp_tv_series_search = get_tv_shows_with_images()
-
     if media_type == 'movies':
-        final_results = apply_filters(temp_movies_search, 'movie')
+        results = apply_filters(movies, 'movie')
     elif media_type == 'tv':
-        final_results = apply_filters(temp_tv_series_search, 'tv_series')
+        results = apply_filters(tv_series, 'tv_series')
     else:
-        final_results = (
-            apply_filters(temp_movies_search, 'movie') +
-            apply_filters(temp_tv_series_search, 'tv_series')
-        )
-
-    # Text matching — fuzzy or exact substring
-    if query:
-        if fuzzy:
-            final_results = fuzzy_filter_and_rank(
-                query,
-                final_results,
-                text_getter=lambda item: item.get('title') or item.get('name') or '',
-                threshold=fuzzy_threshold,
-            )
-        else:
-            q_lower = query.lower()
-            final_results = [
-                item for item in final_results
-                if q_lower in (item.get('title') or item.get('name') or '').lower()
-            ]
-
-    if is_random:
-        random.shuffle(final_results)
-
-    return paginate(final_results, page, per_page)
+        results = apply_filters(movies, 'movie') + apply_filters(tv_series, 'tv_series')
+    return results, item_types
 
 # _perform_search_with_images is now handled by passing with_images=True to _perform_search
 # Kept as a thin alias for backwards compatibility.
@@ -133,7 +156,10 @@ def get_facets():
     """Return available filter facets: distinct genres and min/max release year."""
     movies = get_movies()
     tv_series = get_tv_shows()
+    return jsonify(cached_for_catalog(('facets',), (movies, tv_series), lambda: _compute_facets(movies, tv_series)))
 
+
+def _compute_facets(movies, tv_series):
     genres: set = set()
     years: list = []
 
@@ -149,11 +175,11 @@ def get_facets():
         if y:
             years.append(y)
 
-    return jsonify({
+    return {
         'genres': sorted(genres),
         'year_min': min(years) if years else None,
         'year_max': max(years) if years else None,
-    })
+    }
 
 
 def _collect_genres(item, genre_set: set):
@@ -238,15 +264,6 @@ def authenticated_search(current_user):
     
     # Add watch history if requested (only available in authenticated search)
     if include_watch_history:
-        for item in limited_results:
-            content_type = 'movie' if item.get('type') == 'movie' else 'tv'
-            watch_history = serialize_watch_history(
-                content_id=item['id'],
-                content_type=content_type,
-                current_user=current_user,
-                include_next_episode=True
-            )
-            if watch_history:
-                item['watch_history'] = watch_history
+        limited_results = attach_watch_history(limited_results, current_user, lambda i: 'movie' if i.get('type') == 'movie' else 'tv', include_next_episode=True)
     
     return jsonify(limited_results)

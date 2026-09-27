@@ -117,12 +117,20 @@ def db_retry(max_retries: int = DB_MAX_RETRIES, base_delay: float = DB_RETRY_BAS
 # Safe Commit Helper
 # =============================================================================
 
-def safe_commit() -> bool:
+def safe_commit(apply: Callable[[], Any] = None) -> bool:
     """
-    Safely commit the current database session with retry logic.
+    Commit the current database session, retrying on "database is locked" when possible.
+    
+    SQLite already waits for a lock itself (the engine's connect timeout), so a lock error here
+    means that wait ran out. A failed commit must be rolled back, and the rollback discards the
+    pending changes, so a retry is only possible when `apply` is given: a function that stages
+    the changes again on the fresh session. Without it the commit is not retried.
+    
+    Args:
+        apply: Optional function that re-applies the changes to db.session before a retry.
     
     Returns:
-        True if commit succeeded, False if all retries failed.
+        True if the changes were committed, False if they were not (the session is rolled back).
     
     Usage:
         db.session.add(new_record)
@@ -131,40 +139,37 @@ def safe_commit() -> bool:
     """
     from models import db
     
-    for attempt in range(DB_MAX_RETRIES + 1):
+    retries = DB_MAX_RETRIES if apply else 0
+    for attempt in range(retries + 1):
         try:
             db.session.commit()
             return True
             
         except (OperationalError, SQLAlchemyOperationalError) as e:
+            safe_rollback()
             error_str = str(e).lower()
             
-            if "database is locked" not in error_str and "locked" not in error_str:
+            if "locked" not in error_str:
                 log_error(f"Database error (non-locking): {e}")
-                db.session.rollback()
                 return False
             
-            if attempt >= DB_MAX_RETRIES:
-                log_error(f"safe_commit failed after {DB_MAX_RETRIES + 1} attempts")
-                db.session.rollback()
+            if attempt >= retries:
+                log_error(f"safe_commit failed: database locked after {attempt + 1} attempt(s), changes not saved")
                 return False
             
             delay = min(DB_RETRY_BASE_DELAY * (2 ** attempt), DB_RETRY_MAX_DELAY)
             log_warning(f"Database locked during commit, attempt {attempt + 1}, retrying in {delay:.2f}s")
-            
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
-            
             time.sleep(delay)
+            try:
+                apply()
+            except Exception as apply_error:
+                log_error(f"Re-applying changes for retry failed: {apply_error}")
+                safe_rollback()
+                return False
             
         except Exception as e:
             log_error(f"Unexpected error during commit: {e}")
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
+            safe_rollback()
             return False
     
     return False
@@ -245,6 +250,28 @@ class db_operation:
 # =============================================================================
 # Utility Functions
 # =============================================================================
+
+def ensure_indexes() -> None:
+    """
+    Create any index declared on the models that the database doesn't have yet.
+    
+    db.create_all() only creates missing tables, so indexes added to an existing table would
+    otherwise never reach a database that is started with `py app.py`. Safe to run on every start.
+    """
+    from models import db
+    from sqlalchemy import text
+    
+    existing = {row[0] for row in db.session.execute(
+        text("SELECT name FROM sqlite_master WHERE type = 'index'"))}
+    db.session.commit()
+    
+    for table in db.metadata.sorted_tables:
+        for index in table.indexes:
+            if index.name in existing:
+                continue
+            start = time.time()
+            index.create(bind=db.engine, checkfirst=True)
+            log_info(f"Created index {index.name} on {table.name} in {time.time() - start:.1f}s")
 
 def ensure_session_clean() -> None:
     """

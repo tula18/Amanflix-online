@@ -22,14 +22,16 @@ Optimized Performance Strategy:
 """
 
 import copy
+import threading
 import time
 from functools import lru_cache
 from utils.logger import log_error, log_warning, log_debug, log_info
 
-# Cache for performance optimization (cleared when data is updated)
+# Copies of the catalog lists, one per version of each list (cleared when data is updated).
+# Each entry is (source list, copy): admin updates assign a new list to app.<name>, so a
+# different source object means the copy is out of date.
 _data_cache = {}
-_cache_timestamps = {}
-CACHE_TTL = 300  # 5 minutes cache TTL
+_cache_lock = threading.Lock()
 
 # Performance testing flags
 DISABLE_CACHE_FOR_TESTING = False  # Set to True to disable cache for testing
@@ -38,32 +40,104 @@ ENABLE_PERFORMANCE_LOGGING = False  # Set to True to enable timing logs for debu
 
 def clear_data_cache():
     """Clear the data cache when source data is updated."""
-    global _data_cache, _cache_timestamps
-    _data_cache.clear()
-    _cache_timestamps.clear()
+    with _cache_lock:
+        _data_cache.clear()
+        _derived_cache.clear()
     log_info("Data cache cleared")
 
 
-def _is_cache_valid(cache_key):
-    """Check if cached data is still valid based on TTL."""
-    if cache_key not in _cache_timestamps:
-        return False
-    return (time.time() - _cache_timestamps[cache_key]) < CACHE_TTL
+# Values computed from the catalogs (search results before paging, facets, genre lists), kept
+# per version of the catalog lists they were computed from
+_derived_cache = {}
+_DERIVED_CACHE_MAX = 256
 
 
-def _get_cached_data(cache_key):
-    """Get data from cache if valid."""
-    if cache_key in _data_cache and _is_cache_valid(cache_key):
-        log_debug(f"Cache hit for {cache_key}")
-        return _data_cache[cache_key]
+def cached_for_catalog(key, sources, compute):
+    """
+    Return compute(), computed once per version of the catalog lists in `sources`.
+
+    Args:
+        key: Hashable description of what is computed (including its parameters)
+        sources (tuple): The catalog lists the value is computed from, e.g. (get_movies(),)
+        compute (callable): Computes the value
+
+    The value is shared by every request, so callers must not modify it.
+    """
+    entry = _derived_cache.get(key)
+    if entry is not None and len(entry[0]) == len(sources) and all(a is b for a, b in zip(entry[0], sources)):
+        return entry[1]
+    value = compute()
+    with _cache_lock:
+        if key not in _derived_cache and len(_derived_cache) >= _DERIVED_CACHE_MAX:
+            _derived_cache.pop(next(iter(_derived_cache)))  # the oldest entry
+        _derived_cache[key] = (tuple(sources), value)
+    return value
+
+
+def _get_cached_data(cache_key, source):
+    """Get the cached copy of `source`, or None if there is none for this version of it."""
+    entry = _data_cache.get(cache_key)
+    if entry is not None and entry[0] is source:
+        return entry[1]
     return None
 
 
-def _cache_data(cache_key, data):
-    """Cache data with timestamp."""
-    _data_cache[cache_key] = data
-    _cache_timestamps[cache_key] = time.time()
-    log_debug(f"Cached data for {cache_key}")
+def _cache_data(cache_key, data, source):
+    """Cache a copy of `source`."""
+    _data_cache[cache_key] = (source, data)
+
+
+def _get_catalog(name, label, force_clean=False, fields_to_remove=None):
+    """
+    A copy of the catalog list app.<name>, shared by get_movies() and the other getters.
+
+    The copy is made once per version of the list and returned to every caller, so callers must
+    not modify it. Only one thread makes a copy at a time: when a copy is needed, concurrent
+    requests wait for it instead of each copying the whole catalog while holding the GIL.
+    """
+    try:
+        # Performance testing: start timing
+        start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
+
+        import app
+        source = getattr(app, name)
+        cache_key = f"{label}_force_clean_{force_clean}_fields_{fields_to_remove}"
+
+        if not DISABLE_CACHE_FOR_TESTING:
+            cached_data = _get_cached_data(cache_key, source)
+            if cached_data is not None:
+                return cached_data
+
+        with _cache_lock:
+            if not DISABLE_CACHE_FOR_TESTING:
+                cached_data = _get_cached_data(cache_key, source)
+                if cached_data is not None:
+                    return cached_data
+
+            process_start = time.time()
+            if force_clean:
+                # Only clean when explicitly requested (for save/export operations)
+                result = clean_data_list(source, fields_to_remove, clean=True)
+            else:
+                # Deep copy so the global data (saved back to JSON on export) is never touched
+                result = copy.deepcopy(source)
+            log_info(f"Copied {label} data ({len(result)} items) in {time.time() - process_start:.2f}s")
+
+            if ENABLE_PERFORMANCE_LOGGING:
+                operation = "CLEAN" if force_clean else "COPY"
+                log_info(f"⚡ PERFORMANCE [{label.upper()} {operation}]: Total: {time.time() - start_time:.4f}s for {len(result)} items")
+
+            # Cache the result (unless disabled for testing)
+            if not DISABLE_CACHE_FOR_TESTING:
+                _cache_data(cache_key, result, source)
+
+            return result
+    except ImportError as e:
+        log_error(f"Error importing {label} data: {str(e)}")
+        return []
+    except Exception as e:
+        log_error(f"Error getting {label} data: {str(e)}")
+        return []
 
 
 def clean_item_data(item, fields_to_remove=None):
@@ -163,55 +237,7 @@ def get_movies(force_clean=False, fields_to_remove=None):
     Returns:
         list: Deep copy of movies data, cleaned only if force_clean=True
     """
-    try:
-        # Performance testing: start timing
-        start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        # Create cache key based on parameters
-        cache_key = f"movies_force_clean_{force_clean}_fields_{fields_to_remove}"
-        
-        # Check cache first (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            cached_data = _get_cached_data(cache_key)
-            if cached_data is not None:
-                if ENABLE_PERFORMANCE_LOGGING:
-                    elapsed = time.time() - start_time
-                    log_info(f"🚀 PERFORMANCE [MOVIES CACHE HIT]: {elapsed:.4f}s for {len(cached_data)} items")
-                return cached_data
-        
-        # Import and process data
-        from app import movies
-        
-        # Performance testing: time the operation
-        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        if force_clean:
-            # Only clean when explicitly requested (for save/export operations)
-            result = clean_data_list(movies, fields_to_remove, clean=True)
-            log_debug(f"Force cleaned movies data for save/export operation")
-        else:
-            # Fast deep copy without cleaning (for all read operations)
-            # This provides complete data isolation without unnecessary processing
-            result = copy.deepcopy(movies)
-            log_debug(f"Fast deep copy of movies data for read operation")
-        
-        if ENABLE_PERFORMANCE_LOGGING:
-            process_elapsed = time.time() - process_start
-            total_elapsed = time.time() - start_time
-            operation = "CLEAN" if force_clean else "COPY"
-            log_info(f"⚡ PERFORMANCE [MOVIES {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
-        
-        # Cache the result (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            _cache_data(cache_key, result)
-        
-        return result
-    except ImportError as e:
-        log_error(f"Error importing movies data: {str(e)}")
-        return []
-    except Exception as e:
-        log_error(f"Error getting movies data: {str(e)}")
-        return []
+    return _get_catalog('movies', 'movies', force_clean, fields_to_remove)
 
 
 def get_tv_shows(force_clean=False, fields_to_remove=None):
@@ -226,53 +252,7 @@ def get_tv_shows(force_clean=False, fields_to_remove=None):
     Returns:
         list: Deep copy of TV series data, cleaned only if force_clean=True
     """
-    try:
-        # Performance testing: start timing
-        start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        # Create cache key based on parameters
-        cache_key = f"tv_series_force_clean_{force_clean}_fields_{fields_to_remove}"
-        
-        # Check cache first (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            cached_data = _get_cached_data(cache_key)
-            if cached_data is not None:
-                if ENABLE_PERFORMANCE_LOGGING:
-                    elapsed = time.time() - start_time
-                    log_info(f"🚀 PERFORMANCE [TV CACHE HIT]: {elapsed:.4f}s for {len(cached_data)} items")
-                return cached_data
-            
-        # Import and process data
-        from app import tv_series
-        
-        # Performance testing: time the operation
-        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        if force_clean:
-            # Only clean when explicitly requested (for save/export operations)
-            result = clean_data_list(tv_series, fields_to_remove, clean=True)
-            log_debug(f"Force cleaned TV series data for save/export operation")
-        else:
-            # Just return deep copy without cleaning (for read operations)
-            result = copy.deepcopy(tv_series)
-        
-        if ENABLE_PERFORMANCE_LOGGING:
-            process_elapsed = time.time() - process_start
-            total_elapsed = time.time() - start_time
-            operation = "CLEAN" if force_clean else "COPY"
-            log_info(f"⚡ PERFORMANCE [TV {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
-        
-        # Cache the result (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            _cache_data(cache_key, result)
-        
-        return result
-    except ImportError as e:
-        log_error(f"Error importing TV series data: {str(e)}")
-        return []
-    except Exception as e:
-        log_error(f"Error getting TV series data: {str(e)}")
-        return []
+    return _get_catalog('tv_series', 'tv_series', force_clean, fields_to_remove)
 
 
 def get_movies_with_images(force_clean=False, fields_to_remove=None):
@@ -287,53 +267,7 @@ def get_movies_with_images(force_clean=False, fields_to_remove=None):
     Returns:
         list: Deep copy of movies with images data, cleaned only if force_clean=True
     """
-    try:
-        # Performance testing: start timing
-        start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        # Create cache key based on parameters
-        cache_key = f"movies_with_images_force_clean_{force_clean}_fields_{fields_to_remove}"
-        
-        # Check cache first (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            cached_data = _get_cached_data(cache_key)
-            if cached_data is not None:
-                if ENABLE_PERFORMANCE_LOGGING:
-                    elapsed = time.time() - start_time
-                    log_info(f"🚀 PERFORMANCE [MOVIES_IMG CACHE HIT]: {elapsed:.4f}s for {len(cached_data)} items")
-                return cached_data
-            
-        # Import and process data
-        from app import movies_with_images
-        
-        # Performance testing: time the operation
-        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        if force_clean:
-            # Only clean when explicitly requested (for save/export operations)
-            result = clean_data_list(movies_with_images, fields_to_remove, clean=True)
-            log_debug(f"Force cleaned movies with images data for save/export operation")
-        else:
-            # Just return deep copy without cleaning (for read operations)
-            result = copy.deepcopy(movies_with_images)
-        
-        if ENABLE_PERFORMANCE_LOGGING:
-            process_elapsed = time.time() - process_start
-            total_elapsed = time.time() - start_time
-            operation = "CLEAN" if force_clean else "COPY"
-            log_info(f"⚡ PERFORMANCE [MOVIES_IMG {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
-        
-        # Cache the result (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            _cache_data(cache_key, result)
-        
-        return result
-    except ImportError as e:
-        log_error(f"Error importing movies with images data: {str(e)}")
-        return []
-    except Exception as e:
-        log_error(f"Error getting movies with images data: {str(e)}")
-        return []
+    return _get_catalog('movies_with_images', 'movies_with_images', force_clean, fields_to_remove)
 
 
 def get_tv_shows_with_images(force_clean=False, fields_to_remove=None):
@@ -348,53 +282,7 @@ def get_tv_shows_with_images(force_clean=False, fields_to_remove=None):
     Returns:
         list: Deep copy of TV series with images data, cleaned only if force_clean=True
     """
-    try:
-        # Performance testing: start timing
-        start_time = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        # Create cache key based on parameters
-        cache_key = f"tv_series_with_images_force_clean_{force_clean}_fields_{fields_to_remove}"
-        
-        # Check cache first (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            cached_data = _get_cached_data(cache_key)
-            if cached_data is not None:
-                if ENABLE_PERFORMANCE_LOGGING:
-                    elapsed = time.time() - start_time
-                    log_info(f"🚀 PERFORMANCE [TV_IMG CACHE HIT]: {elapsed:.4f}s for {len(cached_data)} items")
-                return cached_data
-            
-        # Import and process data
-        from app import tv_series_with_images
-        
-        # Performance testing: time the operation
-        process_start = time.time() if ENABLE_PERFORMANCE_LOGGING else None
-        
-        if force_clean:
-            # Only clean when explicitly requested (for save/export operations)
-            result = clean_data_list(tv_series_with_images, fields_to_remove, clean=True)
-            log_debug(f"Force cleaned TV series with images data for save/export operation")
-        else:
-            # Just return deep copy without cleaning (for read operations)
-            result = copy.deepcopy(tv_series_with_images)
-        
-        if ENABLE_PERFORMANCE_LOGGING:
-            process_elapsed = time.time() - process_start
-            total_elapsed = time.time() - start_time
-            operation = "CLEAN" if force_clean else "COPY"
-            log_info(f"⚡ PERFORMANCE [TV_IMG {operation}]: Process took {process_elapsed:.4f}s, Total: {total_elapsed:.4f}s for {len(result)} items")
-        
-        # Cache the result (unless disabled for testing)
-        if not DISABLE_CACHE_FOR_TESTING:
-            _cache_data(cache_key, result)
-        
-        return result
-    except ImportError as e:
-        log_error(f"Error importing TV series with images data: {str(e)}")
-        return []
-    except Exception as e:
-        log_error(f"Error getting TV series with images data: {str(e)}")
-        return []
+    return _get_catalog('tv_series_with_images', 'tv_series_with_images', force_clean, fields_to_remove)
 
 
 def get_all_items(force_clean=False, fields_to_remove=None):

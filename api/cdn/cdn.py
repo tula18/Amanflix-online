@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, send_from_directory, request
-from utils.data_helpers import get_movies, get_tv_shows
+from werkzeug.exceptions import NotFound
+from utils.data_helpers import get_movies, get_tv_shows, cached_for_catalog
 from utils.fuzzy import fuzzy_filter_and_rank
 from paths import CDN_POSTERS_DIR
 import os
@@ -8,12 +9,17 @@ from api.utils import admin_token_required
 
 cdn_bp = Blueprint('cdn_bp', __name__, url_prefix='/cdn')
 
+# How long browsers may reuse a poster without asking again. Without it every card image is
+# re-checked against the NAS on every page load. Kept to a day because an admin can replace a
+# poster file under the same name.
+POSTER_MAX_AGE = 24 * 60 * 60
+
 # Endpoint to serve images
 @cdn_bp.route('/images/<path:filename>', methods=['GET'])
 def get_image(filename):
     try:
-        return send_from_directory(CDN_POSTERS_DIR, filename)
-    except FileNotFoundError:
+        return send_from_directory(CDN_POSTERS_DIR, filename, max_age=POSTER_MAX_AGE)
+    except (FileNotFoundError, NotFound):
         log_error("File not found")
         return jsonify({"message":"File not found.", "error_reason": "image_not_found"}), 404
     except Exception as e:
@@ -35,21 +41,25 @@ def get_genres():
 
     list_type = request.args.get('list_type', 'all', type=str)
 
-    if list_type == 'movies':
-        use_list = temp_movies
-    elif list_type == 'tv':
-        use_list = temp_tv_series
-    else:
-        use_list = temp_movies + temp_tv_series
+    def compute():
+        if list_type == 'movies':
+            use_list = temp_movies
+        elif list_type == 'tv':
+            use_list = temp_tv_series
+        else:
+            use_list = temp_movies + temp_tv_series
 
-    genres = set()
-    for item in use_list:
-        if "genres" in item:
-            if isinstance(item['genres'], str):
-                genres.update([g.strip().lower() for g in item['genres'].split(',')])
-            elif isinstance(item['genres'], list):
-                genres.update([g['name'].lower() for g in item['genres'] if isinstance(g, dict) and 'name' in g])
-    return jsonify(sorted(genres))
+        genres = set()
+        for item in use_list:
+            if "genres" in item:
+                if isinstance(item['genres'], str):
+                    genres.update([g.strip().lower() for g in item['genres'].split(',')])
+                elif isinstance(item['genres'], list):
+                    genres.update([g['name'].lower() for g in item['genres'] if isinstance(g, dict) and 'name' in g])
+        return sorted(genres)
+
+    # The same for everyone until the catalog changes
+    return jsonify(cached_for_catalog(('genres', list_type), (temp_movies, temp_tv_series), compute))
 
 @cdn_bp.route('/combined', methods=['GET'])
 @admin_token_required('moderator')

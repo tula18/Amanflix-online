@@ -21,6 +21,7 @@ import itertools
 import json
 import os
 import random
+import re
 import time
 import uuid
 
@@ -92,6 +93,7 @@ class AmanflixUser(HttpUser):
         self.token = None
         self.session_id = None
         self.etags = {}          # per-user browser cache: image path -> ETag
+        self.fresh_until = {}    # image path -> time until which the browser reuses it (Cache-Control max-age)
         self.last_items = []     # cards seen on the last page, for hover/modal
 
         with self.client.post('/api/auth/login', data={'username': self.username, 'password': PASSWORD},
@@ -138,16 +140,21 @@ class AmanflixUser(HttpUser):
             return None
 
     def image(self, backdrop_path):
-        """Like the browser: first load is a full GET, then a conditional GET (no Cache-Control is sent)."""
+        """Like the browser: reuse the image while its max-age lasts, else a conditional GET (or a full GET the first time)."""
         if not backdrop_path:
             return
         path = f'/cdn/images{backdrop_path}'
+        if time.time() < self.fresh_until.get(path, 0):
+            return  # served from the browser cache, no request
         extra = {'If-None-Match': self.etags[path]} if path in self.etags else None
         with self.client.get(path, name='/cdn/images/[backdrop]', headers=extra,
                              catch_response=True) as r:
             if r.status_code in (200, 304):
                 if r.headers.get('ETag'):
                     self.etags[path] = r.headers['ETag']
+                max_age = re.search(r'max-age=(\d+)', r.headers.get('Cache-Control', ''))
+                if max_age and 'no-cache' not in r.headers.get('Cache-Control', ''):
+                    self.fresh_until[path] = time.time() + int(max_age.group(1))
                 r.success()
             elif r.status_code == 404:
                 r.success()  # the frontend falls back to unkwon_image.jpg

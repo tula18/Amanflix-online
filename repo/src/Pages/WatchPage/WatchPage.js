@@ -48,6 +48,9 @@ const WatchPage = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const lastSavedTimeRef = useRef(0);
     const isSavingRef = useRef(false);
+    // After a failed save, wait before trying again (10s, 20s, 40s, max 60s) instead of every second
+    const saveFailuresRef = useRef(0);
+    const nextSaveAttemptRef = useRef(0);
     const [startTimeFromParams, setStartTimeFromParams] = useState(null);
     const [useOldPlayer, setUseOldPlayer] = useState(false)
     const [disablePreview, setDisablePreview] = useState(true);
@@ -2302,6 +2305,12 @@ const WatchPage = () => {
         }
     };
 
+    const scheduleSaveRetry = () => {
+        saveFailuresRef.current += 1;
+        const delay = Math.min(10000 * 2 ** (saveFailuresRef.current - 1), 60000);
+        nextSaveAttemptRef.current = Date.now() + delay;
+    };
+
     // Save watch history with deduplication guards
     const saveWatchHistory = async (force = false) => {
         if (!videoRef.current || !totalDuration || !contentType || !contentId) return;
@@ -2313,6 +2322,9 @@ const WatchPage = () => {
         
         // Skip if not enough time has passed since last save (unless forced)
         if (!force && Math.abs(currentTime - lastSavedTimeRef.current) < 10) return;
+        
+        // Back off after failed saves so a struggling server isn't asked again every second
+        if (!force && Date.now() < nextSaveAttemptRef.current) return;
         
         // Prevent concurrent saves
         if (isSavingRef.current) return;
@@ -2336,6 +2348,11 @@ const WatchPage = () => {
                 payload.episode_number = episodeNumber;
             }
             
+            // A forced save is the last one (player closing): the server writes it immediately
+            if (force) {
+                payload.final = true;
+            }
+            
             const response = await fetch(`${API_URL}/api/watch-history/update`, {
                 method: 'POST',
                 headers: {
@@ -2347,9 +2364,14 @@ const WatchPage = () => {
             
             if (response.ok) {
                 lastSavedTimeRef.current = currentTime;
+                saveFailuresRef.current = 0;
+                nextSaveAttemptRef.current = 0;
+            } else {
+                scheduleSaveRetry();
             }
         } catch (error) {
             console.error('Failed to save watch history:', error);
+            scheduleSaveRetry();
         } finally {
             isSavingRef.current = false;
         }

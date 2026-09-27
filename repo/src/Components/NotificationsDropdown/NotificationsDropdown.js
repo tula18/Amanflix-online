@@ -3,7 +3,7 @@ import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Badge, Button, List, Popover, Empty } from 'antd';
 import { API_URL } from '../../config';
 import './NotificationsDropdown.css';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FaBell } from 'react-icons/fa6';
 
 const NotificationsDropdown = () => {
@@ -13,15 +13,17 @@ const NotificationsDropdown = () => {
   const [open, setOpen] = useState(false);
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
+  // The navbar is hidden (not unmounted) while watching, so don't poll there
+  const isWatching = useLocation().pathname.startsWith('/watch');
 
   useEffect(() => {
-    if (token) {
+    if (token && !isWatching) {
       fetchUnreadCount();
       const interval = setInterval(fetchUnreadCount, 60000); // Check every minute
       
       return () => clearInterval(interval);
     }
-  }, [token]);
+  }, [token, isWatching]);
 
   const fetchUnreadCount = async () => {
     try {

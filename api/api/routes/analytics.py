@@ -128,7 +128,9 @@ def heartbeat():
 @analytics_bp.route('/end-session', methods=['POST'])
 def end_session():
     """Mark a session as ended"""
-    data = request.json
+    # navigator.sendBeacon posts the JSON as text/plain (a JSON content type is not allowed
+    # cross-origin), so parse the body whatever its content type
+    data = request.get_json(force=True, silent=True) or {}
     session_id = data.get('session_id')
     
     if not session_id:

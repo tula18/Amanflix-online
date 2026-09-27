@@ -5,6 +5,12 @@ import os
 import jwt
 import platform
 import sys
+
+# Run as `py app.py`, this file is the module __main__. Modules that do `from app import ...` would
+# otherwise import it a second time as `app`, re-running all startup code (catalogs reloaded from
+# disk, a second copy kept in memory, a separate upload-progress dict).
+sys.modules.setdefault('app', sys.modules[__name__])
+
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -130,15 +136,24 @@ log_section_end()
 log_section("FLASK APPLICATION")
 log_step("Initializing Flask app")
 app = Flask(__name__)
-CORS(app)
+# Browsers send a preflight (OPTIONS) before almost every API call; let them reuse the answer
+# for 2 hours (Chrome's maximum) instead of about 5 seconds
+CORS(app, max_age=7200)
 app = setup_request_logging(app)
 app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
 sock = Sock(app)
 
 log_step("Configuring database")
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URI
+# How long SQLite waits for a lock before failing with "database is locked" (default 5 s).
+# Waiting inside SQLite costs nothing while blocked, unlike failing and retrying the request.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'connect_args': {'timeout': 15}}
 db.init_app(app)
 migrate = Migrate(app, db)
+
+# Playback progress saves are written in batches; this also writes pending ones on exit
+from api import progress_buffer
+progress_buffer.init_app(app)
 
 bcrypt = Bcrypt(app)
 
@@ -552,6 +567,9 @@ if __name__ == '__main__':
     # Create tables
     with app.app_context():
         db.create_all()
+        # create_all() doesn't add indexes to tables that already exist
+        from api.db_utils import ensure_indexes
+        ensure_indexes()
     
     # Validate database schema
     log_section("DATABASE SCHEMA VALIDATION")
@@ -697,6 +715,10 @@ if __name__ == '__main__':
         # Warm content caches on startup (inside app context)
         from api.cache import warm_content_caches
         warm_content_caches()
+        # Copy the catalogs now rather than in the first requests that need them
+        from utils.data_helpers import get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images
+        for get_catalog in (get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images):
+            get_catalog()
     
     app.run(debug=os.environ.get('AMANFLIX_DEBUG', '1') == '1', host='0.0.0.0', port=5001, threaded=True)
     # For production set host to machine ip
