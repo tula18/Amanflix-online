@@ -60,6 +60,50 @@ def resolve_path(path):
     return os.path.normpath(os.path.join(SCRIPT_DIR, path))
 
 
+def copytree_with_overwrite(src, dst):
+    """Like shutil.copytree but always overwrites if dst exists."""
+    if os.path.exists(dst):
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst)
+
+
+def safe_move(src, dst, max_retries=3, delay=1.0):
+    """
+    Safely move a folder. Uses os.rename() first (fast), falls back to
+    copy+delete on failure. Verifies dst exists after moving.
+    Returns True on success, raises exception on failure.
+    """
+    # Fast path: os.rename works across directories on the same drive
+    try:
+        os.rename(src, dst)
+        # Verify it actually worked
+        if os.path.exists(dst) and not os.path.exists(src):
+            return True
+        if not os.path.exists(src):
+            return True
+    except OSError:
+        pass
+
+    # Slow path: copy then delete (needed for cross-device moves and
+    # Windows locked files that os.rename can't handle)
+    print(f"  [INFO] Fast move failed, using copy+delete method...")
+    for attempt in range(max_retries):
+        try:
+            copytree_with_overwrite(src, dst)
+            shutil.rmtree(src)
+            if os.path.exists(dst) and not os.path.exists(src):
+                return True
+            raise Exception("Move completed but verification failed")
+        except Exception as e:
+            print(f"  [WARN] Attempt {attempt + 1}/{max_retries} failed: {e}")
+            if os.path.exists(dst) and not os.path.exists(src):
+                return True
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+
+    raise Exception(f"Failed to move {src} to {dst} after {max_retries} attempts")
+
+
 def find_app_process():
     """Find running app.py process. Returns list of PIDs."""
     pids = []
@@ -402,7 +446,7 @@ def cmd_update(dry_run=False):
             if os.path.exists(venv_temp_path):
                 shutil.rmtree(venv_temp_path)
             print(f"  Moving venv to temp: {venv_temp_path}")
-            shutil.move(venv_src, venv_temp_path)
+            safe_move(venv_src, venv_temp_path)
             print("  [OK] venv extracted.")
         else:
             print(f"  [WARN] venv not found at {venv_src}")
@@ -415,7 +459,7 @@ def cmd_update(dry_run=False):
             if os.path.exists(migrations_temp_path):
                 shutil.rmtree(migrations_temp_path)
             print(f"  Moving migrations to temp: {migrations_temp_path}")
-            shutil.move(migrations_src, migrations_temp_path)
+            safe_move(migrations_src, migrations_temp_path)
             print("  [OK] migrations extracted.")
         else:
             print(f"  [WARN] migrations not found at {migrations_src}")
@@ -437,13 +481,33 @@ def cmd_update(dry_run=False):
     backup_dest = os.path.join(backup_folder, backup_name)
     os.makedirs(backup_folder, exist_ok=True)
     print(f"  Moving {prod_path} -> {backup_dest}")
-    shutil.move(prod_path, backup_dest)
+    try:
+        safe_move(prod_path, backup_dest)
+    except Exception as e:
+        print(f"  [ERROR] Failed to archive production folder: {e}")
+        print(f"[ERROR] Update aborted. Your production folder is still at: {prod_path}")
+        print(f"[ERROR] Please check if the folder is locked by another process.")
+        sys.exit(1)
+    if os.path.exists(prod_path):
+        print(f"  [ERROR] PROBLEM: Production folder still exists at {prod_path}")
+        print(f"  [ERROR] Update aborted for safety.")
+        sys.exit(1)
     print(f"  [OK] Old prod archived as {backup_name}")
 
     # ── Step 4: Rename new version to prod ────────────────────
     print("[Step 4/5] Activating new version...")
     print(f"  Renaming {new_version_path} -> {prod_path}")
-    shutil.move(new_version_path, prod_path)
+    try:
+        safe_move(new_version_path, prod_path)
+    except Exception as e:
+        print(f"  [ERROR] Failed to activate new version: {e}")
+        print(f"  [ERROR] Your backup is at: {backup_dest}")
+        print(f"  [ERROR] Run 'python update_helper.py rollback' to restore from backup.")
+        sys.exit(1)
+    if not os.path.exists(prod_path):
+        print(f"  [ERROR] PROBLEM: Production folder not found at {prod_path}")
+        print(f"  [ERROR] Something went wrong!")
+        sys.exit(1)
     print("  [OK] New version is now production.")
 
     # ── Step 5: Restore venv + migrations + data_config ────────────────────
@@ -460,7 +524,7 @@ def cmd_update(dry_run=False):
             venv_parent = os.path.dirname(venv_dest)
             os.makedirs(venv_parent, exist_ok=True)
             print(f"  Moving venv back: {venv_dest}")
-            shutil.move(venv_temp_path, venv_dest)
+            safe_move(venv_temp_path, venv_dest)
             print("  [OK] venv restored.")
         else:
             print("  [WARN] No venv to restore. You may need to create one manually.")
@@ -478,7 +542,7 @@ def cmd_update(dry_run=False):
             migrations_parent = os.path.dirname(migrations_dest)
             os.makedirs(migrations_parent, exist_ok=True)
             print(f"  Moving migrations back: {migrations_dest}")
-            shutil.move(migrations_temp_path, migrations_dest)
+            safe_move(migrations_temp_path, migrations_dest)
             print("  [OK] migrations restored.")
         else:
             print("  [WARN] No migrations to restore.")
@@ -691,13 +755,13 @@ def cmd_rollback():
         if os.path.exists(venv_src):
             if os.path.exists(venv_temp_path):
                 shutil.rmtree(venv_temp_path)
-            shutil.move(venv_src, venv_temp_path)
+            safe_move(venv_src, venv_temp_path)
             print("  [OK] venv extracted.")
 
         if os.path.exists(migrations_src):
             if os.path.exists(migrations_temp_path):
                 shutil.rmtree(migrations_temp_path)
-            shutil.move(migrations_src, migrations_temp_path)
+            safe_move(migrations_src, migrations_temp_path)
             print("  [OK] migrations extracted.")
 
         if os.path.exists(data_config_src):
@@ -711,7 +775,7 @@ def cmd_rollback():
         print("[Step 3/5] Archiving current prod before rollback...")
         rollback_backup_name = f"pre_rollback_{timestamp}"
         rollback_backup_dest = os.path.join(backup_folder, rollback_backup_name)
-        shutil.move(prod_path, rollback_backup_dest)
+        safe_move(prod_path, rollback_backup_dest)
         print(f"  [OK] Current prod archived as {rollback_backup_name}")
     else:
         print("[Step 2/5] No current prod to extract from.")
@@ -732,7 +796,7 @@ def cmd_rollback():
             shutil.rmtree(venv_dest)
         venv_parent = os.path.dirname(venv_dest)
         os.makedirs(venv_parent, exist_ok=True)
-        shutil.move(venv_temp_path, venv_dest)
+        safe_move(venv_temp_path, venv_dest)
         print("  [OK] venv restored.")
 
     migrations_dest = os.path.join(prod_path, migrations_rel)
@@ -742,7 +806,7 @@ def cmd_rollback():
             shutil.rmtree(migrations_dest)
         migrations_parent = os.path.dirname(migrations_dest)
         os.makedirs(migrations_parent, exist_ok=True)
-        shutil.move(migrations_temp_path, migrations_dest)
+        safe_move(migrations_temp_path, migrations_dest)
         print("  [OK] migrations restored.")
 
     data_config_dest = os.path.join(prod_path, 'api', 'config', 'data_config.json')
