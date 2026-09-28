@@ -153,6 +153,76 @@ How the old hardcoded paths map to the new external Data folder:
 
 ---
 
+## Creating an Update Package
+
+Run these on the dev machine (macOS) from the project root. The result is `Amanflix_new_version.zip` (~800 KB) containing an `Amanflix_new_version/` folder with `api/` and `repo/`.
+
+### What goes in the package
+
+The update replaces the whole prod folder with the package, and only `venv/`, `migrations/` and `data_config.json` are carried over from the old prod. So the package must contain all the code, and nothing that belongs to prod.
+
+| Included | Left out | Why left out |
+|----------|----------|--------------|
+| `api/` code (tracked files only) | `api/venv`, `api/migrations`, `api/config/data_config.json` | Carried over from prod by the update helper |
+| `repo/src`, `repo/public`, `package.json`, `package-lock.json` | `api/config/service_config.json` | Holds prod's live settings (maintenance mode, visitor queue); the dev copy would overwrite them |
+| | `repo/build`, `repo/node_modules` | The frontend is built on the prod server |
+| | Data folders, `__pycache__`, `.DS_Store` | Not code |
+
+### Steps
+
+**1. Commit everything.** The package is exported from `HEAD`, so uncommitted changes are not included.
+```bash
+git status   # must be clean
+```
+
+**2. Export the code.**
+```bash
+rm -rf Amanflix_new_version Amanflix_new_version.zip
+mkdir Amanflix_new_version
+git archive HEAD api repo | tar -x -C Amanflix_new_version
+rm Amanflix_new_version/api/config/service_config.json
+```
+
+**3. Point the frontend at the prod API.** Edit `Amanflix_new_version/repo/src/config.js` so the prod line is the only uncommented `API_URL`, then check it:
+```bash
+grep "^ *export const API_URL" Amanflix_new_version/repo/src/config.js
+# expected: export const API_URL = 'http://55.45.250.91:5001';
+```
+Only edit the copy inside the package. The repo's own `repo/src/config.js` stays on `127.0.0.1` for development.
+
+**4. Check whether prod needs extra steps.** Compare against the commit that is currently in prod:
+```bash
+git log --oneline <prod-commit>..HEAD -- api/requirements.txt   # any output → pip install after updating
+git log --oneline <prod-commit>..HEAD -- api/models.py          # any output → check if a migration is needed
+```
+New indexes don't need a migration, because `ensure_indexes()` creates them when the app starts. New columns or tables do.
+
+**5. Zip it.**
+```bash
+find Amanflix_new_version -name .DS_Store -delete
+zip -r -9 -X -q Amanflix_new_version.zip Amanflix_new_version
+unzip -tq Amanflix_new_version.zip   # should print "No errors detected"
+```
+`-X` leaves out macOS file attributes, so no `__MACOSX` or `._` files end up in the zip.
+
+Both `Amanflix_new_version/` and `Amanflix_new_version.zip` are listed in `.git/info/exclude`, so they never show up in `git status`.
+
+### Installing the package on prod
+
+1. Copy the zip to `Z:\Amanflix\`, right-click → **Extract All**, so that `Z:\Amanflix\Amanflix_new_version\` exists.
+2. `Amanflix_new_version` is the default `new_version_folder` in `update_config.json`. If yours is set to something else, rename the folder to match.
+3. `python update_helper.py update`
+4. Restore the service settings: copy `api\config\service_config.json` from the new `Amanflix_backups\backup_<timestamp>\` folder into `Amanflix_prod\api\config\`.
+5. Build the frontend. The update moved the old `node_modules` into the backup, so either move it back from `Amanflix_backups\backup_<timestamp>\repo\node_modules` or run `npm install`, then:
+   ```batch
+   cd Z:\Amanflix\Amanflix_prod\repo
+   npm run build
+   ```
+6. If step 4 of packaging found changes: run `pip install -r requirements.txt` with the venv, and/or apply the migration.
+7. Start the app.
+
+---
+
 ## Typical Update Workflow
 
 ```
