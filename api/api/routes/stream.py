@@ -4,11 +4,11 @@ from api.utils import ensure_upload_folder_exists, parse_watch_id, get_episode_v
 from api.media_health import ISSUE_CORRUPT_DISPLAY_MATRIX, analyze_file, repair_file
 from models import Episode, Season 
 from paths import UPLOADS_DIR, LOGS_DIR
+from utils.logger import SafeRotatingFileHandler
 import os
 import subprocess
 import threading
 import logging
-from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
 stream_bp = Blueprint('stream_bp', __name__, url_prefix='/api')
@@ -37,7 +37,7 @@ def _setup_reencode_logger():
     if reencode_logger.hasHandlers():
         reencode_logger.handlers.clear()
     
-    handler = RotatingFileHandler(
+    handler = SafeRotatingFileHandler(
         os.path.join(logs_dir, 'reencode_history.log'),
         maxBytes=5242880,  # 5MB
         backupCount=5,

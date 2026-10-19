@@ -725,5 +725,5 @@ if __name__ == '__main__':
         for get_catalog in (get_movies, get_tv_shows, get_movies_with_images, get_tv_shows_with_images):
             get_catalog()
     
-    app.run(debug=os.environ.get('AMANFLIX_DEBUG', '1') == '1', host='0.0.0.0', port=5001, threaded=True)
+    app.run(debug=os.environ.get('AMANFLIX_DEBUG', '0') == '1', host='0.0.0.0', port=5001, threaded=True)
     # For production set host to machine ip

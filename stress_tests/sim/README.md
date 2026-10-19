@@ -147,5 +147,5 @@ applied (the same queries average ~8x slower than in run A).
 
 - Put the DB back as it was before seeding: `api/venv/bin/python stress_tests/sim/seed_sim_data.py --restore`
 - `reports/`, `sim_users.json` and the built `slowfs.dylib` are git-ignored.
-- The only app change the simulation needs: `api/app.py` reads `AMANFLIX_DEBUG`. The default `1` keeps
-  today's behaviour; the simulation sets `0` to match production.
+- The only app change the simulation needs: `api/app.py` reads `AMANFLIX_DEBUG`. It defaults to `0` (production);
+  set `AMANFLIX_DEBUG=1` for the debugger and auto-reload while developing.

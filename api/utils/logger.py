@@ -6,6 +6,8 @@ import queue
 from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
 import re
 import inspect
+import sys
+import time
 from paths import LOGS_DIR
 
 # Enhanced ANSI color codes
@@ -28,6 +30,35 @@ class Colors:
     BG_YELLOW = "\033[43m"
     BG_BLUE = "\033[44m"
 
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that keeps writing when the log file cannot be renamed.
+
+    Windows will not rename a file another process has open (a second app.py, the debug
+    reloader's parent process, an editor or virus scanner on the NAS). The stock handler then
+    drops every record and prints a traceback for each one; this one keeps appending to the
+    current file and tries to rotate again after ROTATE_RETRY_SECONDS.
+    """
+    ROTATE_RETRY_SECONDS = 60
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._next_rotate_attempt = 0.0
+
+    def shouldRollover(self, record):
+        if time.monotonic() < self._next_rotate_attempt:
+            return False
+        return super().shouldRollover(record)
+
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except OSError as e:
+            self._next_rotate_attempt = time.monotonic() + self.ROTATE_RETRY_SECONDS
+            sys.stderr.write(f"Could not rotate {self.baseFilename} (retrying in "
+                             f"{self.ROTATE_RETRY_SECONDS}s): {e}\n")
+            if self.stream is None:
+                self.stream = self._open()
+
 # Initialize the rotating file logger
 def _setup_file_logger():
     # Create logs directory if it doesn't exist
@@ -44,7 +75,7 @@ def _setup_file_logger():
         logger.handlers.clear()
     
     # Create rotating file handler for general logs
-    general_handler = RotatingFileHandler(
+    general_handler = SafeRotatingFileHandler(
         os.path.join(logs_dir, 'amanflix.log'),
         maxBytes=10485760,  # 10MB
         backupCount=10,
@@ -63,7 +94,7 @@ def _setup_file_logger():
         api_logger.handlers.clear()
     
     # Create rotating file handler specifically for API requests
-    api_handler = RotatingFileHandler(
+    api_handler = SafeRotatingFileHandler(
         os.path.join(logs_dir, 'api_requests.log'),
         maxBytes=10485760,  # 10MB
         backupCount=10,
