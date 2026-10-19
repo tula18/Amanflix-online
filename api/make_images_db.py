@@ -18,7 +18,7 @@ def save_movies_db(db, data):
     db_path = os.path.join(db)
     print(f"Saving database: {db_path}")
     print(db_path)
-    with open(db_path, 'w') as f:
+    with open(db_path, 'w', encoding='utf-8') as f:
         json.dump(data, f)
 
 movies_with_images = load_only_images_data(os.path.join(CDN_FILES_DIR, 'movies_little_clean.json'), 'movie')

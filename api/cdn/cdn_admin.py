@@ -141,7 +141,7 @@ def delete_cdn_content(current_admin, content_type, content_id):
         
         # Read the existing content
         items = []
-        with open(cdn_file_path, 'r') as f:
+        with open(cdn_file_path, 'r', encoding='utf-8') as f:
             items = json.load(f)
             
         # Find the item before deletion to get image paths
@@ -178,7 +178,7 @@ def delete_cdn_content(current_admin, content_type, content_id):
             return jsonify({"message": f"Content with ID {content_id} not found in CDN data"}), 404
         
         # Write back to the file
-        with open(cdn_file_path, 'w') as f:
+        with open(cdn_file_path, 'w', encoding='utf-8') as f:
             json.dump(items, f, indent=2)
         
         # Update the in-memory data
@@ -200,14 +200,14 @@ def delete_cdn_content(current_admin, content_type, content_id):
             
             # Read with_images content
             with_images_items = []
-            with open(with_images_file_path, 'r') as f:
+            with open(with_images_file_path, 'r', encoding='utf-8') as f:
                 with_images_items = json.load(f)
             
             # Remove from with_images if present
             with_images_items = [item for item in with_images_items if item.get('id') != content_id]
                 
             # Write back to the with_images file
-            with open(with_images_file_path, 'w') as f:
+            with open(with_images_file_path, 'w', encoding='utf-8') as f:
                 json.dump(with_images_items, f, indent=2)
                 
             # Update in-memory with_images data

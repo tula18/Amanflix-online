@@ -1056,13 +1056,13 @@ def update_cdn_content(content_type, new_data, existing_data, merge=True):
             log_info(f"{content_type.capitalize()}: Updated {updated_count} existing items, added {added_count} new items")
             
             # Write the updated data back to the file
-            with open(cdn_file_path, 'w') as f:
+            with open(cdn_file_path, 'w', encoding='utf-8') as f:
                 json.dump(existing_data, f, indent=2)
                 log_success(f"Successfully wrote merged {content_type} data to {cdn_file_path}")
         else:
             log_info(f"Replacing existing {content_type} data with {len(new_data)} items")
             # Replace the entire content
-            with open(cdn_file_path, 'w') as f:
+            with open(cdn_file_path, 'w', encoding='utf-8') as f:
                 json.dump(new_data, f, indent=2)
                 log_success(f"Successfully wrote replaced {content_type} data to {cdn_file_path}")
         
@@ -1152,7 +1152,7 @@ def update_with_images_content(content_type, new_data, existing_with_images):
         log_info(f"{content_type.capitalize()}_with_images: Updated {updated_count} items, added {added_count} items, skipped {skipped_count} items")
         
         # Write the updated data back to the file
-        with open(with_images_file_path, 'w') as f:
+        with open(with_images_file_path, 'w', encoding='utf-8') as f:
             json.dump(existing_with_images, f, indent=2)
             log_success(f"Successfully wrote updated {content_type}_with_images data")
         
@@ -1247,10 +1247,10 @@ def update_with_images_for_new_files(filenames):
         movies_file_path = os.path.join(CDN_FILES_DIR, 'movies_with_images.json')
         tv_file_path = os.path.join(CDN_FILES_DIR, 'tv_with_images.json')
         
-        with open(movies_file_path, 'w') as f:
+        with open(movies_file_path, 'w', encoding='utf-8') as f:
             json.dump(temp_movies_with_images, f, indent=2)
             
-        with open(tv_file_path, 'w') as f:
+        with open(tv_file_path, 'w', encoding='utf-8') as f:
             json.dump(temp_tv_series_with_images, f, indent=2)
             
         # Update in-memory data

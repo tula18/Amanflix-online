@@ -6,7 +6,7 @@ _config = {}
 _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'data_config.json')
 
 if os.path.exists(_config_path):
-    with open(_config_path, 'r') as f:
+    with open(_config_path, 'r', encoding='utf-8') as f:
         _config = json.load(f)
 
 _raw_root = _config.get('data_root', '').replace('\\', os.sep)
