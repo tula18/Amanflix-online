@@ -8,6 +8,8 @@ from tqdm import tqdm
 from datetime import datetime, timedelta
 from functools import wraps
 import subprocess
+import queue
+import threading
 from utils.logger import log_api
 from utils.logger import log_warning, log_info, log_error, log_debug
 
@@ -65,6 +67,8 @@ def auto_repair_uploaded_video(dst_path):
     """
     try:
         from api.media_health import ISSUE_CORRUPT_DISPLAY_MATRIX, analyze_file, repair_file
+        from api.routes.media_health import _stream_lock
+        from api.routes.stream import reencode_log
 
         analysis = analyze_file(dst_path)
         if ISSUE_CORRUPT_DISPLAY_MATRIX not in analysis['issues']:
@@ -72,8 +76,12 @@ def auto_repair_uploaded_video(dst_path):
 
         video_id = os.path.splitext(os.path.basename(dst_path))[0]
         log_warning(f"Corrupt display matrix detected in upload {video_id}; repairing")
+        reencode_log.info(f'UPLOAD   | video_id={video_id} | issues={analysis["issues"]} | file={dst_path}')
 
-        result = repair_file(dst_path, video_id)
+        # Hold /stream off the file while it is swapped, as the Media Health
+        # page does. Raises RuntimeError if a re-encode already owns this title.
+        with _stream_lock(video_id):
+            result = repair_file(dst_path, video_id, logger=reencode_log)
         if result['repaired']:
             log_info(f"Repaired upload {video_id} via {result['strategy']}")
         else:
@@ -82,6 +90,49 @@ def auto_repair_uploaded_video(dst_path):
     except Exception as e:
         log_error(f"Media health check failed for {dst_path}: {e}")
         return None
+
+
+# Uploads are checked and repaired off the request thread, so the admin's upload
+# returns as soon as the file is stored. One worker keeps a season upload from
+# starting a remux per episode at once against the NAS.
+_repair_queue = queue.Queue()
+_repair_worker = None
+_repair_worker_lock = threading.Lock()
+
+
+def _repair_worker_loop():
+    while True:
+        dst_path = _repair_queue.get()
+        try:
+            auto_repair_uploaded_video(dst_path)
+        finally:
+            _repair_queue.task_done()
+
+
+def queue_auto_repair(dst_path):
+    """Schedule auto_repair_uploaded_video for a stored upload and return at once."""
+    global _repair_worker
+    with _repair_worker_lock:
+        if _repair_worker is None or not _repair_worker.is_alive():
+            _repair_worker = threading.Thread(target=_repair_worker_loop, name='upload-repair', daemon=True)
+            _repair_worker.start()
+    _repair_queue.put(dst_path)
+
+
+def _wait_for_file_unlock(dst_path, timeout=600):
+    """Wait out a repair or re-encode that is still working on this title.
+
+    Without this, a forced re-upload could be overwritten moments later when the
+    earlier job swaps its output into place.
+    """
+    from api.routes.stream import _file_locks, _reencode_lock
+
+    video_id = os.path.splitext(os.path.basename(dst_path))[0]
+    with _reencode_lock:
+        lock_event = _file_locks.get(video_id)
+    if lock_event is not None:
+        log_info(f"Upload of {video_id} waiting for its running repair to finish")
+        lock_event.wait(timeout=timeout)
 
 
 def save_with_progress(src_file, dst_path, convert_to_mp4=True):
@@ -110,6 +161,8 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
     if should_convert:
         # Replace any existing extension with .mp4
         dst_path = os.path.splitext(dst_path)[0] + '.mp4'
+
+    _wait_for_file_unlock(dst_path)
     
     # If it's already an MP4, we don't need conversion, or ffmpeg is not available
     if is_src_mp4 or not convert_to_mp4 or not ffmpeg_available:
@@ -125,7 +178,7 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
         progress_bar.close()
         if convert_to_mp4 and not is_src_mp4 and not ffmpeg_available:
             log_warning("ffmpeg not available. File saved without conversion.")
-        auto_repair_uploaded_video(dst_path)
+        queue_auto_repair(dst_path)
         return
     
     # For non-MP4 files that need conversion
@@ -151,7 +204,7 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
         # Remove the temporary file
         os.remove(temp_path)
 
-        auto_repair_uploaded_video(dst_path)
+        queue_auto_repair(dst_path)
         
     except subprocess.SubprocessError as e:
         # Clean up both files on error
