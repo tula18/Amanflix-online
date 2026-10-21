@@ -453,6 +453,7 @@ def get_episode_video_id_cached(content_id, season_number, episode_number):
             log_info(f"Episode cache expired: {cache_key}")
     
     # Cache miss - query database with error handling
+    query_started = time.time()
     try:
         # First try exact episode number match
         episode = Episode.query.join(Season).filter(
@@ -476,7 +477,7 @@ def get_episode_video_id_cached(content_id, season_number, episode_number):
             video_id = episode.video_id
             # Store in cache
             _episode_cache[cache_key] = (video_id, time.time())
-            log_info(f"Episode cached: {cache_key} -> {video_id}")
+            log_info(f"Episode cached: {cache_key} -> {video_id} (DB lookup took {(time.time() - query_started) * 1000:.0f}ms)")
             return video_id
         else:
             log_warning(f"Episode not found in DB: show={content_id} S{season_number}E{episode_number}")
@@ -484,7 +485,7 @@ def get_episode_video_id_cached(content_id, season_number, episode_number):
             
     except Exception as e:
         # If DB query fails (e.g., session poisoned), log error but don't crash
-        log_error(f"Failed to query episode from DB: {e}")
+        log_error(f"Failed to query episode from DB after {(time.time() - query_started) * 1000:.0f}ms: {e}")
 
         # Fallback 1: new padded formula (season 2 digits, episode 3 digits)
         # Used for episodes uploaded after the collision fix.

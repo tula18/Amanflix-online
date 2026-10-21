@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file, make_response
 from werkzeug.utils import secure_filename
 from api.utils import ensure_upload_folder_exists, parse_watch_id, get_episode_video_id_cached, token_required
 from api.media_health import ISSUE_CORRUPT_DISPLAY_MATRIX, analyze_file, repair_file
+from api.stream_diagnostics import StreamTrace, log_can_watch
 from models import Episode, Season 
 from paths import UPLOADS_DIR, LOGS_DIR
 from utils.logger import SafeRotatingFileHandler
@@ -9,6 +10,7 @@ import os
 import subprocess
 import threading
 import logging
+import time
 from datetime import datetime
 
 stream_bp = Blueprint('stream_bp', __name__, url_prefix='/api')
@@ -160,6 +162,7 @@ def _reencode_file(file_path, video_id, watch_id='', error_message='', reported_
 @token_required
 def can_watch_video(current_user, watch_id):
     """Check if a video is available for streaming or being processed"""
+    started = time.perf_counter()
     # Parse the watch ID format
     parsed = parse_watch_id(watch_id)
     if not parsed:
@@ -174,31 +177,41 @@ def can_watch_video(current_user, watch_id):
         season_number = parsed['season_number']
         episode_number = parsed['episode_number']
         video_id = get_episode_video_id_cached(content_id, season_number, episode_number)
-        if not video_id:
-            return jsonify(available=False, reason="not_found"), 404
     else:
         video_id = str(content_id)
+    lookup_ms = round((time.perf_counter() - started) * 1000)
+
+    def respond(result, status, **body):
+        log_can_watch(watch_id, video_id, result, lookup_ms, round((time.perf_counter() - started) * 1000))
+        return jsonify(**body), status
+
+    if not video_id:
+        return respond('episode_not_found', 404, available=False, reason="not_found")
     
     # Check if file exists
     file_path = os.path.join(UPLOADS_DIR, f"{video_id}.mp4")
     if not os.path.exists(file_path):
-        return jsonify(available=False, reason="not_found"), 404
+        return respond('file_not_found', 404, available=False, reason="not_found")
     
     # Check if being processed
     with _reencode_lock:
         is_processing = video_id in _file_locks
     
     if is_processing:
-        return jsonify(available=False, reason="processing"), 503
+        return respond('processing', 503, available=False, reason="processing")
     
-    return jsonify(available=True), 200
+    return respond('available', 200, available=True)
 
 @stream_bp.route('/stream/<string:watch_id>', methods=['GET'])
 def stream_video(watch_id):
     """Stream video content based on watch ID"""
+    # Timings for logs/stream_diagnostics.log (see api/stream_diagnostics.py)
+    trace = StreamTrace(request, watch_id)
+
     # Parse the watch ID format
     parsed = parse_watch_id(watch_id)
     if not parsed:
+        trace.log_request(400, 'invalid watch id')
         return jsonify(message="Invalid watch ID format"), 400
     
     # Extract content information
@@ -213,19 +226,28 @@ def stream_video(watch_id):
         # Use cached lookup - this avoids DB queries and session poisoning issues
         video_id = get_episode_video_id_cached(content_id, season_number, episode_number)
         
+        trace.mark('lookup')
+        
         if not video_id:
             # If cache lookup failed and returned None, return 404
+            trace.log_request(404, 'episode not found')
             return jsonify(message="Episode not found"), 404
     else:
         # For movies, the content ID is the video ID
         video_id = str(content_id)
+        trace.mark('lookup')
+    trace.video_id = video_id
     
     # Check if the file exists
     mp4_path = os.path.join(UPLOADS_DIR, f"{video_id}.mp4")
-    if os.path.exists(mp4_path):
+    file_exists = os.path.exists(mp4_path)
+    trace.mark('stat')
+    if file_exists:
         file_path = mp4_path
         mimetype = 'video/mp4'
+        trace.file_path = file_path
     else:
+        trace.log_request(404, 'file not found')
         return jsonify(message="File not found"), 404
 
     # Wait if the file is currently being re-encoded
@@ -234,15 +256,24 @@ def stream_video(watch_id):
     if lock_event is not None:
         # Wait up to 10 minutes for re-encode to finish
         finished = lock_event.wait(timeout=600)
+        trace.mark('lock_wait')
         if not finished:
+            trace.log_request(503, 'gave up waiting for re-encode')
             return jsonify({"message": "Video is being processed, please try again later.", "error_reason": "video_processing"}), 503
 
     # Stream the video file
     try:
-        return send_file(file_path, mimetype=mimetype)
+        timed = trace.install_file_wrapper(request.environ)
+        response = send_file(file_path, mimetype=mimetype)
+        trace.mark('open')
+        trace.expected_bytes = response.content_length
+        trace.log_request(response.status_code, '' if timed else 'server file wrapper, transfer not timed')
+        return response
     except FileNotFoundError:
+        trace.log_request(404, 'file vanished before open')
         return jsonify({"message":"The content is not available", "error_reason": "video_not_found"}), 404
     except Exception as e:
+        trace.log_request(500, f'error: {e}')
         return jsonify({"message":"Our apologies, something went wrong on our end.", "error_reason": "video_error"}), 500
 
 
