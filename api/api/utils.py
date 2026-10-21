@@ -11,6 +11,7 @@ import subprocess
 import queue
 import threading
 from utils.logger import log_api
+from api.encode_limits import encode_slot, run_low_priority, thread_args
 from utils.logger import log_warning, log_info, log_error, log_debug
 
 from models import User, BlacklistToken, db, Admin
@@ -199,7 +200,8 @@ def save_with_progress(src_file, dst_path, convert_to_mp4=True):
     try:
         # Convert to MP4
         log_info(f"Converting to mp4: {dst_path}")
-        subprocess.run(["ffmpeg", "-i", temp_path, dst_path], check=True)
+        with encode_slot():
+            run_low_priority(["ffmpeg", "-i", temp_path] + thread_args() + [dst_path], check=True)
         
         # Remove the temporary file
         os.remove(temp_path)

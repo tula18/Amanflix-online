@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file, make_response
 from werkzeug.utils import secure_filename
 from api.utils import ensure_upload_folder_exists, parse_watch_id, get_episode_video_id_cached, token_required
 from api.media_health import ISSUE_CORRUPT_DISPLAY_MATRIX, analyze_file, repair_file
+from api.encode_limits import MAX_JOBS, encode_slot, run_low_priority, thread_args
 from models import Episode, Season 
 from paths import UPLOADS_DIR, LOGS_DIR
 from utils.logger import SafeRotatingFileHandler
@@ -77,7 +78,18 @@ def _detect_corrupt_track(error_message):
 
 
 def _reencode_file(file_path, video_id, watch_id='', error_message='', reported_by=''):
-    """Re-encode the corrupt track(s) of a video file using ffmpeg to fix decode errors."""
+    """Re-encode the corrupt track(s) of a video file using ffmpeg to fix decode errors.
+
+    Waits for a free encode slot first, so only MAX_JOBS encodes load the CPU at
+    once. The file stays streamable while it waits; it is locked only once its
+    turn comes.
+    """
+    reencode_log.info(f'QUEUED   | video_id={video_id} | max_jobs={MAX_JOBS}')
+    with encode_slot():
+        _reencode_file_now(file_path, video_id, watch_id, error_message, reported_by)
+
+
+def _reencode_file_now(file_path, video_id, watch_id, error_message, reported_by):
     # Create a lock event for this file
     lock_event = threading.Event()  # starts unset = locked
     with _reencode_lock:
@@ -125,8 +137,8 @@ def _reencode_file(file_path, video_id, watch_id='', error_message='', reported_
         temp_path = file_path + '.reencode.mp4'
         start_time = datetime.now()
 
-        result = subprocess.run(
-            ffmpeg_cmd + [temp_path],
+        result = run_low_priority(
+            ffmpeg_cmd + thread_args() + [temp_path],
             capture_output=True, text=True, timeout=timeout
         )
 
